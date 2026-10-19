@@ -29,10 +29,10 @@ and Zobrist hashing. The host adds a FEN reader that validates what it reads (pa
 rights and en passant square), integer counters, castling that advances the halfmove clock as the fifty-move rule
 counts it, and a repetition key that counts an en passant square only when the capture is legal. Classical chess only.
 
-Its proof is pawnstar's perft suite, `tests/data/standard-perft.epd`: 128 positions, every one to the deepest depth
-within a node budget (a million nodes a position in a debug build, twenty million optimised), and the start position
-to depth 6 (119,060,324) in an optimised build. Every legal move of those positions and their children round-trips
-through SAN and UCI notation.
+Its proof is pawnstar's perft suite, `tests/data/standard-perft.epd` (the Ethereal engine's standard.epd): 128
+positions, every one to the deepest depth within a node budget (a million nodes a position in a debug build, twenty
+million optimised), and the start position to depth 6 (119,060,324) in an optimised build. Every legal move of
+those positions and their children round-trips through SAN and UCI notation.
 
 ### Threads
 
@@ -62,7 +62,7 @@ cmake --preset debug   && cmake --build --preset debug   && ctest --preset debug
 cmake --preset release-universal                        # macOS: arm64 + x86_64, for macOS 13.3 on
 cmake --preset coverage && cmake --build --preset coverage && ctest --preset coverage   # gcc / clang
 cmake --preset asan && cmake --build --preset asan && ctest --preset asan                # gcc / clang
-powershell -ExecutionPolicy Bypass -File tools\coverage-windows.ps1                       # Windows coverage, red under 90 %
+powershell -ExecutionPolicy Bypass -File tools\coverage-windows.ps1     # Windows coverage, red under 90 %
 ```
 
 On Windows, build from a Visual Studio developer prompt (MSVC, its CMake and Ninja); the binaries link the static
@@ -85,6 +85,9 @@ UCI_HOST_PERFT_BUDGET=200000000 build/release/tests/uci_host_chess_test --gtest_
 ```
 
 ## The command line
+
+The arguments follow the conventions cutechess-cli and fastchess share, so their scripts carry over with little
+change; the output's score and Elo lines read the same way.
 
 ```
 uci-host-cli match -engine cmd=./engine-a name=A -engine cmd=./engine-b name=B -each tc=40/60+0.6 option.Hash=64

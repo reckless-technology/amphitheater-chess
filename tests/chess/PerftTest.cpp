@@ -1,6 +1,7 @@
-// Perft on the standard suite (tests/data/standard-perft.epd, pawnstar's numbers): every position to the deepest depth
-// whose count fits the node budget - 1 million nodes a position in a debug build, 20 million in an optimised one,
-// UCI_HOST_PERFT_BUDGET to choose another - and the start position to depth 6 in an optimised build.
+// Perft on the standard suite (tests/data/standard-perft.epd: the standard.epd collection the Ethereal engine
+// publishes, as pawnstar's perft test carries it): every position to the deepest depth whose count fits the node
+// budget - 1 million nodes a position in a debug build, 20 million in an optimised one, UCI_HOST_PERFT_BUDGET to choose
+// another - and the start position to depth 6 in an optimised build.
 
 #include "chess/Perft.h"
 #include "TestSupport.h"

@@ -2,7 +2,8 @@
 /// @file Cli.h The command-line runner: matches, tournaments, perft and analysis, as one function.
 ///
 /// uci-host-cli's main hands its UTF-8 arguments to RunCli, which the tests call in-process too. The arguments
-/// follow the conventions of the established command-line match runners, so a script written for one reads here:
+/// follow the conventions cutechess-cli and fastchess share (-engine, -each, -tc, -games, -openings, -resign, -draw,
+/// -pgnout), so a script written for either reads here with little change:
 ///
 ///   uci-host-cli match      -engine cmd=A [name=..] -engine cmd=B -each tc=40/60+0.6 -games 10 -concurrency 2
 ///   uci-host-cli tournament -engine cmd=A -engine cmd=B -engine cmd=C -each st=0.1 -rounds 2 -double

@@ -19,10 +19,12 @@ libraries stay testable on their own.
 viewBox using only `<path>` with the commands M, L, Q, C and Z (absolute), `<circle>`, one `<linearGradient>` in
 `<defs>` (x1/y1/x2/y2 in the object's bounding box, two `<stop>`s with `stop-color`), and the presentation attributes
 `fill` (a colour, `none` or `url(#id)`), `stroke`, `stroke-width`, `stroke-linejoin`, `stroke-linecap` and
-`stroke-opacity`: the subset the toolkit's SVG reader must draw for the GUI. The GUI's needs shape the APIs: an `Engine` is polled from one
-thread (the toolkit has no thread-safe post, so the frame callback drains `PollEvent`); a tournament reports through
-a thread-safe event queue; `CallbackPlayer` is the human side (its callback blocks on the game's thread until the GUI
-hands it a move); `EngineConfig` is plain data the GUI will save with the toolkit's JSON.
+`stroke-opacity`: the subset the toolkit's SVG reader must draw for the GUI.
+
+The GUI's needs shape the APIs: an `Engine` is polled from one thread (the toolkit has no thread-safe post, so the
+frame callback drains `PollEvent`); a tournament reports through a thread-safe event queue; `CallbackPlayer` is the
+human side (its callback blocks on the game's thread until the GUI hands it a move); `EngineConfig` is plain data the
+GUI will save with the toolkit's JSON.
 
 ## Architecture
 
@@ -32,10 +34,10 @@ hands it a move); `EngineConfig` is plain data the GUI will save with the toolki
   magic attacks and Zobrist keys. pawnstar is GPLv3 with Jonny its sole copyright holder, so its code may go out under
   either licence this product chooses; nothing from any other engine is copied. The departures are listed in
   `Position.h`: a validating FEN reader (strict and tolerant, `Result` errors), int counters, castling advancing the
-  halfmove clock, `RepetitionKey` (en passant only when the capture is legal), no null move. Classical chess only. On top, the host's
-  own: `Notation` (SAN and UCI), `Game` (rules outcomes: mate, stalemate, insufficient material, threefold, fifty),
-  `Pgn` (reader with variations, NAGs, comments, error recovery per game; writer with the Seven Tag Roster and 80
-  columns), `TimeControl` and `Clock`, `Perft`, `Result`/`Status`.
+  halfmove clock, `RepetitionKey` (en passant only when the capture is legal), no null move. Classical chess only. On
+  top, the host's own: `Notation` (SAN and UCI), `Game` (rules outcomes: mate, stalemate, insufficient material,
+  threefold, fifty), `Pgn` (reader with variations, NAGs, comments, error recovery per game; writer with the Seven Tag
+  Roster and 80 columns), `TimeControl` and `Clock`, `Perft`, `Result`/`Status`.
 - `src/uci/` (`uci_host_uci`): `ChildProcess` (`ProcessWindows.cpp`: CreateProcessW, a handle list, a kill-on-close
   job object; `ProcessPosix.cpp`: posix_spawn, a process group, SIGPIPE ignored), `ThreadSafeQueue`, `UciProtocol`
   (every info field, every option type, `go`/`position`/`setoption` formatting), `Engine` (the session: handshake,
@@ -75,8 +77,11 @@ set a machine up (VS Code: "setup environment"; `-Check` / `--check` only report
   PascalCase functions, `snake_case_` members, `kPascalCase` constants, `#pragma once`. Doxygen-style `/** */`
   comments on declarations (`///<` for members), `@param`/`@return` included. The adapted pawnstar headers keep
   pawnstar's own comment style and public members.
-- **Docs** describe the code as it is (no history, no changelog voice), in British spelling; no third party is named
-  in docs, comments or test data, beyond tools, platforms and eponymous terms.
+- **Docs** describe the code as it is (no history, no changelog voice), in British spelling. No product is a clone or
+  a model of a third-party product, or presented as one. Naming third parties in comparative or reference terms is
+  fine: credits and citations, the source of data, test positions or assets, programs it was compared with, and the
+  tools and dependencies. So the perft suite's source is credited and the command line is compared with other match
+  runners, but uci-host is never described as a clone of another GUI or match runner.
 - **Tests:** every new behaviour gets a test; engine behaviours go into the fake engine as a scripted argument.
   Timing-based tests use generous bounds: the CI runners are shared machines.
 - MSVC builds use the static runtime in every configuration (the GUI's prebuilt Skia will need it); macOS floor 13.3.
