@@ -171,7 +171,10 @@ TEST(Play, TheNewGameDialogOffersThePersonAndEveryEngineAndReadsTheTimeControl)
     ASSERT_NE(dialog, nullptr);
     EXPECT_EQ(dialog->white().choices().size(), 3u);
     EXPECT_EQ(dialog->black().Text(), "Alpha");
+    const int start_row = dialog->start().bounds().y();
     dialog->time().Choose(static_cast<int>(TimeControlPresets().size()) - 1);
+    EXPECT_TRUE(dialog->custom().visible());
+    EXPECT_GT(dialog->start().bounds().y(), start_row) << "the custom line takes a row of its own";
     dialog->custom().SetText("not a clock");
     std::string error;
     EXPECT_FALSE(dialog->Settings(&error).has_value());

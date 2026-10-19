@@ -36,6 +36,7 @@ NewGameDialog::NewGameDialog(const std::vector<EngineEntry> &engines, bool can_s
     custom_.SetVisible(false);
     time_.on_change = [this](int index) {
         custom_.SetVisible(TimeControlPresets()[static_cast<std::size_t>(index)].text == nullptr);
+        Resized(); // the rows under it move up or down
     };
     start_.SetChoices({"The starting position", "The position shown"}, 0);
     start_.SetEnabled(can_start_from_shown);
@@ -78,8 +79,12 @@ void NewGameDialog::LayOutContent(reckless::gfx::RectI area)
         control->SetBounds({x, y, w, 34});
         y += row;
     }
-    custom_.SetBounds({x, y, w, 32});
-    y += row;
+    // The custom time control's line takes a row only while it shows, so a preset leaves no gap.
+    if (custom_.visible())
+    {
+        custom_.SetBounds({x, y, w, 32});
+        y += row;
+    }
     start_label_.SetBounds({area.x(), y, label_width, 34});
     start_.SetBounds({x, y, w, 34});
     y += row;

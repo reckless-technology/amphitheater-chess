@@ -71,6 +71,12 @@ class NewGameDialog final : public DialogFrame
         return custom_;
     }
 
+    /** @return Where the game starts from: the starting position or the one shown. */
+    DropDown &start()
+    {
+        return start_;
+    }
+
     /** Start pressed: the game handed on when the settings are sound, else the reason shown. */
     void Start();
 
