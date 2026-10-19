@@ -203,7 +203,7 @@ void MainView::Resized()
     const int bottom = h - kStatusHeight - kMargin;
 
     // The foot: the log at the bottom, the analysis and the graph over it.
-    const int log_height = std::clamp(h / 8, 100, kLogHeight);
+    const int log_height = log_.FittedHeight(std::clamp(h / 8, 100, kLogHeight)); // whole rows, as the moves
     const int log_top    = bottom - log_height;
     log_.view().SetBounds({left, log_top, right - left, log_height});
     const int foot_top   = log_top - kGap - kLabelHeight - kAnalysisHeight;
@@ -244,9 +244,11 @@ void MainView::Resized()
     card_.SetBounds({side_left, card_top, side_width, card_tall});
     card_label_.SetBounds({side_left, card_top - kLabelHeight, side_width, kLabelHeight});
     moves_label_.SetBounds({side_left, top - 6, side_width, kLabelHeight});
+    // The moves a whole number of rows tall: the list scrolls by the pixel, so a height between rows would leave the
+    // top row half under the header whenever the move shown is kept in view at the bottom.
     const int moves_top = top - 6 + kLabelHeight;
-    moves_.view().SetBounds(
-        {side_left, moves_top, side_width, std::max(60, card_top - kLabelHeight - kGap - moves_top)});
+    moves_.view().SetBounds({side_left, moves_top, side_width,
+                             moves_.FittedHeight(std::max(60, card_top - kLabelHeight - kGap - moves_top))});
     moves_.SetCurrentPly(moves_.model().current_ply()); // the move shown kept in view at the list's new size
 }
 

@@ -88,6 +88,14 @@ class EngineLog
     /** Every line dropped. */
     void Clear();
 
+    /**
+     * The log's height in a room: as many whole rows as fit, so a log following its newest line never shows a part
+     * of a row at its top.
+     * @param room The height there is, in pixels.
+     * @return The height to give the log: at most the room, and at least one row.
+     */
+    int FittedHeight(int room) const;
+
     /** @return The list, for the window to add and lay out. */
     reckless::view::ListView &view()
     {

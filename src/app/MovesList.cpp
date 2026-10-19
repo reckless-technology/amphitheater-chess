@@ -4,6 +4,8 @@
 
 #include "ListStyles.h"
 
+#include <algorithm>
+
 namespace uci_host::app
 {
 
@@ -116,6 +118,13 @@ void MovesList::SetMoves(std::vector<std::string> sans, int first_number, bool i
     model_.SetCurrentPly(current_ply);
     list_.RowsChanged();
     SetCurrentPly(current_ply);
+}
+
+int MovesList::FittedHeight(int room) const
+{
+    const auto &style = list_.style();
+    const int   rows  = std::max(1, (room - style.header_height) / style.row_height);
+    return style.header_height + rows * style.row_height;
 }
 
 void MovesList::SetCurrentPly(int ply)

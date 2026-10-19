@@ -4,6 +4,8 @@
 
 #include "ListStyles.h"
 
+#include <algorithm>
+
 namespace uci_host::app
 {
 
@@ -86,6 +88,12 @@ void EngineLog::Clear()
 {
     model_.Clear();
     list_.RowsChanged();
+}
+
+int EngineLog::FittedHeight(int room) const
+{
+    const int row = list_.style().row_height;
+    return std::max(1, room / row) * row;
 }
 
 } // namespace uci_host::app

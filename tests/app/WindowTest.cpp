@@ -243,6 +243,24 @@ TEST(Board, EachStateItShowsChangesItsPicture)
     EXPECT_NE(Drawn(rig.board), banner);
 }
 
+TEST(MainView, TheMovesAndTheLogShowWholeRowsKeptOnTheMoveShownAndTheNewestLine)
+{
+    MainView view(Pieces());
+    ShowSample(view);
+    for (const int height : {MainView::kDesignHeight, MainView::kLayoutHeight, MainView::kDesignHeight - 23})
+    {
+        view.SetBounds({MainView::kDesignWidth, height});
+        const auto &list  = view.moves().view();
+        const auto &style = list.style();
+        EXPECT_EQ((list.height() - style.header_height) % style.row_height, 0) << height;
+        EXPECT_GT(list.scroll(), 0) << "the sample's moves outrun the list";
+        EXPECT_EQ(list.scroll() % style.row_height, 0) << "no row half under the header at " << height;
+        const auto &log = view.log().view();
+        EXPECT_EQ(log.height() % log.style().row_height, 0) << height;
+        EXPECT_EQ(log.scroll() % log.style().row_height, 0) << "following the newest line at " << height;
+    }
+}
+
 TEST(MovesModel, MovesFillRowsFromWhitesColumnOrBlacksAndTheCurrentOneIsLit)
 {
     MovesModel model;

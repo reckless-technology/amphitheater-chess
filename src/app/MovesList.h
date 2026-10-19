@@ -95,6 +95,14 @@ class MovesList
     /** @param ply The position the board shows; the list scrolls to it. */
     void SetCurrentPly(int ply);
 
+    /**
+     * The list's height in a room: its header and as many whole rows as fit, so a list kept on the move shown never
+     * leaves a part of a row under the header.
+     * @param room The height there is, in pixels.
+     * @return The height to give the list: at most the room, and at least the header and one row.
+     */
+    int FittedHeight(int room) const;
+
     /** @return The list, for the window to add and lay out. */
     reckless::view::ListView &view()
     {
