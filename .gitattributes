@@ -3,5 +3,5 @@
 *.sh text eol=lf
 .githooks/* text eol=lf
 
-# The piece artwork is kept byte for byte as its source published it: no line-ending conversion, no diffs.
+# The piece artwork is kept byte for byte as its generator wrote it: no line-ending conversion, no diffs.
 assets/** -text -diff

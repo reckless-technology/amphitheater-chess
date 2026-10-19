@@ -5,8 +5,9 @@ the rules of chess, UCI engines as child processes, games, matches and tournamen
 a command-line match and tournament runner on that core. The GUI comes next, drawn with Skia on reckless-toolkit; it
 will drive the same libraries.
 
-Proprietary: see [LICENSE](LICENSE). The piece artwork in `assets/pieces/cburnett/`, for the GUI, is used under the
-three-clause BSD licence; [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) carries it and its sources.
+Proprietary: see [LICENSE](LICENSE). Everything in it is Jonny Reckless's own work, the piece set in
+`assets/pieces/staunton/` for the GUI among it (twelve SVGs, the generator that wrote them and a preview); the tests
+fetch GoogleTest, which no product ships.
 
 ## What is here
 

@@ -6,10 +6,20 @@ Reckless UCI Host is a chess GUI and UCI engine host for Windows, macOS and Linu
 toolkit-free core and a command-line runner; the README is the long-form reference (the libraries, the threading
 model, the command line, the tests).
 
+**Licence:** the release licence is undecided, GPLv3 or proprietary; `LICENSE` (proprietary) stands until it is
+decided. Keep everything compatible with either: the code adapted from pawnstar and the piece set are Jonny's own, and
+nothing third-party may come in whose licence would close off either option.
+
 **The plan: the GUI comes on reckless-toolkit.** It will be drawn with Skia on the shared toolkit being extracted
-from the vst-plugins repository, with the piece artwork already in `assets/pieces/cburnett/` (SVGs, drawn as vector
-paths; BSD-3-Clause, `THIRD-PARTY-NOTICES.txt`). Nothing here depends on the toolkit or on vst-plugins: keep it that
-way, so the libraries stay testable on their own. The GUI's needs shape the APIs: an `Engine` is polled from one
+from the vst-plugins repository. Nothing here depends on the toolkit or on vst-plugins: keep it that way, so the
+libraries stay testable on their own.
+
+**The pieces** are Jonny's own Staunton set, `assets/pieces/staunton/{w,b}{K,Q,R,B,N,P}.svg`, written by
+`gen_pieces.py` beside them (`preview.png` shows them); regenerate rather than edit by hand. Each is a 100 x 100
+viewBox using only `<path>` with the commands M, L, Q, C and Z (absolute), `<circle>`, one `<linearGradient>` in
+`<defs>` (x1/y1/x2/y2 in the object's bounding box, two `<stop>`s with `stop-color`), and the presentation attributes
+`fill` (a colour, `none` or `url(#id)`), `stroke`, `stroke-width`, `stroke-linejoin`, `stroke-linecap` and
+`stroke-opacity`: the subset the toolkit's SVG reader must draw for the GUI. The GUI's needs shape the APIs: an `Engine` is polled from one
 thread (the toolkit has no thread-safe post, so the frame callback drains `PollEvent`); a tournament reports through
 a thread-safe event queue; `CallbackPlayer` is the human side (its callback blocks on the game's thread until the GUI
 hands it a move); `EngineConfig` is plain data the GUI will save with the toolkit's JSON.
@@ -19,10 +29,10 @@ hands it a move); `EngineConfig` is plain data the GUI will save with the toolki
 - `src/chess/` (`uci_host_chess`): the rules. `Position.h`, `Move.h`, `Bitboard.h`, `Square.h`, `AttackTables.h`,
   `Attacks.h`, `CastlingRights.h`, `Pins.h`, `StackList.h`, `ChessTypes.h` are **adapted from pawnstar** (commit
   `c41099798db594ae2c379cba94d917c9c28d9c04`, each header says so): the board, the legal move generator, copy-make,
-  magic attacks and Zobrist keys. pawnstar is GPLv3 with Jonny its sole copyright holder, who relicenses his own code
-  into this proprietary product; nothing from any other engine is copied. The departures are listed in `Position.h`:
-  a validating FEN reader (strict and tolerant, `Result` errors), int counters, castling advancing the halfmove clock,
-  `RepetitionKey` (en passant only when the capture is legal), no null move. Classical chess only. On top, the host's
+  magic attacks and Zobrist keys. pawnstar is GPLv3 with Jonny its sole copyright holder, so its code may go out under
+  either licence this product chooses; nothing from any other engine is copied. The departures are listed in
+  `Position.h`: a validating FEN reader (strict and tolerant, `Result` errors), int counters, castling advancing the
+  halfmove clock, `RepetitionKey` (en passant only when the capture is legal), no null move. Classical chess only. On top, the host's
   own: `Notation` (SAN and UCI), `Game` (rules outcomes: mate, stalemate, insufficient material, threefold, fifty),
   `Pgn` (reader with variations, NAGs, comments, error recovery per game; writer with the Seven Tag Roster and 80
   columns), `TimeControl` and `Clock`, `Perft`, `Result`/`Status`.

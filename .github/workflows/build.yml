@@ -56,7 +56,7 @@ jobs:
             echo "changed files:"; echo "$changed"
             # Documentation never reaches a compiler: Markdown, the licences, the ignore file, the editor settings,
             # the hooks.
-            if ! echo "$changed" | grep -qvE '[.]md$|^LICENSE$|^THIRD-PARTY-NOTICES[.]txt$|^[.]gitignore$|^[.]vscode/|^[.]githooks/'; then
+            if ! echo "$changed" | grep -qvE '[.]md$|^LICENSE$|^[.]gitignore$|^[.]vscode/|^[.]githooks/'; then
               cpp=false
             fi
           fi
