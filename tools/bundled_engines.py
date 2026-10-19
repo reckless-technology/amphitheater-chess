@@ -34,6 +34,7 @@ import platform
 import re
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tarfile
@@ -209,6 +210,7 @@ def stage(pins, platform_name, out, cache, do_handshake):
         for build in builds:
             target = out / engine["id"] / build["file"]
             extract(files[(engine["id"], build["file"])], build.get("member"), target)
+            check_dependencies(target, platform_name)
             entry["builds"].append({"executable": f"{engine['id']}/{build['file']}",
                                     "requires": build.get("requires", "")})
         if do_handshake:
@@ -264,10 +266,12 @@ def parse_option(line):
 
 
 def handshake(executable, arguments=()):
-    """uci, isready and quit, with a deadline. @return What it said: its name, its author and its options."""
+    """uci, isready and quit, with a deadline, the engine started in its own folder as the host starts it. @return What
+    it said: its name, its author and its options."""
+    executable = Path(executable).resolve()
     try:
         done = subprocess.run([str(executable), *arguments], input="uci\nisready\nquit\n", capture_output=True,
-                              text=True, timeout=HANDSHAKE_SECONDS, cwd=Path(executable).parent)
+                              text=True, timeout=HANDSHAKE_SECONDS, cwd=executable.parent)
     except subprocess.TimeoutExpired:
         raise PinError(f"{executable} did not finish its handshake within {HANDSHAKE_SECONDS} s") from None
     except OSError as error:
@@ -290,6 +294,76 @@ def handshake(executable, arguments=()):
 def check_version(entry, said):
     if not re.search(rf"(^|\s|v){re.escape(entry['version'])}($|\s)", said["name"]):
         raise PinError(f"{entry['id']} names itself {said['name']!r}, not version {entry['version']}")
+
+
+# ---- What an engine needs of the machine ----------------------------------------------------------------------------
+
+# The DLLs every Windows the host runs on (10 and later) carries: an engine may import these and nothing else that is
+# not beside it. The C and C++ runtimes of a compiler - MSVCP140.dll, VCRUNTIME140.dll, libwinpthread-1.dll,
+# libc++.dll and the rest - are not among them: a machine without the redistributable that installs them, or without
+# a toolchain on its PATH, would not start the engine at all (STATUS_DLL_NOT_FOUND).
+WINDOWS_SYSTEM_DLLS = {
+    "advapi32.dll", "bcrypt.dll", "bcryptprimitives.dll", "comctl32.dll", "comdlg32.dll", "crypt32.dll",
+    "dbghelp.dll", "gdi32.dll", "iphlpapi.dll", "kernel32.dll", "kernelbase.dll", "msvcrt.dll", "mswsock.dll",
+    "normaliz.dll", "ntdll.dll", "ole32.dll", "oleaut32.dll", "powrprof.dll", "psapi.dll", "rpcrt4.dll", "secur32.dll",
+    "setupapi.dll", "shell32.dll", "shlwapi.dll", "ucrtbase.dll", "user32.dll", "userenv.dll", "version.dll",
+    "winmm.dll", "ws2_32.dll",
+}
+
+
+def pe_imports(path):
+    """The DLLs a PE file imports by its import table, lower-cased. A file that is not a PE32+ image has none."""
+    data = Path(path).read_bytes()
+    if data[:2] != b"MZ":
+        return []
+    pe = struct.unpack_from("<I", data, 0x3C)[0]
+    if data[pe:pe + 4] != b"PE\0\0":
+        return []
+    sections, optional_size = struct.unpack_from("<H", data, pe + 6)[0], struct.unpack_from("<H", data, pe + 20)[0]
+    optional = pe + 24
+    if struct.unpack_from("<H", data, optional)[0] != 0x20B:
+        raise PinError(f"{path} is not a 64-bit Windows image")
+    import_rva = struct.unpack_from("<I", data, optional + 112 + 8)[0]
+    table = optional + optional_size
+
+    def offset(rva):
+        for i in range(sections):
+            size, address, _, raw = struct.unpack_from("<IIII", data, table + 40 * i + 8)
+            if address <= rva < address + max(size, 1):
+                return raw + rva - address
+        raise PinError(f"{path}: an import's address lies in no section")
+
+    names = []
+    if import_rva:
+        descriptor = offset(import_rva)
+        while True:
+            name_rva = struct.unpack_from("<I", data, descriptor + 12)[0]
+            if name_rva == 0:
+                break
+            start = offset(name_rva)
+            names.append(data[start:data.index(b"\0", start)].decode("ascii").lower())
+            descriptor += 20
+    return names
+
+
+def check_dependencies(executable, platform_name):
+    """An engine as the installer lays it out needs nothing of the machine but its system: on Windows every DLL it
+    imports a system DLL (WINDOWS_SYSTEM_DLLS, or an API set) or a file beside it; on macOS every library it loads the
+    system's (otool -L, where this machine has it). A dependency a fresh machine lacks stops the stage, naming it."""
+    executable = Path(executable)
+    if platform_name == "windows":
+        missing = [name for name in pe_imports(executable)
+                   if name not in WINDOWS_SYSTEM_DLLS and not name.startswith(("api-ms-win-", "ext-ms-"))
+                   and not (executable.parent / name).is_file()]
+        if missing:
+            raise PinError(f"{executable.name} imports {', '.join(missing)}, which Windows does not carry and nothing "
+                           "beside it provides: its release would not start on a machine without them")
+    elif platform_name == "macos" and shutil.which("otool"):
+        listed = subprocess.run(["otool", "-L", str(executable)], capture_output=True, text=True, check=True).stdout
+        libraries = [line.split()[0] for line in listed.splitlines()[1:] if line.strip()]
+        foreign = [lib for lib in libraries if not lib.startswith(("/usr/lib/", "/System/Library/"))]
+        if foreign:
+            raise PinError(f"{executable.name} loads {', '.join(foreign)}, which macOS does not carry")
 
 
 # ---- The CPU ------------------------------------------------------------------------------------------------------

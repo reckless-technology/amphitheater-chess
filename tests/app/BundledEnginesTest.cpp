@@ -347,13 +347,17 @@ TEST(BundledEngines, TheControllerSeedsAndSavesTheListAsItStartsAndNeverWritesOv
     ControllerFiles files;
     files.engines         = root / "settings" / "engines.json";
     files.bundled_engines = root / "engines";
+    // As many as this machine's processor runs: all three on a modern x86-64, Stoopid Chess alone elsewhere, since the
+    // test's manifest gives Pawnstar and Zenith x86-64 builds only.
+    const std::size_t runnable = ReadBundledEngines(files.bundled_engines, DetectCpuLevels()).size();
+    ASSERT_GE(runnable, 1u);
     {
         MainController controller(view, files);
-        EXPECT_EQ(controller.catalogue().engines.size(), 3u);
+        EXPECT_EQ(controller.catalogue().engines.size(), runnable);
     }
     const auto saved = EngineCatalogue::Load(files.engines);
     ASSERT_TRUE(saved.has_value());
-    EXPECT_EQ(saved->engines.size(), 3u);
+    EXPECT_EQ(saved->engines.size(), runnable);
 
     // A list the person broke: read as nothing, and left as it is.
     {

@@ -209,6 +209,19 @@ class Handshake(unittest.TestCase):
             with self.assertRaisesRegex(be.PinError, "is not there"):
                 be.smoke(engines)
 
+    @unittest.skipUnless(os.name == "nt" and os.environ.get("UCI_HOST_FAKE_ENGINE"), "a Windows image to read")
+    def test_a_windows_engine_may_import_the_system_and_what_lies_beside_it_alone(self):
+        fake = Path(os.environ["UCI_HOST_FAKE_ENGINE"])
+        imports = be.pe_imports(fake)
+        self.assertIn("kernel32.dll", imports)
+        be.check_dependencies(fake, "windows")  # the static runtime: the system's DLLs alone
+        with tempfile.TemporaryDirectory() as folder:
+            not_an_image = Path(folder) / "engine.exe"
+            not_an_image.write_bytes(b"#!/bin/sh\n")
+            self.assertEqual(be.pe_imports(not_an_image), [])
+        self.assertNotIn("vcruntime140.dll", be.WINDOWS_SYSTEM_DLLS, "a compiler's runtime is no system DLL")
+        self.assertNotIn("libwinpthread-1.dll", be.WINDOWS_SYSTEM_DLLS)
+
     def test_this_machine_meets_no_requirement_it_does_not_know(self):
         self.assertTrue(be.cpu_meets(""))
         self.assertFalse(be.cpu_meets("x86-64-v9"))
