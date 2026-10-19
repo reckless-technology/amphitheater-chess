@@ -112,7 +112,7 @@ runtime.
 | `integration` | `uci_host_integration_test` | a real engine, named by `UCI_HOST_TEST_ENGINE`; skipped when unset |
 | `gui` | `uci_host_window_test` | the window with no window: the pieces, the board's geometry and a person's moves on it, the lists, the graph, the controller, the window drawn through Skia |
 | `app_smoke` | `RecklessUciHost --smoke` | the app opens its window and draws thirty frames (label `window`: a display is needed) |
-| `render_main`, `render_flipped`, `render_newgame`, `render_engines` | `uci_host_render_main` | the window and its dialogs drawn to PNGs with no display |
+| `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings` | `uci_host_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```
 UCI_HOST_TEST_ENGINE=/path/to/engine ctest --preset release -R integration --output-on-failure
@@ -180,9 +180,11 @@ blocks and their lines in the log; the card carries the match's score with its E
 tournament's leader. Tournament > Standings and crosstable shows both in the toolkit's lists, followed as games
 finish. Stop abandons the games in progress; the workers finish their moves in the background.
 
-`uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]` draws the window to a PNG with the mockup's
-state, with no window and no display: the review images in `docs/design/` (`main-window.png`, `main-window-flipped.png`)
-are made with it.
+`uci_host_render_main <out.png> [scale] [width height] [view]` draws the window to a PNG with the mockup's state, with
+no window and no display; the view is `flipped`, `empty` (a fresh window), `newgame`, `engines` (the engine manager),
+`tournament` (a new tournament's setup) or `standings` (the standings and crosstable). The review images in
+`docs/design/` are made with it at 1380 x 1120: `main-window.png`, `main-window-flipped.png`, `new-game.png`,
+`engine-manager.png`, `new-tournament.png` and `standings.png`.
 
 ## The command line
 

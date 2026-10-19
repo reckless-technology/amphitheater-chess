@@ -69,10 +69,11 @@ endif()
 # The render tool end to end, with no display: the window with the mockup's state, and with each dialog open.
 if(UCI_HOST_GUI)
     add_test(NAME render_main COMMAND uci_host_render_main "${CMAKE_CURRENT_BINARY_DIR}/render-main.png" 1 1240 1000)
-    foreach(view flipped newgame engines tournament)
+    foreach(view flipped newgame engines tournament standings)
         add_test(NAME render_${view}
                  COMMAND uci_host_render_main "${CMAKE_CURRENT_BINARY_DIR}/render-${view}.png" 1 1240 1000 ${view})
     endforeach()
     set_tests_properties(render_main render_flipped render_newgame render_engines render_tournament
+                         render_standings
                          PROPERTIES PASS_REGULAR_EXPRESSION "1240 x 1000")
 endif()

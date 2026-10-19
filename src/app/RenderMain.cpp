@@ -2,10 +2,12 @@
 // it - the review images in docs/design/ are made with it.
 //
 //   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines] [tournament]
+//                       [standings]
 //
 // The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the
 // board; "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on
-// two engines, the first with options of every type; "tournament" opens Tournament > New tournament on three. The scale
+// two engines, the first with options of every type; "tournament" opens Tournament > New tournament on three;
+// "standings" shows Tournament > Standings and crosstable for a double round robin of four after ten games. The scale
 // is the device pixels per design pixel, 1 by default; the size is the window's, in design pixels.
 
 #include "Commands.h"
@@ -15,6 +17,7 @@
 #include "Menus.h"
 #include "PieceSet.h"
 #include "Showcase.h"
+#include "StandingsDialog.h"
 
 #include "SkiaCanvas.h"
 
@@ -64,7 +67,7 @@ int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        std::fprintf(stderr, "usage: uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]\n");
+        std::fprintf(stderr, "usage: uci_host_render_main <out.png> [scale] [width height] [view]\n");
         return 2;
     }
     const std::string        out = argv[1];
@@ -74,6 +77,7 @@ int main(int argc, char **argv)
     bool                     is_newgame    = false;
     bool                     is_engines    = false;
     bool                     is_tournament = false;
+    bool                     is_standings  = false;
     for (int index = 2; index < argc; ++index)
     {
         const std::string argument = argv[index];
@@ -96,6 +100,10 @@ int main(int argc, char **argv)
         else if (argument == "tournament")
         {
             is_tournament = true;
+        }
+        else if (argument == "standings")
+        {
+            is_standings = true;
         }
         else
         {
@@ -176,6 +184,19 @@ int main(int argc, char **argv)
             controller.catalogue().engines.push_back(engine);
         }
         controller.Command(uci_host::app::kNewTournament);
+    }
+    // Ten games of a double round robin of four: the leader two and a half points clear, one pairing yet to meet.
+    using uci_host::chess::GameResult;
+    const std::vector<std::string> names = {"Pawnstar 2.1", "Zenith 0.9", "Stoopid Chess 1.4", "Blunderbuss 3"};
+    const std::vector<uci_host::match::GameResultEntry> results = {
+        {0, 1, GameResult::kWhiteWins}, {1, 0, GameResult::kDraw},      {0, 2, GameResult::kWhiteWins},
+        {2, 0, GameResult::kDraw},      {1, 2, GameResult::kBlackWins}, {2, 1, GameResult::kWhiteWins},
+        {0, 3, GameResult::kWhiteWins}, {3, 0, GameResult::kBlackWins}, {1, 3, GameResult::kDraw},
+        {3, 1, GameResult::kWhiteWins}};
+    uci_host::app::StandingsDialog standings([&] { return std::make_pair(names, results); });
+    if (is_standings)
+    {
+        view.SetOverlay(&standings);
     }
 
     reckless::gfx::Image image = reckless::gfx::MakeImage(static_cast<int>(static_cast<float>(width) * scale + 0.5f),
