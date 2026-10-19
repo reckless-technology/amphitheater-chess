@@ -216,7 +216,9 @@ class MainView final : public reckless::view::View
     }
 
     /**
-     * The keys: Left and Right step a move, Home and End go to the start and the end, F flips the board.
+     * The keys: Left and Right step a move, Home and End go to the start and the end, F flips the board; with Command
+     * (Control off a Mac) N a new game, O and S open and save PGN, C copies the FEN (with Shift the PGN), V pastes, Z
+     * takes back, E manages the engines, Q quits.
      * @param key The key.
      * @return Whether the key was used.
      */

@@ -343,3 +343,31 @@ TEST(MainView, TheWindowDrawsThroughSkiaAndTheBoardGrowsWithIt)
 }
 
 } // namespace uci_host::app
+
+namespace uci_host::app
+{
+
+TEST(MainView, ShortcutsWithCommandTellTheirCommands)
+{
+    MainView         view(Pieces());
+    std::vector<int> told;
+    view.on_command  = [&](int command) { told.push_back(command); };
+    const auto press = [&](char32_t letter, bool command, bool shift = false) {
+        reckless::view::KeyEvent key;
+        key.key               = reckless::view::Key::kCharacter;
+        key.character         = letter;
+        key.modifiers.command = command;
+        key.modifiers.shift   = shift;
+        return view.KeyPressed(key);
+    };
+    EXPECT_TRUE(press(U'o', true));
+    EXPECT_TRUE(press(U'S', true));
+    EXPECT_TRUE(press(U'c', true, true));
+    EXPECT_TRUE(press(U'z', true));
+    EXPECT_TRUE(press(U'f', false));
+    EXPECT_FALSE(press(U'k', true));
+    EXPECT_FALSE(press(U'o', false));
+    EXPECT_EQ(told, (std::vector<int>{kOpenPgn, kSavePgn, kCopyPgn, kTakeBack, kFlip}));
+}
+
+} // namespace uci_host::app

@@ -272,13 +272,35 @@ bool MainView::KeyPressed(const reckless::view::KeyEvent &key)
     case Key::kEnd:
         Tell(kLast);
         return true;
-    case Key::kCharacter:
-        if (!key.modifiers.command && (key.character == U'f' || key.character == U'F'))
+    case Key::kCharacter: {
+        const char32_t letter =
+            key.character >= U'A' && key.character <= U'Z' ? key.character - U'A' + U'a' : key.character;
+        if (!key.modifiers.command)
         {
-            Tell(kFlip);
-            return true;
+            if (letter == U'f')
+            {
+                Tell(kFlip);
+                return true;
+            }
+            return false;
         }
-        return false;
+        // The window's shortcuts: Command on a Mac, Control elsewhere.
+        const int command = letter == U'n'   ? kNewGame
+                            : letter == U'o' ? kOpenPgn
+                            : letter == U's' ? kSavePgn
+                            : letter == U'c' ? (key.modifiers.shift ? kCopyPgn : kCopyFen)
+                            : letter == U'v' ? kPasteFen
+                            : letter == U'z' ? kTakeBack
+                            : letter == U'e' ? kEngineManager
+                            : letter == U'q' ? kQuit
+                                             : kNoCommand;
+        if (command == kNoCommand)
+        {
+            return false;
+        }
+        Tell(command);
+        return true;
+    }
     default:
         return false;
     }
