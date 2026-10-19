@@ -71,10 +71,13 @@ Invoke-Native 'llvm-profdata merge' { llvm-profdata merge -sparse -o $merged $ra
 # The binaries the tests ran: every suite, the fake engine and the command-line tool.
 $binaries = @(Get-ChildItem -Path (Join-Path $build 'tests') -Filter 'uci_host_*.exe' | ForEach-Object { $_.FullName })
 $binaries += (Resolve-Path (Join-Path $build 'src/cli/uci-host-cli.exe')).Path
+$render = Join-Path $build 'src/app/uci_host_render_main.exe'
+if (Test-Path $render) { $binaries += (Resolve-Path $render).Path }
 $objects = @($binaries[0])
 foreach ($binary in $binaries[1..($binaries.Count - 1)]) { $objects += @('-object', $binary) }
-# The host's own code alone: not what FetchContent fetched (_deps/), the build tree, or the suites themselves.
-$ignore = '[\\/](_deps|build|tests)[\\/]'
+# The host's own code alone: not what FetchContent fetched (_deps/), the toolkit (external/), the build tree, or the
+# suites themselves; nor the app's entry point (src/app/Main.cpp), which opens a window and runs in the window suites.
+$ignore = '[\\/](_deps|external|build|tests)[\\/]|[\\/]app[\\/]Main[.]cpp$'
 
 Invoke-Native 'llvm-cov report' { llvm-cov report @objects "-instr-profile=$merged" "-ignore-filename-regex=$ignore" }
 $lcov = Join-Path $report 'coverage.lcov'

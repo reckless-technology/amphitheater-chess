@@ -146,7 +146,8 @@ jobs:
         run: ctest --test-dir build/ci-asan --output-on-failure -j "$(nproc)" -LE '^window$'
 
   # Coverage of the host's own code (src/), gcc's, read by gcovr: a debug build instrumented, every suite run, and the
-  # run red under 90 % of lines. The report is kept with the run.
+  # run red under 90 % of lines. The app's entry point (src/app/Main.cpp) is left out: it opens a window, which this
+  # job has no display for; the app's smoke run is the window suites'. The report is kept with the run.
   coverage:
     name: Coverage (Linux)
     needs: changes
@@ -189,7 +190,7 @@ jobs:
       - name: Coverage, 90 % of lines or red
         run: >
           mkdir -p build/ci-coverage/coverage &&
-          "$RUNNER_TEMP/gcovr/bin/gcovr" --root . --filter 'src/' build/ci-coverage
+          "$RUNNER_TEMP/gcovr/bin/gcovr" --root . --filter 'src/' --exclude 'src/app/Main[.]cpp' build/ci-coverage
           --gcov-ignore-parse-errors=negative_hits.warn_once_per_file
           --print-summary --txt build/ci-coverage/coverage.txt --html-details build/ci-coverage/coverage/index.html
           --fail-under-line 90

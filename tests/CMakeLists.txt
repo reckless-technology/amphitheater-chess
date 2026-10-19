@@ -59,9 +59,19 @@ add_test(NAME integration COMMAND uci_host_integration_test)
 # drawn through Skia (its review image written where RECKLESS_SCREENSHOT_DIR names).
 if(UCI_HOST_GUI)
     uci_host_suite(uci_host_window_test
-        SOURCES app/WindowTest.cpp app/PlayTest.cpp
-        LIBRARIES uci_host_gui)
+        SOURCES app/WindowTest.cpp app/PlayTest.cpp app/CatalogueTest.cpp app/ControlsTest.cpp
+        LIBRARIES uci_host_gui reckless_toolkit_test_support)
     target_compile_definitions(uci_host_window_test PRIVATE UCI_HOST_FAKE_ENGINE="$<TARGET_FILE:uci_host_fake_engine>")
     add_dependencies(uci_host_window_test uci_host_fake_engine)
     add_test(NAME gui COMMAND uci_host_window_test)
+endif()
+
+# The render tool end to end, with no display: the window with the mockup's state, and with each dialog open.
+if(UCI_HOST_GUI)
+    add_test(NAME render_main COMMAND uci_host_render_main "${CMAKE_CURRENT_BINARY_DIR}/render-main.png" 1 1240 1000)
+    foreach(view flipped newgame)
+        add_test(NAME render_${view}
+                 COMMAND uci_host_render_main "${CMAKE_CURRENT_BINARY_DIR}/render-${view}.png" 1 1240 1000 ${view})
+    endforeach()
+    set_tests_properties(render_main render_flipped render_newgame PROPERTIES PASS_REGULAR_EXPRESSION "1240 x 1000")
 endif()
