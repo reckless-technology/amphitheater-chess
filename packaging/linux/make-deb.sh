@@ -93,9 +93,9 @@ for library in $libraries; do
     [ -n "$owner" ] || { echo "make-deb.sh: no package owns $library ($path)" >&2; exit 1; }
     packages+=("$owner")
 done
-version_of() { # the highest $1 version symbol the binaries ask for
+version_of() { # the highest $1 version symbol the binaries ask for (a static engine asks for none)
     for binary in "${binaries[@]}"; do
-        objdump -T "$binary" 2> /dev/null | grep -o "$1_[0-9.]*" | sed "s/$1_//"
+        { objdump -T "$binary" 2> /dev/null || true; } | { grep -o "$1_[0-9.]*" || true; } | sed "s/$1_//"
     done | sort -V | tail -1
 }
 glibc=$(version_of GLIBC)
