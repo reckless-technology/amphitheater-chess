@@ -145,6 +145,33 @@ class Fetch(unittest.TestCase):
         self.assertEqual(be.stage(pins, "linux", self.root / "linux", self.cache, False)["engines"], [],
                          "a platform the engine has no build for carries none of it")
 
+    def test_a_companion_is_put_beside_every_build_held_to_its_hash_and_its_licence(self):
+        licence = (be.ROOT / "packaging" / "licences" / "COPYING.winpthreads.txt").read_text(encoding="utf-8")
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as z:
+            z.writestr("kit/bin/runtime.dll", b"a runtime")
+            z.writestr("kit/COPYING.txt", licence)
+        archive = self.root / "kit.zip"
+        archive.write_bytes(buffer.getvalue())
+        companion = {"file": "runtime.dll", "asset": "kit.zip", "member": "kit/bin/runtime.dll",
+                     "member_sha256": sha(b"a runtime"), "licence_member": "kit/COPYING.txt",
+                     "licence": "packaging/licences/COPYING.winpthreads.txt"}
+        folders = [self.root / "a", self.root / "b"]
+        for folder in folders:
+            folder.mkdir()
+        be.place_companion({"id": "toy"}, companion, archive, folders)
+        for folder in folders:
+            self.assertEqual((folder / "runtime.dll").read_bytes(), b"a runtime")
+        with self.assertRaisesRegex(be.PinError, "not the pinned file"):
+            be.place_companion({"id": "toy"}, dict(companion, member_sha256="0" * 64), archive, folders)
+        with self.assertRaisesRegex(be.PinError, "read it"):
+            be.place_companion({"id": "toy"}, dict(companion, licence_member="kit/bin/runtime.dll"), archive, folders)
+
+    def test_the_committed_companion_is_zeniths_winpthreads_on_windows_alone(self):
+        zenith = next(e for e in be.load_pins()["engines"] if e["id"] == "zenith")
+        self.assertEqual([c["file"] for c in zenith["companions"]["windows"]], ["libwinpthread-1.dll"])
+        self.assertEqual(sorted(zenith["companions"]), ["windows"])
+
     def test_an_archive_without_its_member_is_refused(self):
         bare = self.releases.add("example/toy", "v1.0.0", "toy-1.0.0.exe", b"x")
         zipped = self.releases.add("example/toy", "v1.0.0", "toy-1.0.0-macos.zip", zip_of("other", b"y"))

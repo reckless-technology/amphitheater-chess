@@ -135,7 +135,7 @@ jobs:
           done
           version=$(sed -n 's/.*UCI_HOST_VERSION_STRING "\(.*\)"/\1/p' build/ci-linux/generated/UciHostVersion.h)
           rm -rf build/ci-linux-dist build/ci-linux-out
-          python3 -I packaging/stage.py build/ci-linux build/ci-linux-dist linux
+          python3 -I packaging/stage.py build/ci-linux build/ci-linux-dist linux --leave-out-unfit
           packaging/linux/make-zip.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-x64.zip"
           packaging/linux/make-deb.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-amd64.deb"
           packaging/linux/test-deb.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-amd64.deb"
@@ -260,7 +260,8 @@ jobs:
       - name: Test
         run: ctest --test-dir build/ci-windows --output-on-failure -j $env:NUMBER_OF_PROCESSORS
       # The Windows installer, unsigned, from this tree: the stage (each bundled engine downloaded by its pin, held to its
-      # hash and answering its handshake), then a test build of the installer installed for the runner's account under
+      # hash and answering its handshake with nothing but the system on its PATH; an engine whose release imports a DLL a
+      # fresh Windows lacks left out with a warning, where a release stops), then a test build of the installer installed for the runner's account under
       # a folder of its own, every file and engine checked at its place, upgraded and uninstalled
       # (packaging/windows/test-installer.ps1); then dropped. release.yml makes and signs the real one.
       - name: Package (the stage and the installer, installed and taken away)
@@ -268,7 +269,7 @@ jobs:
         run: |
           $version = (Select-String -Path build/ci-windows/generated/UciHostVersion.h -Pattern 'VERSION_STRING "(.*)"').Matches[0].Groups[1].Value
           Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/ci-windows-dist
-          & "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-windows build/ci-windows-dist windows
+          & "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-windows build/ci-windows-dist windows --leave-out-unfit
           if ($LASTEXITCODE -ne 0) { throw "the stage failed" }
           pwsh -NoProfile -File packaging/windows/test-installer.ps1 -DistDir build/ci-windows-dist -Version $version `
             -Python "${{ steps.cpp.outputs.python }}" -IconFile build/ci-windows/src/app/RecklessUciHost/Icon.ico
@@ -331,7 +332,7 @@ jobs:
           set -euo pipefail
           version=$(sed -n 's/.*UCI_HOST_VERSION_STRING "\(.*\)"/\1/p' build/ci-macos/generated/UciHostVersion.h)
           rm -rf build/ci-macos-dist build/ci-macos-out
-          "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-macos build/ci-macos-dist macos
+          "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-macos build/ci-macos-dist macos --leave-out-unfit
           packaging/macos/make-installer.sh build/ci-macos-dist "$version" "build/ci-macos-out/reckless-uci-host-$version-macos.pkg"
           packaging/macos/test-installer.sh build/ci-macos-dist "$version" "build/ci-macos-out/reckless-uci-host-$version-macos.pkg"
           rm -rf build/ci-macos-dist build/ci-macos-out

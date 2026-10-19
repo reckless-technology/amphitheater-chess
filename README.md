@@ -257,6 +257,16 @@ pins to each repository's latest release with fresh hashes and writes the file a
 `tools/third_party_notices.py <build-dir>` (the notices name each engine's version), and open the pull request.
 Packaging downloads by pin into the tool cache and refuses an asset whose hash differs (`tools/bundled_engines.py`).
 
+Every engine must need nothing of a machine but its system. On Windows the stage reads each engine's import table and
+refuses a DLL that is neither Windows' own nor beside the engine, and it starts each engine with only the system's
+folders on the PATH, so a developer's toolchain cannot hide a missing runtime; on macOS every library an engine loads
+must be the system's. A library a release needs and does not carry can be pinned beside it as a companion, with its
+archive's hash, its own hash and its licence (which the notices reproduce): Zenith 2.0.0's Windows builds import
+libwinpthread-1.dll, so the pins put llvm-mingw 20261006's copy beside both until a Zenith release links it
+statically - delete the `companions` entry then. Pawnstar 1.0.0's and Pawnstar-RS 1.0.0's Windows builds import the
+VC++ runtime, so a release refuses them until their statically linked releases are pinned; a pull request's run leaves
+such an engine out with a warning (`--leave-out-unfit`) so the rest of the packaging is still proven.
+
 | Engine | Windows, Linux (x86-64) | macOS |
 |---|---|---|
 | Pawnstar | one build, AVX2 throughout: needs x86-64-v3 | arm64 |

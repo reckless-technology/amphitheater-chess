@@ -13,11 +13,16 @@ packaging/engines.json by its tag, each platform's asset and the asset's SHA-256
         pin's), refusing one whose SHA-256 is not the pin's.
 
     python3 tools/bundled_engines.py stage --platform P --out ENGINES_DIR [--cache DIR] [--no-handshake]
+                                           [--leave-out-unfit]
         The engines laid out for an installer, ENGINES_DIR/<id>/<file> (executable), and ENGINES_DIR/bundled.json, the
         manifest the host reads to seed a person's engine list: each engine's name, version, the defaults it is seeded
         with, the options its handshake declared and its builds, the first whose requirement the CPU meets the one
         run. The handshake (uci, isready, quit) runs every build this machine can run, so a staged engine that does not
-        answer stops the stage; --no-handshake leaves it out, for a platform other than this machine's.
+        answer stops the stage; --no-handshake leaves it out, for a platform other than this machine's. A library an
+        engine's release needs and does not carry - a companion, pinned in the engine's entry with its archive, its
+        own hash and its licence - is put beside every build of it (Zenith's libwinpthread-1.dll on Windows, until
+        its release links it statically); an engine that still imports what a fresh machine lacks stops the stage,
+        or with --leave-out-unfit is left out of it with a warning.
 
     python3 tools/bundled_engines.py smoke ENGINES_DIR
         Every engine of a manifest, from where it lies, answers uci with uciok and isready with readyok, and names its
@@ -81,6 +86,13 @@ def load_pins(path=PINS):
             pattern = engine.get(name + "_pattern")
             if pattern is not None and engine.get(name) != pattern.format(version=engine["version"]):
                 raise PinError(f"{engine['id']}: {name} is not its pattern at {engine['version']}")
+        for platform_name, companions in engine.get("companions", {}).items():
+            for companion in companions:
+                keys = ("file", "what", "repository", "tag", "asset", "sha256", "member", "member_sha256",
+                        "licence_member", "licence")
+                if platform_name not in PLATFORMS or any(key not in companion for key in keys) or not all(
+                        re.fullmatch(r"[0-9a-f]{64}", companion[key]) for key in ("sha256", "member_sha256")):
+                    raise PinError(f"{engine['id']}: a companion on {platform_name!r} lacks a field or a hash")
         for platform_name, builds in engine["builds"].items():
             if platform_name not in PLATFORMS or not builds:
                 raise PinError(f"{engine['id']}: builds for {platform_name!r}")
@@ -154,13 +166,33 @@ def fetch_pinned(repository, tag, asset, sha256, cache):
 
 
 def fetch(pins, platform_name, cache):
-    """Every pinned asset of a platform, each held to its pin. @return {(engine id, file): path in the cache}."""
+    """Every pinned asset of a platform, each held to its pin, the engines' companions' archives among them.
+    @return {(engine id, file): path in the cache}."""
     out = {}
     for engine in pins["engines"]:
         for build in engine["builds"].get(platform_name, []):
             out[(engine["id"], build["file"])] = fetch_pinned(engine["repository"], engine["tag"], build["asset"],
                                                               build["sha256"], cache)
+        for companion in engine.get("companions", {}).get(platform_name, []):
+            out[(engine["id"], "companion:" + companion["file"])] = fetch_pinned(
+                companion["repository"], companion["tag"], companion["asset"], companion["sha256"], cache)
     return out
+
+
+def place_companion(engine, companion, archive, folders):
+    """A library an engine's release needs and does not carry - a companion, pinned in its engine's entry by the
+    archive it comes from, the member's own SHA-256 and its licence - put beside every build of the engine, the member
+    held to its hash and the licence in the archive to the committed copy the notices reproduce."""
+    with zipfile.ZipFile(archive) as z:
+        data = z.read(companion["member"])
+        licence = z.read(companion["licence_member"]).decode("utf-8").replace("\r\n", "\n")
+    if hashlib.sha256(data).hexdigest() != companion["member_sha256"]:
+        raise PinError(f"{engine['id']}'s {companion['file']} in {companion['asset']} is not the pinned file")
+    committed = (ROOT / companion["licence"]).read_text(encoding="utf-8").replace("\r\n", "\n")
+    if licence != committed:
+        raise PinError(f"{companion['asset']}'s licence for {companion['file']} is not {companion['licence']}: read it")
+    for folder in folders:
+        (folder / companion["file"]).write_bytes(data)
 
 
 # ---- The layout ---------------------------------------------------------------------------------------------------
@@ -192,8 +224,11 @@ def extract(archive, member, into):
     into.chmod(0o755)
 
 
-def stage(pins, platform_name, out, cache, do_handshake):
-    """The platform's engines laid out under `out`, and the manifest beside them. @return The manifest."""
+def stage(pins, platform_name, out, cache, do_handshake, leave_out_unfit=False):
+    """The platform's engines laid out under `out`, and the manifest beside them. An engine that needs of the machine
+    what a fresh one lacks (check_dependencies) stops the stage, or with leave_out_unfit - a pull request's run, while
+    an engine's fixed release is awaited - is left out of it, named in a warning; a release ships every engine or
+    none. @return The manifest."""
     out = Path(out)
     files = fetch(pins, platform_name, cache)
     if out.exists():
@@ -210,9 +245,20 @@ def stage(pins, platform_name, out, cache, do_handshake):
         for build in builds:
             target = out / engine["id"] / build["file"]
             extract(files[(engine["id"], build["file"])], build.get("member"), target)
-            check_dependencies(target, platform_name)
             entry["builds"].append({"executable": f"{engine['id']}/{build['file']}",
                                     "requires": build.get("requires", "")})
+        for companion in engine.get("companions", {}).get(platform_name, []):
+            place_companion(engine, companion, files[(engine["id"], "companion:" + companion["file"])],
+                            {(out / build["executable"]).parent for build in entry["builds"]})
+        try:
+            for build in entry["builds"]:
+                check_dependencies(out / build["executable"], platform_name)
+        except PinError as error:
+            if not leave_out_unfit:
+                raise
+            print(f"::warning::{engine['id']} is left out of this stage: {error}")
+            shutil.rmtree(out / engine["id"])
+            continue
         if do_handshake:
             for build in entry["builds"]:
                 if not cpu_meets(build["requires"]):
@@ -269,9 +315,15 @@ def handshake(executable, arguments=()):
     """uci, isready and quit, with a deadline, the engine started in its own folder as the host starts it. @return What
     it said: its name, its author and its options."""
     executable = Path(executable).resolve()
+    environment = None
+    if os.name == "nt":
+        # The system's folders alone on the PATH, as on a machine with no toolchain: a DLL that only a developer's PATH
+        # provides (Git's or MSYS2's libwinpthread-1.dll) must not let an engine start here that would not start there.
+        windows = os.environ.get("SystemRoot", r"C:\Windows")
+        environment = dict(os.environ, PATH=f"{windows}\\System32;{windows}")
     try:
         done = subprocess.run([str(executable), *arguments], input="uci\nisready\nquit\n", capture_output=True,
-                              text=True, timeout=HANDSHAKE_SECONDS, cwd=executable.parent)
+                              text=True, timeout=HANDSHAKE_SECONDS, cwd=executable.parent, env=environment)
     except subprocess.TimeoutExpired:
         raise PinError(f"{executable} did not finish its handshake within {HANDSHAKE_SECONDS} s") from None
     except OSError as error:
@@ -541,7 +593,7 @@ def main():
                 print(f"{engine}/{file}: {path}")
         elif command == "stage":
             manifest = stage(load_pins(), option_value("--platform"), Path(option_value("--out")), cache,
-                             "--no-handshake" not in sys.argv)
+                             "--no-handshake" not in sys.argv, "--leave-out-unfit" in sys.argv)
             print(f"staged {len(manifest['engines'])} engines into {option_value('--out')}")
         elif command == "smoke":
             print(f"{smoke(sys.argv[2])} engine builds answered uci with uciok")

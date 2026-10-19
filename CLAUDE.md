@@ -17,7 +17,10 @@ corresponding source (the public repository at the tag, and the release's source
 `packaging/engines.json` (tag, asset, SHA-256 per platform; `tools/update-engines.sh`/`.ps1` moves them to the latest
 releases, then the notices are written again), laid out by `packaging/stage.py` with the manifest `bundled.json`, and
 seeded into a person's engine list at every start by `src/app/BundledEngines.h`, whose rules the README spells out and
-`tests/app/BundledEnginesTest.cpp` holds. On macOS the bundled engines are arm64 only (the host is universal).
+`tests/app/BundledEnginesTest.cpp` holds. On macOS the bundled engines are arm64 only (the host is universal). No
+engine may ship that needs more than the system: the stage refuses a Windows engine importing a DLL Windows lacks (a
+compiler's runtime) unless a pinned companion lies beside it (Zenith's libwinpthread-1.dll, until a static Zenith
+exists), and starts every engine with only the system on its PATH.
 
 **The GUI is built on reckless-toolkit**, a git submodule at `external/reckless-toolkit` (private; CI reads it with
 the deploy key in the secret `RECKLESS_TOOLKIT_DEPLOY_KEY`, through `.github/actions/toolkit`), added with the

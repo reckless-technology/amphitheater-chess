@@ -210,8 +210,10 @@ def build(build_dir):
         sys.exit("packaging/GPL-3.0.txt is not the GNU General Public License version 3")
 
     # The sections in their order, each numbered by its place.
+    companions = [(engine, platform_name, companion) for engine in engines
+                  for platform_name, listed in engine.get("companions", {}).items() for companion in listed]
     keys = ["noto", "monaspace", "skia", "png_skia", "zlib_skia", "freetype"] + \
-        [f"engine:{e['id']}" for e in engines] + ["gpl"]
+        [f"engine:{e['id']}" for e in engines] + [f"companion:{c['file']}" for _, _, c in companions] + ["gpl"]
     n = {key: i + 1 for i, key in enumerate(keys)}
     sections = {
         "noto": (f"Noto Serif {noto_version}", APP, ofl_noto),
@@ -240,6 +242,16 @@ def build(build_dir):
     for engine in engines:
         sections[f"engine:{engine['id']}"] = (f"{engine['name']} {engine['version']}, a chess engine", INSTALLERS,
                                               engine_section(engine, n["gpl"]))
+    platform_names = {"windows": "Windows", "linux": "Linux", "macos": "macOS"}
+    for engine, platform_name, companion in companions:
+        sections[f"companion:{companion['file']}"] = (
+            f"{companion['file']}, beside {engine['name']}",
+            f"the installers on {platform_names[platform_name]}, beside {engine['name']}",
+            prose(f"{companion['what'][0].upper()}{companion['what'][1:]}, taken unmodified from the release "
+                  f"{companion['tag']} of https://github.com/{companion['repository']} "
+                  f"({companion['asset']}), and installed beside {engine['name']}'s executable, which loads it. Its "
+                  "licence, as that release carries it:"),
+            read(ROOT / companion["licence"]).strip("\n"))
 
     rows = []
     for key in keys:

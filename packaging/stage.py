@@ -4,7 +4,7 @@ tool as the build made them, the bundled engines (tools/bundled_engines.py stage
 its hash, and the manifest the host seeds a person's engine list from), the end-user licence and the third-party
 notices. Everything after it - the archive, the installers, the signing - reads the stage, never the build tree.
 
-    python3 -I packaging/stage.py <build-dir> <dist-dir> linux|macos|windows [--cache DIR]
+    python3 -I packaging/stage.py <build-dir> <dist-dir> linux|macos|windows [--cache DIR] [--leave-out-unfit]
 
     windows  RecklessUciHost.exe, uci-host-cli.exe, engines/<engine>/..., EULA.txt, THIRD-PARTY-NOTICES.txt
     linux    RecklessUciHost, uci-host-cli, engines/<engine>/..., EULA.txt, THIRD-PARTY-NOTICES.txt - the portable
@@ -15,7 +15,9 @@ notices. Everything after it - the archive, the installers, the signing - reads 
 
 The folder is emptied first; a binary the build did not make stops it before anything is copied. Every engine the stage
 lays out answers its handshake on this machine before the stage ends (both of Zenith's x86-64 builds where the CPU
-takes both), so a stage holds only engines that run. The cache is tools/bundled_engines.py's.
+takes both), so a stage holds only engines that run; an engine that needs a library a fresh machine lacks stops the
+stage, or with --leave-out-unfit (a pull request's run, never a release) is left out of it with a warning. The cache is
+tools/bundled_engines.py's.
 """
 import shutil
 import subprocess
@@ -62,7 +64,7 @@ def main():
         shutil.copyfile(ROOT / document, dist / document)
     try:
         bundled_engines.stage(bundled_engines.load_pins(), platform_name, engines_folder(dist, platform_name), cache,
-                              do_handshake=True)
+                              do_handshake=True, leave_out_unfit="--leave-out-unfit" in sys.argv)
     except bundled_engines.PinError as error:
         sys.exit(f"stage.py: {error}")
     if platform_name == "macos":
