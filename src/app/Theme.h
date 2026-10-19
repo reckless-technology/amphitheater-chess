@@ -36,6 +36,8 @@ inline constexpr Color kPlate{0xff232125u};       ///< A button's plate.
 inline constexpr Color kLogText{0xffc9c0abu};     ///< An engine's line in the log.
 inline constexpr Color kWhiteSide{0xfff3ead6u};   ///< White's side dot.
 inline constexpr Color kBlackSide{0xff141210u};   ///< Black's side dot.
+inline constexpr Color kLastMoveLight{0xffe8c285u}; ///< The last move on a light square: the accent at 42 %.
+inline constexpr Color kLastMoveDark{0xffcd9444u};  ///< On a dark square: at 70 %, where 42 % barely shows.
 
 /** @return The window's colours as the toolkit's app shell and its widgets take them. */
 inline reckless::app::Theme Shell()

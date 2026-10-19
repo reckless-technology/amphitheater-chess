@@ -26,6 +26,17 @@ constexpr chess::Piece kPromotionOrder[] = {chess::kQueen, chess::kKnight, chess
 
 } // namespace
 
+reckless::gfx::Color SquareFill(chess::Square square, bool is_last_move)
+{
+    // Each shade lit in its own colour: one wash of the accent over both leaves a dark square looking unlit.
+    const bool is_dark = (square.File() + square.Rank()) % 2 == 0;
+    if (is_last_move)
+    {
+        return is_dark ? theme::kLastMoveDark : theme::kLastMoveLight;
+    }
+    return is_dark ? theme::kDarkSquare : theme::kLightSquare;
+}
+
 BoardView::BoardView(const PieceSet &pieces) : pieces_(pieces), position_(chess::Position::Start())
 {
     SetOpaque(false);
@@ -145,7 +156,7 @@ void BoardView::Paint(reckless::gfx::Canvas &c)
     const RectF area = BoardArea();
     const float size = SquareSize();
 
-    // The frame, the squares, and the coordinates beside them.
+    // The frame, the squares - the last move's two lit - and the coordinates beside them.
     c.SetColor(theme::kBoardEdge);
     c.FillRect(area.Expanded(static_cast<float>(kFrame)));
     for (int file = 0; file < 8; ++file)
@@ -153,7 +164,9 @@ void BoardView::Paint(reckless::gfx::Canvas &c)
         for (int rank = 0; rank < 8; ++rank)
         {
             const chess::Square square(file, rank);
-            c.SetColor((file + rank) % 2 == 0 ? theme::kDarkSquare : theme::kLightSquare);
+            const bool          is_last_move =
+                last_move_ && !last_move_->IsNone() && (square == last_move_->From() || square == last_move_->To());
+            c.SetColor(SquareFill(square, is_last_move));
             c.FillRect(SquareBounds(square));
         }
     }
@@ -174,13 +187,7 @@ void BoardView::Paint(reckless::gfx::Canvas &c)
                    reckless::gfx::Justify::kCentred, false);
     }
 
-    // The last move, a king in check, the selection.
-    if (last_move_ && !last_move_->IsNone())
-    {
-        c.SetColor(theme::kAmber.WithAlpha(0.42f));
-        c.FillRect(SquareBounds(last_move_->From()));
-        c.FillRect(SquareBounds(last_move_->To()));
-    }
+    // A king in check, the selection.
     if (const auto king = CheckedKing())
     {
         const RectF             bounds = SquareBounds(*king);

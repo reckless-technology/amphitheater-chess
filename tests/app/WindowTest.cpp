@@ -243,6 +243,22 @@ TEST(Board, EachStateItShowsChangesItsPicture)
     EXPECT_NE(Drawn(rig.board), banner);
 }
 
+TEST(Board, TheLastMoveLightsBothItsSquaresWhateverTheirShade)
+{
+    // b5 is light and b4 dark: each lit stands well clear of its plain shade, and the two lit shades differ.
+    const auto distance = [](reckless::gfx::Color a, reckless::gfx::Color b) {
+        return std::abs(a.red() - b.red()) + std::abs(a.green() - b.green()) + std::abs(a.blue() - b.blue());
+    };
+    for (const char *name : {"b5", "b4", "a1", "h1"})
+    {
+        const chess::Square square(name);
+        EXPECT_GE(distance(SquareFill(square, true), SquareFill(square, false)), 60) << name;
+    }
+    EXPECT_NE(SquareFill(chess::Square("b5"), true), SquareFill(chess::Square("b4"), true));
+    EXPECT_EQ(SquareFill(chess::Square("a1"), false), theme::kDarkSquare);
+    EXPECT_EQ(SquareFill(chess::Square("b1"), false), theme::kLightSquare);
+}
+
 TEST(MainView, TheMovesAndTheLogShowWholeRowsKeptOnTheMoveShownAndTheNewestLine)
 {
     MainView view(Pieces());

@@ -28,6 +28,14 @@ struct BoardArrow
 };
 
 /**
+ * A square's fill: light or dark, and lit in its own shade of the accent when the last move left or reached it.
+ * @param square The square.
+ * @param is_last_move Whether the last move left it or reached it.
+ * @return The fill.
+ */
+reckless::gfx::Color SquareFill(chess::Square square, bool is_last_move);
+
+/**
  * The board. It shows a position and takes a person's moves when it is interactive: a press on a piece of the side
  * to move selects it and marks the squares it may go to (a dot on an empty square, a ring on a capture); a press on
  * one of them, or a drag of the piece onto one, makes the move. A promotion opens a picker of the four pieces on the

@@ -21,6 +21,7 @@
   --light-square: #ecdab8;
   --dark-square: #9d7553;
   --last-move: rgba(226, 162, 62, 0.42);
+  --last-move-dark: rgba(226, 162, 62, 0.70);
   --serif: "Noto Serif", Georgia, "Times New Roman", serif;
   --mono: "Monaspace Xenon", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
   --square: clamp(34px, 6.9vh, 66px);
@@ -62,6 +63,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
 .sq.l { background: var(--light-square); }
 .sq.d { background: var(--dark-square); }
 .sq.last::after { content: ""; position: absolute; inset: 0; background: var(--last-move); }
+.sq.d.last::after { background: var(--last-move-dark); }
 .sq img { position: absolute; inset: 4%; width: 92%; height: 92%; z-index: 1; }
 .board svg.arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
 .navrow { display: flex; flex-wrap: wrap; gap: 6px; }

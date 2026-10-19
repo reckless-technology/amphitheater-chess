@@ -128,7 +128,8 @@ column - a player's strip above and below the board, with the running clock lit 
 Analyse - beside the moves and the game's card; across the foot the analysis, the evaluation graph and the engine log in
 Monaspace Xenon; the status bar. The board grows with the window; under 1240 x 1000 design pixels the whole layout is
 zoomed down rather than squeezed. The moves and the log are a whole number of rows tall, so a list kept on the move
-shown or the newest line never leaves part of a row at its top.
+shown or the newest line never leaves part of a row at its top. The last move lights both its squares, each shade in its
+own tint of the accent.
 
 The pieces are the Staunton SVGs, carried inside the binary and drawn by the toolkit's SVG reader at whatever size the
 squares are. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
