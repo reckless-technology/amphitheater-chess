@@ -120,7 +120,9 @@ set a machine up (VS Code: "setup environment"; `-Check` / `--check` only report
 ## CI and repository rules
 
 Every job runs on the organisation's self-hosted runners (`[self-hosted, Linux, X64]`, `[self-hosted, Windows, X64]`,
-`[self-hosted, macOS, ARM64]`), never on hosted images. `build.yml`: Linux gcc, Linux sanitizers, Linux coverage
+`[self-hosted, macOS, ARM64]`), never on hosted images; the short jobs (`changes`, `format`, `ci`) on `[light]`
+(`reckless-ci-lin-0-alt`, a second runner on lin-0 with no default labels, and lin-1's runner), so they never wait
+behind a long build. `build.yml`: Linux gcc, Linux sanitizers, Linux coverage
 (gcovr 8.3, `--fail-under-line 90` on `src/`), Windows MSVC, macOS universal (lipo and minos checks), clang-format,
 and `CI`, the aggregate to require. Documentation-only changes build nothing.
 

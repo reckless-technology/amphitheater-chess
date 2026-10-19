@@ -9,7 +9,12 @@ name: build
 #
 # Every job runs on the organisation's own machines, never on GitHub's hosted images (a hosted macOS minute bills as
 # ten, and the account's Actions spending limit was exhausted that way once): [self-hosted, Linux, X64],
-# [self-hosted, Windows, X64] (PowerShell 7 and Git's bash) and [self-hosted, macOS, ARM64]. .github/actions/cpp
+# [self-hosted, Windows, X64] (PowerShell 7 and Git's bash) and [self-hosted, macOS, ARM64] for the builds, and [light]
+# for the short jobs - What changed, clang-format and CI, seconds each - so a run's first and last checks never wait
+# behind another repository's long build for a Linux runner. Two runners carry light: reckless-ci-lin-0-alt, a second
+# runner on lin-0 with no default labels (not even self-hosted, so the jobs name light alone), on which nothing heavier
+# ever runs beside lin-0's own build, and lin-1's one runner beside its defaults. The alt runner's workspace and tool
+# cache are its own, so its checkouts start empty and clang-format is fetched into its cache once. .github/actions/cpp
 # provides the toolchain.
 #
 # The version every binary reports is MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag (cmake/UciHostVersion.cmake),
@@ -41,7 +46,7 @@ concurrency:
 jobs:
   changes:
     name: What changed
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [light]
     timeout-minutes: 5
     outputs:
       cpp: ${{ steps.pick.outputs.cpp }}
@@ -286,7 +291,7 @@ jobs:
   format:
     name: clang-format
     needs: changes
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [light]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -309,7 +314,7 @@ jobs:
     name: CI
     needs: [changes, linux, sanitizers, coverage, windows, macos, format]
     if: always()
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [light]
     timeout-minutes: 5
     steps:
       - name: Every job this run needed passed
