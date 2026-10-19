@@ -1,0 +1,158 @@
+name: promote
+
+# A release reaches the public only when it is promoted. This repository is private, so its releases are Jonny's alone;
+# promote copies one to the public reckless-technology/uci-host-releases - a repository of a README and releases and
+# nothing else, which recklesstechnology.com's download page links to - as IR Capture's promote.yml copies its releases
+# to reckless-technology/ir-capture-releases. Run it by hand with a published tag:
+#
+#   gh workflow run promote.yml --ref main -f tag=v1.0.3                    # promote
+#   gh workflow run promote.yml --ref main -f tag=v1.0.3 -f dry_run=true    # gather and check, publish nothing
+#
+# It copies the three installers and the portable Linux zip, under their versioned names and again under four fixed
+# ones - reckless-uci-host-macos.pkg, reckless-uci-host-win64-setup.exe, reckless-uci-host-linux-amd64.deb and
+# reckless-uci-host-linux-x64.zip - so releases/latest/download/<name> is always the newest; SHA256SUMS, every file's
+# checksum, which the download page shows; and the release's notes, release-notes.md at the tag. The public release is
+# marked latest unless the public repository already holds a newer version, so promoting an older tag after a newer
+# one never moves releases/latest - and with it the website's downloads and the update manifest - backwards. Then it
+# wakes the website's deploy (a repository_dispatch, uci-host-release), which reads the newest public release and builds
+# the download page and updates/uci-host.json, the manifest the host's update check reads (src/app/Main.cpp) - so
+# nothing on the website is edited for a release; its daily deploy catches a wake that failed.
+#
+# Every installer carries the five bundled chess engines, GPLv3 programs whose corresponding source the notices point
+# at in each engine's own public repository, at the tag the installer carries.
+#
+# The job writes to the other repositories with the secret PUBLIC_RELEASES_TOKEN: a fine-grained token of Jonny's with
+# Contents write on reckless-technology/uci-host-releases and on reckless-technology/website for the wake. It checks
+# before anything is gathered that the token can reach both, and refuses a tag the public repository has published
+# already; a draft of the tag left there by an attempt that failed part-way is deleted and made again.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The release to promote, as published here: vMAJOR.MINOR.BUILD"
+        required: true
+      dry_run:
+        description: "Gather and check the files, publish nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Promote to the public releases
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+    env:
+      TAG: ${{ inputs.tag }}
+      PUBLIC: reckless-technology/uci-host-releases
+    steps:
+      - name: The tag is a published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not vMAJOR.MINOR.BUILD"; exit 1; }
+          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft) ||
+            { echo "::error::no release $TAG here"; exit 1; }
+          [ "$draft" = "false" ] || { echo "::error::$TAG is still a draft: publish it first"; exit 1; }
+      # The token's reach, checked before anything is gathered: Contents write on the public repository, and on the
+      # website, whose repository_dispatch needs it. Any token reads a public repository, so seeing one proves nothing;
+      # its permissions as the token reaches them say whether the token may push.
+      - name: The token can write, and the tag is not promoted already
+        if: inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASES_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -n "$GH_TOKEN" ] || { echo "::error::the secret PUBLIC_RELEASES_TOKEN is not set (the workflow's head says what it needs)"; exit 1; }
+          # Each repository reachable with the token before anything is gathered. GitHub has no read-only way to ask
+          # what a fine-grained token may write - .permissions reports its owner's role - so a token that can read but
+          # not write is found out only at the publish, which then deletes the draft it opened.
+          for repo in "$PUBLIC" reckless-technology/website; do
+            if ! gh api "repos/$repo" --jq .full_name > /dev/null 2>&1; then
+              echo "::error::PUBLIC_RELEASES_TOKEN cannot reach $repo: it needs Contents write there (the workflow's head says what it needs)"
+              exit 1
+            fi
+          done
+          # Only a published release counts as promoted. gh release create opens a draft, uploads every file to it and
+          # then publishes it, so an attempt that failed part-way leaves a draft of the tag, which would otherwise refuse
+          # every attempt after it: it is deleted here, and made again below.
+          if is_draft=$(gh release view "$TAG" --repo "$PUBLIC" --json isDraft --jq .isDraft 2> /dev/null); then
+            if [ "$is_draft" = "true" ]; then
+              echo "::notice::$PUBLIC holds a draft of $TAG, left by an attempt that did not publish it; deleting it"
+              gh release delete "$TAG" --repo "$PUBLIC" --yes
+            else
+              echo "::error::$PUBLIC already has $TAG"
+              exit 1
+            fi
+          fi
+      - name: The release's files and notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          rm -rf promote promote-notes.md && mkdir promote
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir promote \
+            --pattern "reckless-uci-host-$version-macos.pkg" \
+            --pattern "reckless-uci-host-$version-win64-setup.exe" \
+            --pattern "reckless-uci-host-$version-linux-amd64.deb" \
+            --pattern "reckless-uci-host-$version-linux-x64.zip"
+          for file in "reckless-uci-host-$version-macos.pkg" "reckless-uci-host-$version-win64-setup.exe" \
+                      "reckless-uci-host-$version-linux-amd64.deb" "reckless-uci-host-$version-linux-x64.zip"; do
+            [ -s "promote/$file" ] || { echo "::error::$TAG has no $file"; exit 1; }
+          done
+          cp "promote/reckless-uci-host-$version-macos.pkg" promote/reckless-uci-host-macos.pkg
+          cp "promote/reckless-uci-host-$version-win64-setup.exe" promote/reckless-uci-host-win64-setup.exe
+          cp "promote/reckless-uci-host-$version-linux-amd64.deb" promote/reckless-uci-host-linux-amd64.deb
+          cp "promote/reckless-uci-host-$version-linux-x64.zip" promote/reckless-uci-host-linux-x64.zip
+          gh api "repos/$GITHUB_REPOSITORY/contents/release-notes.md?ref=$TAG" --jq .content | base64 -d > promote-notes.md
+          (cd promote && sha256sum -- * > ../SHA256SUMS) && mv SHA256SUMS promote/SHA256SUMS
+          cat promote/SHA256SUMS
+          ls -l promote
+          echo "--- the notes ---"
+          cat promote-notes.md
+      - name: Published to the public releases
+        if: inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASES_TOKEN }}
+        run: |
+          set -euo pipefail
+          # releases/latest is what the website's downloads and the update manifest follow, so a tag older than the
+          # public repository's latest release is published without taking the mark from it.
+          latest=$(gh release view --repo "$PUBLIC" --json tagName --jq .tagName 2> /dev/null || true)
+          mark_latest=--latest
+          if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "$TAG" | sort -V | tail -n 1)" != "$TAG" ]; then
+            echo "::warning::$TAG is older than $PUBLIC's latest release, $latest: it is published without being marked latest"
+            mark_latest=--latest=false
+          fi
+          if ! gh release create "$TAG" --repo "$PUBLIC" --title "Reckless UCI Host ${TAG#v}" \
+              --notes-file promote-notes.md "$mark_latest" promote/*; then
+            # The release is a draft until every file is up; a failure before it was published leaves that draft,
+            # which is deleted so the next attempt starts clean (the check above deletes one this misses).
+            if [ "$(gh release view "$TAG" --repo "$PUBLIC" --json isDraft --jq .isDraft 2> /dev/null || true)" = "true" ]; then
+              gh release delete "$TAG" --repo "$PUBLIC" --yes ||
+                echo "::warning::the draft of $TAG was not deleted; the next attempt deletes it"
+            fi
+            echo "::error::$TAG was not published to $PUBLIC"
+            exit 1
+          fi
+          echo "https://github.com/$PUBLIC/releases/tag/$TAG"
+      - name: The website told
+        if: inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASES_TOKEN }}
+        run: |
+          gh api repos/reckless-technology/website/dispatches -f event_type=uci-host-release ||
+            echo "::warning::the website was not woken; its daily deploy will pick $TAG up"
+      # The job has no checkout of its own: it works in the runner's workspace for this repository, which the other
+      # workflows' kept checkouts share, so what it gathered there goes however the job ended.
+      - name: The workspace left clean
+        if: always()
+        run: rm -rf promote promote-notes.md SHA256SUMS

@@ -27,6 +27,14 @@ struct EngineEntry
     int                            book_depth = 0; ///< Book moves only before this ply; 0 for no limit.
     std::optional<int>             depth;          ///< A depth limit for its searches in games; none for none.
     bool                           is_analysing = true; ///< Whether it is among the engines Analyse runs.
+    std::string bundled_id;      ///< The bundled engine it is ("pawnstar"; BundledEngines.h); empty for a person's own.
+    std::string bundled_version; ///< The version of the bundled engine it was last seeded from.
+
+    /** @return Whether it is one of the engines the host carries, seeded into the list (BundledEngines.h). */
+    bool IsBundled() const
+    {
+        return !bundled_id.empty();
+    }
 
     /** @return The name to show: the configured one, else the handshake's, else the program's file name. */
     std::string DisplayName() const;
@@ -76,6 +84,14 @@ std::vector<std::string> SplitArguments(const std::string &text);
  */
 std::string JoinArguments(const std::vector<std::string> &words);
 
+/**
+ * Declared options from JSON, as the engine list and the bundled engines' manifest keep them: each an object of its
+ * name, type, default, and its min, max and choices where it has them; one with no name skipped.
+ * @param array The array, or anything else for none.
+ * @return The options.
+ */
+std::vector<uci::EngineOption> DeclaredOptionsFromJson(const reckless::core::json::Value &array);
+
 /** The configured engines, and the file they are kept in. */
 class EngineCatalogue
 {
@@ -113,7 +129,14 @@ class EngineCatalogue
      */
     bool Save(const std::filesystem::path &file) const;
 
-    std::vector<EngineEntry> engines; ///< The engines, in the order a person sees them.
+    std::vector<EngineEntry> engines;         ///< The engines, in the order a person sees them.
+    std::vector<std::string> removed_bundled; ///< The bundled engines a person removed, by id: never seeded again.
+
+    /**
+     * Remove an engine; a bundled one's id is recorded, so the next start does not seed it again.
+     * @param index Its place in the list.
+     */
+    void Remove(std::size_t index);
 };
 
 } // namespace uci_host::app

@@ -1,5 +1,6 @@
 #include "MainController.h"
 
+#include "BundledEngines.h"
 #include "Commands.h"
 #include "CompetitionDialog.h"
 #include "Controls.h"
@@ -116,6 +117,14 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
     if (auto loaded = EngineCatalogue::Load(files_.engines, &error))
     {
         catalogue_ = std::move(*loaded);
+        // The engines the install carries, added to the list or moved to this install's paths and versions. A list
+        // that could not be read is never seeded, so it is never written over.
+        if (!files_.bundled_engines.empty() &&
+            SeedBundledEngines(catalogue_, ReadBundledEngines(files_.bundled_engines, DetectCpuLevels())) &&
+            !files_.engines.empty() && !catalogue_.Save(files_.engines))
+        {
+            error_ = "The engine list could not be saved";
+        }
     }
     else
     {

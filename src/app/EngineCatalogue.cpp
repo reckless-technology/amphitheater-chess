@@ -107,7 +107,21 @@ std::optional<EngineEntry> EntryFrom(const json::Value &object)
     {
         entry.depth = static_cast<int>(depth->AsInt());
     }
-    if (const json::Array *declared = object["declared"].AsArray())
+    entry.declared = DeclaredOptionsFromJson(object["declared"]);
+    if (object.BoolOr("bundled", false))
+    {
+        entry.bundled_id      = object.StringOr("bundled_id", "");
+        entry.bundled_version = object.StringOr("bundled_version", "");
+    }
+    return entry;
+}
+
+} // namespace
+
+std::vector<uci::EngineOption> DeclaredOptionsFromJson(const json::Value &array)
+{
+    std::vector<uci::EngineOption> out;
+    if (const json::Array *declared = array.AsArray())
     {
         for (const json::Value &option : *declared)
         {
@@ -128,13 +142,11 @@ std::optional<EngineEntry> EntryFrom(const json::Value &object)
                 parsed.maximum = maximum->AsInt();
             }
             parsed.choices = Strings(option["choices"]);
-            entry.declared.push_back(std::move(parsed));
+            out.push_back(std::move(parsed));
         }
     }
-    return entry;
+    return out;
 }
-
-} // namespace
 
 std::vector<std::string> SplitArguments(const std::string &text)
 {
@@ -312,6 +324,12 @@ json::Value EngineCatalogue::ToJson() const
         object.Set("analyse", entry.is_analysing);
         object.Set("author", entry.author);
         object.Set("engine_name", entry.engine_name);
+        if (entry.IsBundled())
+        {
+            object.Set("bundled", true);
+            object.Set("bundled_id", entry.bundled_id);
+            object.Set("bundled_version", entry.bundled_version);
+        }
         json::Value declared = json::Value::MakeArray();
         for (const uci::EngineOption &option : entry.declared)
         {
@@ -342,7 +360,30 @@ json::Value EngineCatalogue::ToJson() const
         list.Append(std::move(object));
     }
     document.Set("engines", std::move(list));
+    if (!removed_bundled.empty())
+    {
+        json::Value removed = json::Value::MakeArray();
+        for (const std::string &id : removed_bundled)
+        {
+            removed.Append(id);
+        }
+        document.Set("removed_bundled", std::move(removed));
+    }
     return document;
+}
+
+void EngineCatalogue::Remove(std::size_t index)
+{
+    if (index >= engines.size())
+    {
+        return;
+    }
+    const std::string id = engines[index].bundled_id;
+    engines.erase(engines.begin() + static_cast<std::ptrdiff_t>(index));
+    if (!id.empty() && std::find(removed_bundled.begin(), removed_bundled.end(), id) == removed_bundled.end())
+    {
+        removed_bundled.push_back(id);
+    }
 }
 
 std::optional<EngineCatalogue> EngineCatalogue::FromJson(const json::Value &document, std::string *error)
@@ -373,6 +414,7 @@ std::optional<EngineCatalogue> EngineCatalogue::FromJson(const json::Value &docu
             }
         }
     }
+    catalogue.removed_bundled = Strings(document["removed_bundled"]);
     return catalogue;
 }
 

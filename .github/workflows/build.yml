@@ -3,8 +3,10 @@ name: build
 # The check on every push to main, every pull request and on demand, sized to the change: documentation alone
 # (Markdown, the licences, the ignore file, the editor settings, the hooks) builds nothing; anything else builds the
 # host and runs every suite on the three platforms - Linux with gcc (and again under AddressSanitizer and
-# UndefinedBehaviorSanitizer), Windows with MSVC, macOS universal - and measures coverage; the formatting is checked
-# whatever changed. The last job, "CI", is the one check to require: green when every job the run needed passed or was
+# UndefinedBehaviorSanitizer), Windows with MSVC, macOS universal - measures coverage, and makes each platform's
+# packages unsigned as release.yml makes them (the Linux zip and Debian package, the Windows installer installed and
+# taken away, the macOS package), each held to its stage with every bundled engine answering from its place in it; the
+# formatting is checked whatever changed. The last job, "CI", is the one check to require: green when every job the run needed passed or was
 # not needed, red when any failed or was cancelled.
 #
 # Every job runs on the organisation's own machines, never on GitHub's hosted images (a hosted macOS minute bills as
@@ -97,7 +99,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
     runs-on: [self-hosted, Linux, X64]
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -122,6 +124,22 @@ jobs:
       # The window's suites (label window) on a display of their own, one at a time.
       - name: Test the window on a display (xvfb-run)
         run: xvfb-run -a -s "-screen 0 1600x1200x24" ctest --test-dir build/ci-linux --output-on-failure -L '^window$'
+      # The release's two Linux packages, unsigned, from this tree, as release.yml makes them: the stage (each bundled
+      # engine downloaded by its pin into the tool cache, held to its hash and answering its handshake), the portable
+      # zip and the Debian package, each held to the stage and every engine started from its place in it; then dropped.
+      - name: Package (the stage, the zip and the Debian package)
+        run: |
+          set -euo pipefail
+          for tool in python3 dpkg-deb dpkg objdump ldconfig zip unzip; do
+            command -v "$tool" > /dev/null || { echo "::error::$tool is not on the runner's PATH"; exit 1; }
+          done
+          version=$(sed -n 's/.*UCI_HOST_VERSION_STRING "\(.*\)"/\1/p' build/ci-linux/generated/UciHostVersion.h)
+          rm -rf build/ci-linux-dist build/ci-linux-out
+          python3 -I packaging/stage.py build/ci-linux build/ci-linux-dist linux
+          packaging/linux/make-zip.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-x64.zip"
+          packaging/linux/make-deb.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-amd64.deb"
+          packaging/linux/test-deb.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-amd64.deb"
+          rm -rf build/ci-linux-dist build/ci-linux-out
 
   sanitizers:
     name: Linux sanitizers (address, undefined)
@@ -219,7 +237,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -241,13 +259,28 @@ jobs:
         run: cmake --build build/ci-windows -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
         run: ctest --test-dir build/ci-windows --output-on-failure -j $env:NUMBER_OF_PROCESSORS
+      # The Windows installer, unsigned, from this tree: the stage (each bundled engine downloaded by its pin, held to its
+      # hash and answering its handshake), then a test build of the installer installed for the runner's account under
+      # a folder of its own, every file and engine checked at its place, upgraded and uninstalled
+      # (packaging/windows/test-installer.ps1); then dropped. release.yml makes and signs the real one.
+      - name: Package (the stage and the installer, installed and taken away)
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path build/ci-windows/generated/UciHostVersion.h -Pattern 'VERSION_STRING "(.*)"').Matches[0].Groups[1].Value
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/ci-windows-dist
+          & "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-windows build/ci-windows-dist windows
+          if ($LASTEXITCODE -ne 0) { throw "the stage failed" }
+          pwsh -NoProfile -File packaging/windows/test-installer.ps1 -DistDir build/ci-windows-dist -Version $version `
+            -Python "${{ steps.cpp.outputs.python }}" -IconFile build/ci-windows/src/app/RecklessUciHost/Icon.ico
+          if ($LASTEXITCODE -ne 0) { throw "the installer's test failed" }
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/ci-windows-dist
 
   macos:
     name: macOS (universal)
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
     runs-on: [self-hosted, macOS, ARM64]
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -289,6 +322,19 @@ jobs:
         env:
           RECKLESS_REQUIRE_WINDOW: "1"
         run: ctest --test-dir build/ci-macos --output-on-failure -j "$(sysctl -n hw.ncpu)"
+      # The macOS installer, unsigned, from this tree: the stage (each bundled engine downloaded by its pin, held to its
+      # hash and answering its handshake, the app signed again ad hoc round them), the package made and held to the
+      # stage with every engine started from its place in it (packaging/macos/test-installer.sh); then dropped.
+      # release.yml signs, notarises and staples the real one.
+      - name: Package (the stage and the installer)
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/.*UCI_HOST_VERSION_STRING "\(.*\)"/\1/p' build/ci-macos/generated/UciHostVersion.h)
+          rm -rf build/ci-macos-dist build/ci-macos-out
+          "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-macos build/ci-macos-dist macos
+          packaging/macos/make-installer.sh build/ci-macos-dist "$version" "build/ci-macos-out/reckless-uci-host-$version-macos.pkg"
+          packaging/macos/test-installer.sh build/ci-macos-dist "$version" "build/ci-macos-out/reckless-uci-host-$version-macos.pkg"
+          rm -rf build/ci-macos-dist build/ci-macos-out
 
   # Every C++ file clang-format clean under the repository's .clang-format, with 22.1.8 from the PyPI wheel (the one
   # version every Reckless repository formats with), kept in a venv under the tool cache.

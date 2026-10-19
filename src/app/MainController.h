@@ -63,6 +63,9 @@ struct ControllerServices
 struct ControllerFiles
 {
     std::filesystem::path engines = EngineCatalogue::DefaultFile(); ///< The engine list; empty to keep none.
+    /** The engines the install carries (BundledEngines.h), seeded into the list as the controller starts; empty for
+        none, as for a build tree's host. */
+    std::filesystem::path bundled_engines;
 };
 
 /** The main window's controller. */

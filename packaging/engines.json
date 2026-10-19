@@ -1,0 +1,281 @@
+{
+  "format": 1,
+  "about": "The engines every installer carries, each pinned to a public release: its tag, each platform's asset and the asset's SHA-256, the file inside an archive, and the defaults the host seeds the engine with. tools/update-engines.sh and tools/update-engines.ps1 move the pins to each repository's latest release; packaging downloads by pin and refuses a hash that differs.",
+  "engines": [
+    {
+      "id": "pawnstar",
+      "name": "Pawnstar",
+      "repository": "reckless-technology/pawnstar",
+      "tag": "v1.0.0",
+      "version": "1.0.0",
+      "copyright": "Copyright (C) 2026 Jonny Reckless",
+      "licence": "GPL-3.0",
+      "source_asset_pattern": "pawnstar-{version}-source.tar.gz",
+      "source_asset": "pawnstar-1.0.0-source.tar.gz",
+      "options": [
+        {
+          "name": "Threads",
+          "value": "1"
+        },
+        {
+          "name": "Hash",
+          "value": "64"
+        },
+        {
+          "name": "Move Overhead",
+          "value": "100"
+        }
+      ],
+      "builds": {
+        "windows": [
+          {
+            "asset_pattern": "pawnstar-{version}-windows-x86_64.exe",
+            "asset": "pawnstar-1.0.0-windows-x86_64.exe",
+            "sha256": "33dba5c482d62c2cbea4fd832822e3d853c35aba54f97f737747fc3b86c986f3",
+            "file": "pawnstar.exe",
+            "requires": "x86-64-v3"
+          }
+        ],
+        "linux": [
+          {
+            "asset_pattern": "pawnstar-{version}-linux-x86_64",
+            "asset": "pawnstar-1.0.0-linux-x86_64",
+            "sha256": "040fbdeb279c9739cde8a833c770483dfb9de4dcad656ab080422c0f774c7636",
+            "file": "pawnstar",
+            "requires": "x86-64-v3"
+          }
+        ],
+        "macos": [
+          {
+            "asset_pattern": "pawnstar-{version}-macos-arm64.zip",
+            "asset": "pawnstar-1.0.0-macos-arm64.zip",
+            "sha256": "ad3cd140691837792c3ebbc99023a2c8c5f6cbd9f9a19a5f68734a80214d9d0d",
+            "member_pattern": "pawnstar-{version}-macos-arm64",
+            "member": "pawnstar-1.0.0-macos-arm64",
+            "file": "pawnstar"
+          }
+        ]
+      }
+    },
+    {
+      "id": "zenith",
+      "name": "Zenith",
+      "repository": "reckless-technology/zenith",
+      "tag": "v2.0.0",
+      "version": "2.0.0",
+      "copyright": "Copyright (C) 2026 Jonny Reckless",
+      "licence": "GPL-3.0-or-later",
+      "source_asset_pattern": null,
+      "source_asset": null,
+      "checksums_asset_pattern": "zenith-v{version}-SHA256SUMS.txt",
+      "checksums_asset": "zenith-v2.0.0-SHA256SUMS.txt",
+      "options": [
+        {
+          "name": "Threads",
+          "value": "1"
+        },
+        {
+          "name": "Hash",
+          "value": "64"
+        }
+      ],
+      "builds": {
+        "windows": [
+          {
+            "asset_pattern": "zenith-v{version}-windows-x86-64-v3-pext.zip",
+            "asset": "zenith-v2.0.0-windows-x86-64-v3-pext.zip",
+            "sha256": "532202fe4ff9dd5eb1fa5153543445f5ebc6dffd04963423d2b01b34843cdda7",
+            "member_pattern": "zenith.exe",
+            "member": "zenith.exe",
+            "file": "x86-64-v3-pext/zenith.exe",
+            "requires": "x86-64-v3-fast-pext"
+          },
+          {
+            "asset_pattern": "zenith-v{version}-windows-x86-64-v2.zip",
+            "asset": "zenith-v2.0.0-windows-x86-64-v2.zip",
+            "sha256": "a42c4193fc1587171f78d8a7bea24053e5fc385f27e7c036d516aae9ee1216bb",
+            "member_pattern": "zenith.exe",
+            "member": "zenith.exe",
+            "file": "x86-64-v2/zenith.exe",
+            "requires": "x86-64-v2"
+          }
+        ],
+        "linux": [
+          {
+            "asset_pattern": "zenith-v{version}-linux-x86-64-v3-pext.tar.gz",
+            "asset": "zenith-v2.0.0-linux-x86-64-v3-pext.tar.gz",
+            "sha256": "2fd553202d20391b9ee43bde682a37984e47dfd8385639fcbe3f72501eeed135",
+            "member_pattern": "zenith",
+            "member": "zenith",
+            "file": "x86-64-v3-pext/zenith",
+            "requires": "x86-64-v3-fast-pext"
+          },
+          {
+            "asset_pattern": "zenith-v{version}-linux-x86-64-v2.tar.gz",
+            "asset": "zenith-v2.0.0-linux-x86-64-v2.tar.gz",
+            "sha256": "e788c6f1c877a114a16227c38988d483d09e4805e6c8e69c7406e22ca2091afd",
+            "member_pattern": "zenith",
+            "member": "zenith",
+            "file": "x86-64-v2/zenith",
+            "requires": "x86-64-v2"
+          }
+        ],
+        "macos": [
+          {
+            "asset_pattern": "zenith-v{version}-macos-arm64.zip",
+            "asset": "zenith-v2.0.0-macos-arm64.zip",
+            "sha256": "c5be4d07fd594cd7f6c6376da336b2d679d06eda8a1cc296d01f4ab16f296817",
+            "member_pattern": "zenith",
+            "member": "zenith",
+            "file": "zenith"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pawnstar-go",
+      "name": "Pawnstar-Go",
+      "repository": "reckless-technology/pawnstar-go",
+      "tag": "v1.0.0",
+      "version": "1.0.0",
+      "copyright": "Copyright (C) 2026 Jonny Reckless",
+      "licence": "GPL-3.0",
+      "source_asset_pattern": "pawnstar-go-{version}-source.tar.gz",
+      "source_asset": "pawnstar-go-1.0.0-source.tar.gz",
+      "options": [
+        {
+          "name": "Threads",
+          "value": "1"
+        },
+        {
+          "name": "Hash",
+          "value": "64"
+        }
+      ],
+      "builds": {
+        "windows": [
+          {
+            "asset_pattern": "pawnstar-go-{version}-windows-amd64.exe",
+            "asset": "pawnstar-go-1.0.0-windows-amd64.exe",
+            "sha256": "efb535a6481fc398c2221cc8e0628257ae4cc0679c4ca15da0d41bd8886aa7b1",
+            "file": "pawnstar-go.exe",
+            "requires": "x86-64-v3"
+          }
+        ],
+        "linux": [
+          {
+            "asset_pattern": "pawnstar-go-{version}-linux-amd64",
+            "asset": "pawnstar-go-1.0.0-linux-amd64",
+            "sha256": "eccd3af4215e1860e473f52e57c65f5e6f4b18880fccef4b4f744a2e595cfb20",
+            "file": "pawnstar-go",
+            "requires": "x86-64-v3"
+          }
+        ],
+        "macos": [
+          {
+            "asset_pattern": "pawnstar-go-{version}-macos-arm64.zip",
+            "asset": "pawnstar-go-1.0.0-macos-arm64.zip",
+            "sha256": "0564d79e3d84b8ea162730d4ae1bdaf19e01221156c761825e4eb4cd29379e24",
+            "member_pattern": "pawnstar-go-{version}-macos-arm64",
+            "member": "pawnstar-go-1.0.0-macos-arm64",
+            "file": "pawnstar-go"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pawnstar-rs",
+      "name": "Pawnstar-RS",
+      "repository": "reckless-technology/pawnstar-rs",
+      "tag": "v1.0.0",
+      "version": "1.0.0",
+      "copyright": "Copyright (C) 2026 Jonny Reckless",
+      "licence": "GPL-3.0",
+      "source_asset_pattern": "pawnstar-rs-{version}-source.tar.gz",
+      "source_asset": "pawnstar-rs-1.0.0-source.tar.gz",
+      "options": [
+        {
+          "name": "Threads",
+          "value": "1"
+        },
+        {
+          "name": "Hash",
+          "value": "64"
+        }
+      ],
+      "builds": {
+        "windows": [
+          {
+            "asset_pattern": "pawnstar-rs-{version}-windows-x86_64.exe",
+            "asset": "pawnstar-rs-1.0.0-windows-x86_64.exe",
+            "sha256": "80615a0ceb9dca2023086c35cdf7f04aa588e13ca0deae9be0466fc1f386d4d9",
+            "file": "pawnstar-rs.exe"
+          }
+        ],
+        "linux": [
+          {
+            "asset_pattern": "pawnstar-rs-{version}-linux-x86_64",
+            "asset": "pawnstar-rs-1.0.0-linux-x86_64",
+            "sha256": "c1534ff613effcf5c113333380e82dd1a1f7e04dcf7f9dfb6bdfe68e9a27d786",
+            "file": "pawnstar-rs"
+          }
+        ],
+        "macos": [
+          {
+            "asset_pattern": "pawnstar-rs-{version}-macos-arm64.zip",
+            "asset": "pawnstar-rs-1.0.0-macos-arm64.zip",
+            "sha256": "f5eb68b8d3e1cbec6e35d1547f79090cf7f19c7412b589d25790b838c943afd0",
+            "member_pattern": "pawnstar-rs-{version}-macos-arm64",
+            "member": "pawnstar-rs-1.0.0-macos-arm64",
+            "file": "pawnstar-rs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "stoopid-chess",
+      "name": "Stoopid Chess",
+      "repository": "reckless-technology/stoopid-chess",
+      "tag": "v3.0.0",
+      "version": "3.0.0",
+      "copyright": "Copyright (C) 2009-2026 Jonny Reckless",
+      "licence": "GPL-3.0",
+      "source_asset_pattern": "stoopid-chess-{version}-source.tar.gz",
+      "source_asset": "stoopid-chess-3.0.0-source.tar.gz",
+      "options": [
+        {
+          "name": "Hash",
+          "value": "64"
+        }
+      ],
+      "builds": {
+        "windows": [
+          {
+            "asset_pattern": "stoopid-chess-{version}-windows-x86_64.exe",
+            "asset": "stoopid-chess-3.0.0-windows-x86_64.exe",
+            "sha256": "8b2e1980be0d0b7808389d52d32f3ac041cbf410c17648778663380a450a099c",
+            "file": "stoopid-chess.exe"
+          }
+        ],
+        "linux": [
+          {
+            "asset_pattern": "stoopid-chess-{version}-linux-x86_64",
+            "asset": "stoopid-chess-3.0.0-linux-x86_64",
+            "sha256": "04c8740c4a4128ac75e8510148a71a5faf116850014a876847f4e5fb375d2b72",
+            "file": "stoopid-chess"
+          }
+        ],
+        "macos": [
+          {
+            "asset_pattern": "stoopid-chess-{version}-macos-arm64.zip",
+            "asset": "stoopid-chess-3.0.0-macos-arm64.zip",
+            "sha256": "0a7294f576e87000a97ecaa225bd558e6cdab12e6bcb678367d9f5af672442b1",
+            "member_pattern": "stoopid-chess-{version}-macos-arm64",
+            "member": "stoopid-chess-3.0.0-macos-arm64",
+            "file": "stoopid-chess"
+          }
+        ]
+      }
+    }
+  ]
+}

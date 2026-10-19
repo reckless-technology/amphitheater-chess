@@ -2,6 +2,7 @@
 // and its child window on Skia. `--smoke [frames]` is a launch's check: the window opened, a few frames drawn, closed -
 // exit 0 when every frame was drawn, 3 when too few were, 1 where no window could be shown.
 
+#include "BundledEngines.h"
 #include "Faces.h"
 #include "MainController.h"
 #include "MainView.h"
@@ -68,7 +69,11 @@ int main(int argc, char **argv)
     {
         view.SetMenuBarView(platform->MakeMenuBarView(uci_host::app::theme::MenuBarLook()));
     }
-    uci_host::app::MainController controller(view, uci_host::app::ControllerFiles{}, services);
+    // The engines the install carries beside the app (BundledEngines.h): seeded into the person's engine list. A build
+    // tree's app carries none, and leaves the list as it is.
+    uci_host::app::ControllerFiles files;
+    files.bundled_engines = uci_host::app::BundledEnginesFolder(uci_host::app::RunningExecutable());
+    uci_host::app::MainController controller(view, files, services);
     // The update check, as every product on the toolkit runs it: once a day at most while the window shows, never in a
     // launch's check, and none where RECKLESS_UPDATE_CHECK=off (every CI runner).
     if (!options.is_smoke)

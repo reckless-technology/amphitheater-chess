@@ -6,9 +6,18 @@ Reckless UCI Host is a chess GUI and UCI engine host for Windows, macOS and Linu
 toolkit-free core and a command-line runner; the README is the long-form reference (the libraries, the threading
 model, the command line, the tests).
 
-**Licence:** the release licence is undecided, GPLv3 or proprietary; `LICENSE` (proprietary) stands until it is
-decided. Keep everything compatible with either: the code adapted from pawnstar and the piece set are Jonny's own, and
-nothing third-party may come in whose licence would close off either option.
+**Licence:** closed-source and free - `LICENSE` (proprietary) for the repository, `EULA.txt` for the releases'
+users. The window links the proprietary toolkit; its third-party parts are in `THIRD-PARTY-NOTICES.txt`, written by
+`tools/third_party_notices.py <build-dir>` (CTest `notices` checks it). The installers carry Jonny's five GPLv3 chess
+engines as separate programs - aggregation, never linking: the host only talks to them over UCI pipes and no engine
+code may come into this tree - and the notices give each one's version, copyright, the GPL's text once and its
+corresponding source (the public repository at the tag, and the release's source archive where it has one).
+
+**The bundled engines** (README, "The bundled engines" and "Packages and releases"): pinned in
+`packaging/engines.json` (tag, asset, SHA-256 per platform; `tools/update-engines.sh`/`.ps1` moves them to the latest
+releases, then the notices are written again), laid out by `packaging/stage.py` with the manifest `bundled.json`, and
+seeded into a person's engine list at every start by `src/app/BundledEngines.h`, whose rules the README spells out and
+`tests/app/BundledEnginesTest.cpp` holds. On macOS the bundled engines are arm64 only (the host is universal).
 
 **The GUI is built on reckless-toolkit**, a git submodule at `external/reckless-toolkit` (private; CI reads it with
 the deploy key in the secret `RECKLESS_TOOLKIT_DEPLOY_KEY`, through `.github/actions/toolkit`), added with the
@@ -131,4 +140,9 @@ and `CI`, the aggregate to require. Documentation-only changes build nothing.
   `git config user.name 'Jonny Reckless' && git config user.email jonny@recklesstechnology.com &&
   git config core.hooksPath .githooks`.
 - Work on a branch and open a pull request; `main` holds only what built and passed.
+- `build.yml` also makes every package unsigned and holds it to its stage; `release.yml` (a pushed `vMAJOR.MINOR`, or
+  by hand on `main`, `-f dry_run=true` to publish nothing) builds from nothing, signs (eSigner on Windows whenever its
+  secrets are set; Developer ID, notarisation and stapling on macOS) and publishes a private release; `promote.yml`
+  copies one to the public `reckless-technology/uci-host-releases` - only on Jonny's word. The signing secrets are the
+  organisation's; `PUBLIC_RELEASES_TOKEN` is this repository's own.
 - `*.sh` and the hooks stay LF (`.gitattributes`); the piece SVGs are kept byte for byte (`-text`).

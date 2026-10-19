@@ -241,6 +241,12 @@ class EngineManagerDialog final : public DialogFrame
         return note_.text();
     }
 
+    /** @return What the line under the program says of the selected engine: its author, and whether it is bundled. */
+    const std::string &about() const
+    {
+        return author_.text();
+    }
+
     /** Takes in a handshake that has answered. */
     void Frame() override;
 

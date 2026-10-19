@@ -20,6 +20,7 @@ reckless_module_assets(uci_host_assets
 add_library(uci_host_gui STATIC
     AnalysisPanel.cpp
     AnalysisSession.cpp
+    BundledEngines.cpp
     BoardView.cpp
     CompetitionDialog.cpp
     CompetitionSession.cpp

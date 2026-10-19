@@ -1,0 +1,526 @@
+name: release
+
+# One release of the host. Push a tag vMAJOR.MINOR (v0.1, v1.0) and the host is built from nothing, tested and packaged
+# on Linux, Windows and macOS, signed, and published as GitHub release vMAJOR.MINOR.0 with an installer for each
+# platform and the portable Linux zip. Run the workflow by hand (workflow_dispatch) and the same happens at the head of
+# main, published as vMAJOR.MINOR.BUILD where BUILD is the number of commits since the nearest vMAJOR.MINOR tag - the
+# version the binaries report (cmake/UciHostVersion.cmake). The workflow creates that three-component tag; only
+# two-component tags are version marks. A dispatch at a commit already released fails rather than overwrite. Releases
+# are cut from main and nowhere else: verify refuses a dispatch on another branch and a tag on a commit main does not
+# hold, before anything is built. A dry run (dispatch with dry_run) builds, tests, signs and packages exactly as a
+# release does, on any branch and with no version mark at all (as 0.0.0), and publishes nothing: its files are kept as
+# the run's artifacts for a day.
+#
+# IR Capture's release is the model, step for step. verify opens the release as a draft before anything is built and
+# each package job uploads its files straight onto it, so no workflow artifact - the organisation's shared storage
+# quota - stands between a build and its release; the publish job checks all four are there, pushes the tag and takes
+# the draft public with release-notes.md. A run that fails before it publishes leaves only a draft, which the next run
+# replaces.
+#
+# Every package carries the five bundled chess engines (packaging/engines.json: each one's public release, every asset
+# downloaded by its pin and refused on a hash that differs), each a separate GPLv3 program; THIRD-PARTY-NOTICES.txt
+# says where each one's source is. Each package is held to its stage with every engine started from its place in it.
+#
+# Signing, with the organisation's secrets: on Windows the installer and its uninstaller through SSL.com's eSigner
+# (CodeSignTool by hash, the toolkit's tools/esigner-sign.ps1; the account checked before the build, which spends no
+# signing), whenever the eSigner secrets are set - a dry run's too, so a dry run proves the signature a release will
+# carry, at two of the account's signings; the engines keep their own releases' signatures. On macOS every bundled
+# engine, the app and the tool with the Developer ID Application identity and the hardened runtime, from the inside out
+# (packaging/macos/sign.sh), the installer with the Developer ID Installer identity, notarised by Apple and stapled (the
+# toolkit's tools/sign-mac.sh on a keychain of the job's own), in a dry run as in a release.
+on:
+  push:
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build, test, sign and package only; publish nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write       # create the release and its tag
+
+# One release run at a time: a tag push and a dispatch at once would each open, replace and publish drafts under the
+# other. A run waits for the one in progress rather than cancel it, which could leave a half-uploaded draft behind.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# No suite, smoke run or window a job opens checks for updates: nothing a run starts reaches recklesstechnology.com.
+env:
+  RECKLESS_UPDATE_CHECK: "off"
+
+jobs:
+  # Which version: the build's own rule, so the release page and the binaries agree by construction.
+  verify:
+    name: Version from the tags
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      publish: ${{ steps.version.outputs.publish }}
+      release_id: ${{ steps.version.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Derive MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag, and open the draft
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            if ! echo "$GITHUB_REF_NAME" | grep -qE '^v[0-9]+\.[0-9]+$'; then
+              echo "Tag $GITHUB_REF_NAME is not vMAJOR.MINOR. Version marks have two components; the" >&2
+              echo "three-component release tags are created by this workflow, never pushed by hand." >&2
+              exit 1
+            fi
+          fi
+          # main and nowhere else: a dispatch has to run on main, and a tag has to sit on a commit main already holds.
+          # A dry run, which publishes nothing, may run on any branch, so a change to the release is proven before it
+          # merges.
+          is_dry_run=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            is_dry_run=true
+          fi
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if [ "$is_dry_run" = false ]; then
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+              echo "Releases are cut from main; this dispatch ran on $GITHUB_REF." >&2
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+              echo "Commit $GITHUB_SHA is not on main; releases are cut from main only. Merge first, tag main's head." >&2
+              exit 1
+            fi
+          fi
+          describe=$(git describe --tags --long --match 'v[0-9]*.[0-9]*' --exclude 'v*.*.*' 2> /dev/null || true)
+          if echo "$describe" | grep -qE '^v[0-9]+\.[0-9]+-[0-9]+-g[0-9a-f]+$'; then
+            mark="${describe%%-*}"                 # v1.0
+            rest="${describe#*-}"; build="${rest%%-*}"
+            version="${mark#v}.$build"             # 1.0.7
+          elif [ "$is_dry_run" = true ]; then
+            echo "::warning::No vMAJOR.MINOR tag is reachable from $GITHUB_SHA: the dry run builds as 0.0.0, as the build does"
+            version=0.0.0
+          else
+            echo "No vMAJOR.MINOR tag is reachable from $GITHUB_SHA (git describe: '$describe')." >&2
+            echo "A release needs a version: tag main vMAJOR.MINOR and push the tag." >&2
+            exit 1
+          fi
+          tag="v$version"
+          publish=true
+          [ "$is_dry_run" = true ] && publish=false
+          release_id=""
+          if [ "$publish" = "true" ]; then
+            if draft=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null); then
+              if [ "$draft" = "true" ]; then
+                echo "A draft of $tag is left from a run that did not publish; replacing it"
+                gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes
+              else
+                echo "Release $tag already exists: this commit has been released. Push a commit (the build" >&2
+                echo "number moves on) or a new vMAJOR.MINOR tag, then release again." >&2
+                exit 1
+              fi
+            fi
+            # Through the REST API, whose answer carries the draft's numeric id - what the package jobs upload to,
+            # since a draft has no tag to be named by.
+            release_id=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$tag" \
+              -f name="Reckless UCI Host v$version" -F draft=true -F body=@release-notes.md --jq .id)
+            echo "draft release $tag opened: id $release_id"
+          fi
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "publish=$publish"
+            echo "release_id=$release_id"
+          } >> "$GITHUB_OUTPUT"
+          echo "Reckless UCI Host $version ($describe); publish=$publish"
+
+  # Linux, with gcc, in a tree built from nothing: every suite (the windows on Xvfb's display), the version, the
+  # notices, then the stage, the zip and the Debian package, each held to the stage with every engine answering.
+  linux:
+    name: Package Linux
+    needs: verify
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Start from nothing
+        run: rm -rf build/release-ci build/release-dist build/release-out
+      - name: The toolkit submodule
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
+      - name: Toolchain
+        id: cpp
+        uses: ./.github/actions/cpp
+      - name: The packaging tools
+        run: |
+          for tool in python3 dpkg-deb dpkg objdump ldconfig zip unzip; do
+            command -v "$tool" > /dev/null || { echo "::error::$tool is not on the runner's PATH"; exit 1; }
+          done
+      - name: Configure
+        run: |
+          # The configure's own status decides the step, not tee's, which succeeds whatever came down the pipe.
+          set -o pipefail
+          mkdir -p build
+          cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
+            "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" | tee build/configure.log
+          grep -q "Reckless UCI Host $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
+      - name: Build
+        run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
+      - name: Test
+        run: ctest --test-dir build/release-ci --output-on-failure -j "$(nproc)" -LE '^window$'
+      - name: Test the window on a display (xvfb-run)
+        run: xvfb-run -a -s "-screen 0 1600x1200x24" ctest --test-dir build/release-ci --output-on-failure -L '^window$'
+      - name: The binaries report the version
+        run: build/release-ci/src/cli/uci-host-cli --version | tee /dev/stderr | grep -qx "Reckless UCI Host $VERSION"
+      - name: Package
+        run: |
+          set -euo pipefail
+          python3 -I packaging/stage.py build/release-ci build/release-dist linux
+          packaging/linux/make-zip.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-linux-x64.zip"
+          packaging/linux/make-deb.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-linux-amd64.deb"
+          packaging/linux/test-deb.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-linux-amd64.deb"
+          ls -l build/release-out
+      - name: Upload to the draft release
+        if: needs.verify.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.verify.outputs.release_id }}
+        run: |
+          for file in build/release-out/*; do
+            name=$(basename "$file")
+            curl --fail-with-body --silent --show-error -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              -H "Content-Type: application/octet-stream" --data-binary "@$file" \
+              "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$name" \
+              | grep -o '"browser_download_url": *"[^"]*"'
+          done
+      - uses: actions/upload-artifact@v7
+        if: needs.verify.outputs.publish != 'true'
+        continue-on-error: true
+        with:
+          name: reckless-uci-host-linux
+          path: build/release-out/*
+          retention-days: 1
+
+  # Windows, with MSVC, in a tree built from nothing: every suite, the stage, the installer signed where the eSigner
+  # secrets are set and its signature held to Jonathan Reckless's, and a test build of it installed, checked file by
+  # file and engine by engine at its place, upgraded and uninstalled.
+  windows:
+    name: Package Windows
+    needs: verify
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Start from nothing
+        shell: pwsh
+        run: Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/release-ci, build/release-dist, build/release-out
+      - name: The toolkit submodule
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
+      - name: Toolchain
+        id: cpp
+        uses: ./.github/actions/cpp
+      # SSL.com's CodeSignTool, pinned by version and hash and kept in the tool cache, and the account signed in to and
+      # its certificate listed - no signing spent - before an hour of building rides on it. A release needs the
+      # secrets; a dry run without them packages unsigned.
+      - name: eSigner's signing tool, and the account checked
+        id: esigner
+        shell: pwsh
+        env:
+          ESIGNER_USERNAME: ${{ secrets.ESIGNER_USERNAME }}
+          ESIGNER_PASSWORD: ${{ secrets.ESIGNER_PASSWORD }}
+          ESIGNER_CREDENTIAL_ID: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+        run: |
+          if (-not $env:ESIGNER_USERNAME) {
+            if ('${{ needs.verify.outputs.publish }}' -eq 'true') { throw "no eSigner secrets: a release's installer is signed" }
+            "no eSigner secrets: this dry run's installer is unsigned"
+            "sign=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+          $version = 'v1.3.2'
+          $sha256 = '4afc32e8b7f79bbe1de7e4e7049aaad4e0f754357613b9bbec0e3052f06fd36b'
+          $dir = Join-Path $env:RUNNER_TOOL_CACHE "codesigntool\$version"
+          if (-not (Test-Path (Join-Path $dir 'CodeSignTool.bat'))) {
+            $zip = Join-Path $env:RUNNER_TEMP 'codesigntool.zip'
+            Invoke-WebRequest -UseBasicParsing -OutFile $zip `
+              -Uri "https://github.com/SSLcom/CodeSignTool/releases/download/$version/CodeSignTool-$version-windows.zip"
+            $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+            if ($hash -ne $sha256) { throw "CodeSignTool $version is $hash, not the pinned $sha256" }
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $dir
+            Expand-Archive -Path $zip -DestinationPath $dir
+          }
+          "RECKLESS_CODESIGNTOOL=$dir" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          $env:RECKLESS_CODESIGNTOOL = $dir
+          pwsh -NoProfile -File external/reckless-toolkit/tools/esigner-sign.ps1 -Check
+          if ($LASTEXITCODE -ne 0) { throw "the eSigner account is not ready to sign" }
+          "sign=true" >> $env:GITHUB_OUTPUT
+      - name: Configure
+        shell: pwsh
+        run: |
+          $out = cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON `
+            "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" | Out-String
+          $out
+          if ($LASTEXITCODE -ne 0) { throw "the configure failed" }
+          if ($out -notmatch [regex]::Escape("Reckless UCI Host $env:VERSION")) { throw "the configure does not report $env:VERSION" }
+      - name: Build
+        run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
+      - name: Test
+        run: ctest --test-dir build/release-ci --output-on-failure -j $env:NUMBER_OF_PROCESSORS
+      - name: The binaries report the version
+        shell: pwsh
+        run: |
+          $said = & build/release-ci/src/cli/uci-host-cli.exe --version
+          if ($said -ne "Reckless UCI Host $env:VERSION") { throw "uci-host-cli says '$said'" }
+          $info = (Get-Item build/release-ci/src/app/RecklessUciHost.exe).VersionInfo
+          "RecklessUciHost.exe: $($info.ProductName) $($info.ProductVersion), $($info.FileDescription)"
+          if ($info.ProductVersion -ne $env:VERSION) { throw "the app's version resource says $($info.ProductVersion)" }
+      - name: Package
+        shell: pwsh
+        env:
+          ESIGNER_USERNAME: ${{ secrets.ESIGNER_USERNAME }}
+          ESIGNER_PASSWORD: ${{ secrets.ESIGNER_PASSWORD }}
+          ESIGNER_TOTP_SECRET: ${{ secrets.ESIGNER_TOTP_SECRET }}
+          ESIGNER_CREDENTIAL_ID: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+        run: |
+          $python = "${{ steps.cpp.outputs.python }}"
+          $icon = 'build/release-ci/src/app/RecklessUciHost/Icon.ico'
+          & $python -I packaging/stage.py build/release-ci build/release-dist windows
+          if ($LASTEXITCODE -ne 0) { throw "the stage failed" }
+          $sign = @()
+          if ('${{ steps.esigner.outputs.sign }}' -eq 'true') { $sign = @('-SignWithESigner') }
+          pwsh -NoProfile -File packaging/windows/make-installer.ps1 -DistDir build/release-dist -Version $env:VERSION `
+            -OutDir build/release-out -IconFile $icon -Fetch @sign
+          if ($LASTEXITCODE -ne 0) { throw "the installer was not made" }
+          pwsh -NoProfile -File packaging/windows/test-installer.ps1 -DistDir build/release-dist -Version $env:VERSION `
+            -Python $python -IconFile $icon
+          if ($LASTEXITCODE -ne 0) { throw "the installer's test failed" }
+          Get-ChildItem build/release-out | ForEach-Object { "$($_.Name)  $([math]::Round($_.Length / 1MB, 1)) MB" }
+      # The installer as Windows checks it before anything is uploaded: signed, by Jonathan Reckless, timestamped - and
+      # every engine it carries signed by its own release the same way.
+      - name: The signatures
+        if: steps.esigner.outputs.sign == 'true'
+        shell: pwsh
+        run: |
+          $files = @(Get-Item "build/release-out/reckless-uci-host-$env:VERSION-win64-setup.exe") + @(Get-ChildItem -Recurse -File build/release-dist/engines -Filter *.exe)
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature $file.FullName
+            "$($file.Name): $($signature.Status), $($signature.SignerCertificate.Subject), timestamp $($signature.TimeStamperCertificate.Subject)"
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch '^CN=Jonathan Reckless,' -or -not $signature.TimeStamperCertificate) {
+              throw "$($file.FullName) is not validly signed by Jonathan Reckless with a timestamp"
+            }
+          }
+      - name: Upload to the draft release
+        if: needs.verify.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.verify.outputs.release_id }}
+        run: |
+          for file in build/release-out/*; do
+            name=$(basename "$file")
+            curl --fail-with-body --silent --show-error -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              -H "Content-Type: application/octet-stream" --data-binary "@$file" \
+              "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$name" \
+              | grep -o '"browser_download_url": *"[^"]*"'
+          done
+      - uses: actions/upload-artifact@v7
+        if: needs.verify.outputs.publish != 'true'
+        continue-on-error: true
+        with:
+          name: reckless-uci-host-windows
+          path: build/release-out/*
+          retention-days: 1
+
+  # macOS, universal, for 13.3 on, in a tree built from nothing on the Apple silicon runner: every suite natively, both
+  # slices and the floor held, the engines, the app and the tool signed, the installer signed, notarised, stapled and
+  # held to the stage with every engine answering from its place in it.
+  macos:
+    name: Package macOS
+    needs: verify
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 240
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Start from nothing
+        run: rm -rf build/release-ci build/release-dist build/release-out
+      - name: The toolkit submodule
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
+      - name: Toolchain
+        id: cpp
+        uses: ./.github/actions/cpp
+      - name: Configure
+        run: |
+          # The configure's own status decides the step, not tee's, which succeeds whatever came down the pipe.
+          set -o pipefail
+          mkdir -p build
+          cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
+            "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" \
+            | tee build/configure.log
+          grep -q "Reckless UCI Host $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
+      - name: Build
+        run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
+      - name: Both slices, the floor and the version
+        run: |
+          app=build/release-ci/src/app/RecklessUciHost.app
+          for binary in "$app/Contents/MacOS/RecklessUciHost" build/release-ci/src/cli/uci-host-cli; do
+            for arch in arm64 x86_64; do lipo "$binary" -verify_arch "$arch"; done
+            [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}' | sort -u)" = 13.3 ] || { echo "::error::$binary is not for macOS 13.3"; exit 1; }
+          done
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$VERSION" ] ||
+            { echo "::error::the app's plist is not at $VERSION"; exit 1; }
+          build/release-ci/src/cli/uci-host-cli --version | grep -qx "Reckless UCI Host $VERSION"
+          arch -x86_64 build/release-ci/src/cli/uci-host-cli --version | grep -qx "Reckless UCI Host $VERSION"
+      - name: Test
+        env:
+          RECKLESS_REQUIRE_WINDOW: "1"
+        run: ctest --test-dir build/release-ci --output-on-failure -j "$(sysctl -n hw.ncpu)"
+      - name: Open the signing keychain
+        env:
+          MACOS_DEVELOPER_ID_APPLICATION_P12: ${{ secrets.MACOS_DEVELOPER_ID_APPLICATION_P12 }}
+          MACOS_DEVELOPER_ID_INSTALLER_P12: ${{ secrets.MACOS_DEVELOPER_ID_INSTALLER_P12 }}
+          MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+        run: external/reckless-toolkit/tools/sign-mac.sh open
+      - name: Package, signed
+        run: |
+          set -euo pipefail
+          "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/release-ci build/release-dist macos
+          packaging/macos/sign.sh build/release-dist
+          # make-installer.sh signs only when it is handed an identity and otherwise makes an unsigned package - right
+          # for a pull request's run, never for this job's, whose dry run signs as a release does - so an empty lookup
+          # stops the job here rather than at the notary or the signature check after it.
+          export RECKLESS_SIGNING_KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          RECKLESS_INSTALLER_IDENTITY=$(security find-identity -v -p basic "$RECKLESS_SIGNING_KEYCHAIN" |
+            sed -n 's/.*"\(Developer ID Installer: .*\)"/\1/p' | head -n 1)
+          if [ -z "$RECKLESS_INSTALLER_IDENTITY" ]; then
+            echo "::error::no Developer ID Installer identity in $RECKLESS_SIGNING_KEYCHAIN: the installer would be unsigned (tools/sign-mac.sh open loads it from MACOS_DEVELOPER_ID_INSTALLER_P12)"
+            exit 1
+          fi
+          export RECKLESS_INSTALLER_IDENTITY
+          # The uninstaller the package carries is signed as the app is, with the Developer ID Application identity.
+          RECKLESS_APPLICATION_IDENTITY=$(security find-identity -v -p codesigning "$RECKLESS_SIGNING_KEYCHAIN" |
+            sed -n 's/.*"\(Developer ID Application: .*\)"/\1/p' | head -n 1)
+          if [ -z "$RECKLESS_APPLICATION_IDENTITY" ]; then
+            echo "::error::no Developer ID Application identity in $RECKLESS_SIGNING_KEYCHAIN: the uninstaller would be signed ad hoc"
+            exit 1
+          fi
+          export RECKLESS_APPLICATION_IDENTITY
+          packaging/macos/make-installer.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-macos.pkg"
+      - name: Notarise the installer
+        env:
+          MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: external/reckless-toolkit/tools/sign-mac.sh notarize "build/release-out/reckless-uci-host-$VERSION-macos.pkg"
+      - name: The installer holds the signed stage
+        run: packaging/macos/test-installer.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-macos.pkg" --signed
+      - name: Upload to the draft release
+        if: needs.verify.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.verify.outputs.release_id }}
+        run: |
+          for file in build/release-out/*; do
+            name=$(basename "$file")
+            curl --fail-with-body --silent --show-error -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              -H "Content-Type: application/octet-stream" --data-binary "@$file" \
+              "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$name" \
+              | grep -o '"browser_download_url": *"[^"]*"'
+          done
+      - uses: actions/upload-artifact@v7
+        if: needs.verify.outputs.publish != 'true'
+        continue-on-error: true
+        with:
+          name: reckless-uci-host-macos
+          path: build/release-out/*
+          retention-days: 1
+      - name: Close the signing keychain
+        if: always()
+        run: external/reckless-toolkit/tools/sign-mac.sh close
+
+  # The draft found by the id verify opened it with, its four files all there, then the tag on the built commit and the
+  # draft published with release-notes.md as its notes. Every step is safe to run again, so re-running this job alone
+  # finishes a release from wherever an attempt stopped.
+  release:
+    name: Publish release
+    if: needs.verify.outputs.publish == 'true'
+    needs: [verify, linux, windows, macos]
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 15
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+      TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_ID: ${{ needs.verify.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          clean: false
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release="repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"
+          draft_tag=$(gh api "$release" --jq .tag_name)
+          if [ "$draft_tag" != "$TAG" ]; then
+            echo "::error::the draft verify opened (id $RELEASE_ID) is for $draft_tag, not $TAG"
+            exit 1
+          fi
+          assets=$(gh api "$release" --jq '.assets[].name')
+          missing=""
+          for file in "reckless-uci-host-$VERSION-linux-x64.zip" "reckless-uci-host-$VERSION-linux-amd64.deb" \
+                      "reckless-uci-host-$VERSION-win64-setup.exe" "reckless-uci-host-$VERSION-macos.pkg"; do
+            if ! grep -qx "$file" <<< "$assets"; then
+              echo "::error::$file is not on the draft $TAG; the package job that makes it did not upload it"
+              missing="$missing $file"
+            fi
+          done
+          [ -z "$missing" ] || exit 1
+          # The release's own tag, vMAJOR.MINOR.BUILD, on the commit that was built, made with git and pushed (the
+          # releases API refuses to make a tag from a commit with the workflow token). A tag an earlier attempt pushed
+          # is taken as it stands when it names this commit, and refused when it names another. The tagger is named on
+          # the command alone: the runner keeps this clone, and an identity written into its config would sign
+          # whatever any later job there commits or tags.
+          git tag -d "$TAG" > /dev/null 2>&1 || true
+          if git fetch --quiet origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null; then
+            existing=$(git rev-parse "$TAG^{commit}")
+            if [ "$existing" != "$GITHUB_SHA" ]; then
+              echo "::error::$TAG already names $existing, not the commit built ($GITHUB_SHA)"
+              exit 1
+            fi
+            echo "$TAG already names this commit (an earlier attempt pushed it); publishing onto it"
+          else
+            git -c user.name="Jonny Reckless" -c user.email="jonny@recklesstechnology.com" \
+              tag -a "$TAG" "$GITHUB_SHA" -m "Reckless UCI Host v$VERSION"
+            git push origin "$TAG"
+          fi
+          gh api -X PATCH "$release" -F draft=false -f make_latest=true -F body=@release-notes.md --jq .html_url
+          gh api "$release" --jq '.assets[] | "  \(.name)  \(.size) bytes"'

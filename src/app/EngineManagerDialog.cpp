@@ -240,7 +240,11 @@ std::size_t EngineManagerDialog::EnginesModel::RowCount() const
 std::string EngineManagerDialog::EnginesModel::CellText(std::size_t row, std::size_t column) const
 {
     const EngineEntry &entry = catalogue_.engines[row];
-    return column == 0 ? entry.DisplayName() : entry.author;
+    if (column == 0)
+    {
+        return entry.DisplayName();
+    }
+    return entry.IsBundled() ? (entry.author.empty() ? "bundled" : entry.author + " (bundled)") : entry.author;
 }
 
 namespace
@@ -442,7 +446,14 @@ void EngineManagerDialog::ShowSelected()
         return;
     }
     program_.SetText(entry->config.executable);
-    author_.SetText(entry->author.empty() ? "" : "by " + entry->author);
+    std::string about = entry->author.empty() ? "" : "by " + entry->author;
+    if (entry->IsBundled())
+    {
+        const std::string version = entry->bundled_version.empty() ? std::string() : " " + entry->bundled_version;
+        about += std::string(about.empty() ? "" : " - ") + "bundled with the host" + version +
+                 "; Remove takes it off the list for good";
+    }
+    author_.SetText(about);
     name_.SetText(entry->config.name.empty() ? entry->engine_name : entry->config.name);
     arguments_.SetText(JoinArguments(entry->config.arguments));
     ponder_.SetChecked(entry->config.does_ponder);
@@ -557,7 +568,7 @@ void EngineManagerDialog::RemoveSelected()
     {
         return;
     }
-    catalogue_.engines.erase(catalogue_.engines.begin() + selected_);
+    catalogue_.Remove(static_cast<std::size_t>(selected_)); // a bundled one is not seeded again
     list_.RowsChanged();
     Select(std::min(selected_, static_cast<int>(catalogue_.engines.size()) - 1));
 }

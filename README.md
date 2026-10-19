@@ -5,9 +5,13 @@ the rules of chess, UCI engines as child processes, games, matches and tournamen
 command-line match and tournament runner on that core, and the window, `RecklessUciHost`, drawn with Skia on
 reckless-toolkit (a git submodule at `external/reckless-toolkit`), which drives the same libraries.
 
-Proprietary: see [LICENSE](LICENSE). Everything in it is Jonny Reckless's own work, the piece set in
-`assets/pieces/staunton/` for the GUI among it (twelve SVGs, the generator that wrote them and a preview); the tests
-fetch GoogleTest, which no product ships.
+Proprietary and free: see [LICENSE](LICENSE); the releases are licensed to their users under [EULA.txt](EULA.txt).
+Everything in it is Jonny Reckless's own work, the piece set in `assets/pieces/staunton/` for the GUI among it (twelve
+SVGs, the generator that wrote them and a preview); the tests fetch GoogleTest, which no product ships. The window
+links the toolkit's third-party parts (Skia and the libraries it bundles, two typefaces), each under the licence
+[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) reproduces. The installers also carry Jonny's five chess engines,
+each a separate GPLv3 program the host only talks to over UCI pipes - aggregation, not linking - with the GPL's text
+and each engine's source (its public repository at the release's tag) in the notices.
 
 ## What is here
 
@@ -112,6 +116,8 @@ runtime.
 | `integration` | `uci_host_integration_test` | a real engine, named by `UCI_HOST_TEST_ENGINE`; skipped when unset |
 | `gui` | `uci_host_window_test` | the window with no window: the pieces, the board's geometry and a person's moves on it, the lists, the graph, the controller, the window drawn through Skia |
 | `app_smoke` | `RecklessUciHost --smoke` | the app opens its window and draws thirty frames (label `window`: a display is needed) |
+| `packaging` | `tests/packaging/test_bundled_engines.py` | the engines' pins, a hash that differs refused, the stage's layout and manifest, the handshake and the smoke test, the pins' update |
+| `notices` | `tools/third_party_notices.py --check` | `THIRD-PARTY-NOTICES.txt` as the build's fetches and the engines' pins write it |
 | `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings` | `uci_host_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```
@@ -241,12 +247,81 @@ One version, MAJOR.MINOR.BUILD, from git alone: MAJOR.MINOR is the nearest `vMAJ
 BUILD the commits since it (`cmake/UciHostVersion.cmake`). With no such tag the build reports 0.0.0 and the configure
 says so. Nothing in the tree is edited to release.
 
+## The bundled engines
+
+The installers carry five UCI engines, the binary of each one's latest release, unmodified: Pawnstar, Zenith,
+Pawnstar-Go, Pawnstar-RS and Stoopid Chess. `packaging/engines.json` pins each one - its repository, its tag, each
+platform's asset with its SHA-256 (Zenith's held to its release's SHA256SUMS, every one to GitHub's digest of the
+asset), the file inside an archive, and the defaults it is seeded with. `tools/update-engines.sh` (or `.ps1`) moves the
+pins to each repository's latest release with fresh hashes and writes the file alone; read the diff, run
+`tools/third_party_notices.py <build-dir>` (the notices name each engine's version), and open the pull request.
+Packaging downloads by pin into the tool cache and refuses an asset whose hash differs (`tools/bundled_engines.py`).
+
+| Engine | Windows, Linux (x86-64) | macOS |
+|---|---|---|
+| Pawnstar | one build, AVX2 throughout: needs x86-64-v3 | arm64 |
+| Zenith | two builds: x86-64-v3-pext where the CPU has AVX2 and BMI2 with a fast PEXT (not AMD's Zen 1 and 2), else x86-64-v2 | arm64 |
+| Pawnstar-Go | one build, AVX2: needs x86-64-v3 | arm64 |
+| Pawnstar-RS | one build, any x86-64 | arm64 |
+| Stoopid Chess | one build (.NET, self-contained), any x86-64 | arm64 |
+
+On macOS the bundled engines are arm64 only: the engines' releases build no Intel slice, while the host itself is
+universal.
+
+They lie in a folder named `engines`, one folder per engine with `bundled.json` beside them: in the install folder on
+Windows (`{app}\engines\<engine>\`), inside the bundle on macOS (`RecklessUciHost.app/Contents/Resources/engines/`),
+under `/usr/lib/reckless-uci-host/engines/` from the Debian package (whose host is in `/opt/reckless-technology/bin`),
+and beside the binary in the portable Linux zip. The manifest, which `packaging/stage.py` writes as it lays the engines
+out, gives each engine's name, version, seeded options, the options its handshake declared when it was packaged, and
+its builds in order, each with what it asks of the CPU; every staged engine answers its handshake before the stage
+ends. A build tree's host carries no engines and seeds nothing.
+
+At every start the host reads the manifest (`src/app/BundledEngines.h`, CPUID for the x86-64 levels) and seeds the
+person's engine list:
+
+- an engine new to the list is added at its end, marked `bundled` (with its id and version), named as the manifest
+  names it, with Threads 1 (where it has the option), Hash 64 MB and, for Pawnstar, Move Overhead 100 ms - never the
+  engines' own Threads defaults, which oversubscribe a machine running a match two engines at a time;
+- an engine the list already marks bundled follows the install: its program moves to the new path, and on a new
+  version its version, the name and author it gives and its declared options move to the new release's, while every
+  setting a person makes - the name shown, the options, the arguments, pondering, analysis, the depth, the book - is
+  kept;
+- an engine the person removed (`removed_bundled` in the list) is never added again;
+- a person's own entry for the bundled program itself is marked bundled rather than listed twice;
+- every other entry - the person's own engines, and a bundled one this install no longer carries or whose CPU level
+  this machine lacks - is left exactly as it is;
+- a list that cannot be read is neither seeded nor written over.
+
+The engine manager shows a bundled engine as such ("bundled with the host" and its version, "(bundled)" by its author)
+and removes it like any other, for good.
+
+## Packages and releases
+
+`packaging/stage.py <build-dir> <dist-dir> windows|macos|linux` stages a release from a release tree: the window,
+`uci-host-cli`, the engines, `EULA.txt` and `THIRD-PARTY-NOTICES.txt`. From the stage:
+
+| Platform | Package | Made and checked by |
+|---|---|---|
+| Windows | `reckless-uci-host-<v>-win64-setup.exe`: Inno Setup, per user by default (the dialog offers Program Files), under `Reckless Technology\UCI Host`, the engines in `engines\`, signed through SSL.com eSigner | `packaging/windows/make-installer.ps1`; `test-installer.ps1` installs a test build of it, checks every file and engine at its place, upgrades over an earlier release's engine and uninstalls, leaving a sibling product's folder alone |
+| macOS | `reckless-uci-host-<v>-macos.pkg`: the app in `/Applications/Reckless Technology`, `uci-host-cli` in `/usr/local/bin`, the documents in `/Library/Documentation/Reckless UCI Host`, an uninstaller beside the app; every engine, the app and the tool signed with the Developer ID and the hardened runtime from the inside out (`packaging/macos/sign.sh`), the package notarised and stapled | `packaging/macos/make-installer.sh`; `test-installer.sh` expands it, holds it to the stage, starts every engine from its place in it, and runs the uninstaller's script on a stand-in for `/` |
+| Linux | `reckless-uci-host-<v>-linux-amd64.deb` and the portable `reckless-uci-host-<v>-linux-x64.zip` | `packaging/linux/make-deb.sh` and `test-deb.sh`; `make-zip.sh`, which unzips what it made and starts every engine from there |
+
+`.github/workflows/build.yml` makes all of them unsigned on every pull request that changes code. `release.yml` makes
+them from nothing on a pushed `vMAJOR.MINOR` tag, or by hand on `main` (`gh workflow run release.yml --ref main`;
+`-f dry_run=true` builds, tests, signs, notarises and packages and publishes nothing, on any branch, as 0.0.0 with no
+tag), uploads them onto a draft and publishes it with `release-notes.md`. The Windows installer is signed whenever the
+eSigner secrets are set, a dry run's included, at two of the account's signings. `promote.yml`
+(`gh workflow run promote.yml --ref main -f tag=vX.Y.Z`) copies a published release's four files to the public
+`reckless-technology/uci-host-releases`, under their names and fixed ones, with `SHA256SUMS`, and wakes the website,
+which writes `updates/uci-host.json`; it needs the secret `PUBLIC_RELEASES_TOKEN`.
+
 ## CI
 
 `.github/workflows/build.yml`, on the organisation's self-hosted runners only: Linux (gcc, Release), Linux under
 AddressSanitizer and UndefinedBehaviorSanitizer, Linux coverage (gcovr, red under 90 % of `src/`'s lines but the app's
 entry point, `src/app/Main.cpp`, which opens a window and runs in the window suites), Windows (MSVC, Release), macOS
 (universal, each binary held to arm64 and x86_64 and to macOS 13.3, the app's bundle to its signature, its icon and a
-plist that asks for no microphone), clang-format 22.1.8, and `CI`, the one job to require. Every job checks the toolkit
+plist that asks for no microphone), each platform's packages unsigned (above), clang-format 22.1.8, and `CI`, the one
+job to require. Every job checks the toolkit
 submodule out with its read-only deploy key (`.github/actions/toolkit`); the window suites (label `window`) run under
 `xvfb-run` on Linux and on the runners' own displays elsewhere.
