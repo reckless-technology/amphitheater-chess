@@ -4,6 +4,7 @@
 
 #include "app/BoardView.h"
 #include "app/Commands.h"
+#include "app/EngineLog.h"
 #include "app/EvalGraph.h"
 #include "app/Faces.h"
 #include "app/MainController.h"
@@ -275,6 +276,58 @@ TEST(MainView, TheMovesAndTheLogShowWholeRowsKeptOnTheMoveShownAndTheNewestLine)
         EXPECT_EQ(log.height() % log.style().row_height, 0) << height;
         EXPECT_EQ(log.scroll() % log.style().row_height, 0) << "following the newest line at " << height;
     }
+}
+
+TEST(EngineLog, LongLinesWrapAtASpaceIndentedUnderTheirText)
+{
+    const std::string text = "< Pawnstar  info depth 24 pv e2e4 e7e5 g1f3";
+    const auto        rows = WrapLine(text, 24, 12);
+    ASSERT_EQ(rows.size(), 3u);
+    EXPECT_EQ(text.substr(rows[0].first, rows[0].second), "< Pawnstar  info depth");
+    EXPECT_EQ(text.substr(rows[1].first, rows[1].second), "24 pv e2e4");
+    EXPECT_EQ(text.substr(rows[2].first, rows[2].second), "e7e5 g1f3");
+    const auto unbroken = WrapLine("abcdefghijklmnopqrstuvwxyz", 10, 0);
+    ASSERT_EQ(unbroken.size(), 3u) << "a word longer than a row breaks where the row runs out";
+    EXPECT_EQ(unbroken[2], (std::pair<std::size_t, std::size_t>{20, 6}));
+    EXPECT_EQ(WrapLine("short", 40, 4).size(), 1u);
+    EXPECT_EQ(WrapLine(text, 0, 12).size(), 1u) << "no width, no wrapping";
+
+    EngineLogModel model;
+    model.Add("Pawnstar", LogDirection::kFromEngine, "info depth 24 pv e2e4 e7e5 g1f3");
+    model.Add("Zenith", LogDirection::kToEngine, "isready");
+    EXPECT_EQ(model.RowCount(), 2u);
+    EXPECT_TRUE(model.SetWrapColumns(24));
+    EXPECT_EQ(model.RowCount(), 4u);
+    EXPECT_EQ(model.CellText(1, 0), "            24 pv e2e4");
+    EXPECT_EQ(model.CellColour(1, 0), model.CellColour(0, 0)) << "a wrapped part in its line's colour";
+    EXPECT_NE(model.CellColour(3, 0), model.CellColour(0, 0));
+    EXPECT_FALSE(model.SetWrapColumns(24));
+    EXPECT_EQ(model.LineCount(), 2u);
+    EXPECT_EQ(model.Line(0), text);
+
+    for (std::size_t line = 0; line < EngineLogModel::kMostLines; ++line)
+    {
+        model.Add("Pawnstar", LogDirection::kFromEngine, "info depth 24 pv e2e4 e7e5 g1f3");
+    }
+    EXPECT_EQ(model.LineCount(), EngineLogModel::kMostLines);
+    EXPECT_EQ(model.RowCount(), 3 * EngineLogModel::kMostLines) << "the oldest lines' rows go with them";
+}
+
+TEST(EngineLog, TheLogWrapsToItsWidthByDefaultAndCanCut)
+{
+    MainView view(Pieces());
+    ShowSample(view);
+    view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
+    EngineLog &log = view.log();
+    EXPECT_TRUE(log.is_wrapping());
+    EXPECT_GT(log.model().wrap_columns(), 40);
+    EXPECT_GT(log.model().RowCount(), log.model().LineCount()) << "the sample's long lines wrap";
+    log.SetWrapping(false);
+    EXPECT_EQ(log.model().RowCount(), log.model().LineCount());
+    log.SetWrapping(true);
+    const int wide = log.model().wrap_columns();
+    view.SetBounds({MainView::kDesignWidth - 300, MainView::kDesignHeight});
+    EXPECT_LT(log.model().wrap_columns(), wide) << "a narrower window, shorter rows";
 }
 
 TEST(MovesModel, MovesFillRowsFromWhitesColumnOrBlacksAndTheCurrentOneIsLit)

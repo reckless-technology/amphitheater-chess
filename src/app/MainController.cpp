@@ -827,6 +827,7 @@ void MainController::Frame(double seconds)
     retiring_.erase(std::remove_if(retiring_.begin(), retiring_.end(),
                                    [](const std::unique_ptr<PlaySession> &session) { return session->IsFinished(); }),
                     retiring_.end());
+    view_.log().Fit(); // the face measured by the window, which a first layout may come before
     RefreshStrips();
     RefreshSearches();
 }

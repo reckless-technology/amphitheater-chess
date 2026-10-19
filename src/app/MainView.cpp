@@ -206,6 +206,7 @@ void MainView::Resized()
     const int log_height = log_.FittedHeight(std::clamp(h / 8, 100, kLogHeight)); // whole rows, as the moves
     const int log_top    = bottom - log_height;
     log_.view().SetBounds({left, log_top, right - left, log_height});
+    log_.Fit();
     const int foot_top   = log_top - kGap - kLabelHeight - kAnalysisHeight;
     const int graph_left = right - kGraphWidth;
     analysis_label_.SetBounds({left, foot_top, graph_left - kGap - left, kLabelHeight});
