@@ -146,7 +146,8 @@ class Fetch(unittest.TestCase):
                          "a platform the engine has no build for carries none of it")
 
     def test_a_companion_is_put_beside_every_build_held_to_its_hash_and_its_licence(self):
-        licence = (be.ROOT / "packaging" / "licences" / "COPYING.winpthreads.txt").read_text(encoding="utf-8")
+        licence = "Permission is hereby granted to use this runtime.\n"
+        (self.root / "COPYING.txt").write_text(licence, encoding="utf-8")
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as z:
             z.writestr("kit/bin/runtime.dll", b"a runtime")
@@ -155,7 +156,7 @@ class Fetch(unittest.TestCase):
         archive.write_bytes(buffer.getvalue())
         companion = {"file": "runtime.dll", "asset": "kit.zip", "member": "kit/bin/runtime.dll",
                      "member_sha256": sha(b"a runtime"), "licence_member": "kit/COPYING.txt",
-                     "licence": "packaging/licences/COPYING.winpthreads.txt"}
+                     "licence": str(self.root / "COPYING.txt")}
         folders = [self.root / "a", self.root / "b"]
         for folder in folders:
             folder.mkdir()
@@ -167,10 +168,9 @@ class Fetch(unittest.TestCase):
         with self.assertRaisesRegex(be.PinError, "read it"):
             be.place_companion({"id": "toy"}, dict(companion, licence_member="kit/bin/runtime.dll"), archive, folders)
 
-    def test_the_committed_companion_is_zeniths_winpthreads_on_windows_alone(self):
-        zenith = next(e for e in be.load_pins()["engines"] if e["id"] == "zenith")
-        self.assertEqual([c["file"] for c in zenith["companions"]["windows"]], ["libwinpthread-1.dll"])
-        self.assertEqual(sorted(zenith["companions"]), ["windows"])
+    def test_the_committed_pins_need_no_companion(self):
+        for engine in be.load_pins()["engines"]:
+            self.assertNotIn("companions", engine, f"{engine['id']}'s release carries everything it needs")
 
     def test_an_archive_without_its_member_is_refused(self):
         bare = self.releases.add("example/toy", "v1.0.0", "toy-1.0.0.exe", b"x")

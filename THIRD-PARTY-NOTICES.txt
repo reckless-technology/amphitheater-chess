@@ -5,9 +5,9 @@ EULA.txt. The window contains the third-party software below, each part used und
 which this file reproduces wherever the licence asks for it. Nothing in EULA.txt limits any right
 these licences give you.
 
-The installers also carry five chess engines - Pawnstar 1.0.0, Zenith 2.0.0, Pawnstar-Go 1.0.0,
-Pawnstar-RS 1.0.0, Stoopid Chess 3.0.0 - each a separate program, licensed under the GNU General
-Public License version 3 (section 13). Reckless UCI Host only starts them and talks to them over the
+The installers also carry five chess engines - Pawnstar 1.2.0, Zenith 2.1.0, Pawnstar-Go 1.2.0,
+Pawnstar-RS 1.2.0, Stoopid Chess 3.0.0 - each a separate program, licensed under the GNU General
+Public License version 3 (section 12). Reckless UCI Host only starts them and talks to them over the
 UCI protocol; it contains none of their code, and EULA.txt does not cover them. Each engine's
 section says where its corresponding source is.
 
@@ -19,13 +19,12 @@ Where each part is used
    4. libpng 1.6.51                                Reckless UCI Host (the window)
    5. zlib 1.3.0.1-motley                          Reckless UCI Host (the window)
    6. FreeType 2.13.3                              Reckless UCI Host (the window) on Linux
-   7. Pawnstar 1.0.0                               the installers
-   8. Zenith 2.0.0                                 the installers
-   9. Pawnstar-Go 1.0.0                            the installers
-  10. Pawnstar-RS 1.0.0                            the installers
+   7. Pawnstar 1.2.0                               the installers
+   8. Zenith 2.1.0                                 the installers
+   9. Pawnstar-Go 1.2.0                            the installers
+  10. Pawnstar-RS 1.2.0                            the installers
   11. Stoopid Chess 3.0.0                          the installers
-  12. libwinpthread-1.dll                          the installers on Windows
-  13. The GNU General Public License               every engine above
+  12. The GNU General Public License               every engine above
 
 ====================================================================================================
 1. Noto Serif 2.015
@@ -650,106 +649,106 @@ Legal Terms
 --- end of FTL.TXT ---
 
 ====================================================================================================
-7. Pawnstar 1.0.0, a chess engine
+7. Pawnstar 1.2.0, a chess engine
 Used in: the installers, as a separate program beside Reckless UCI Host
 ====================================================================================================
 
-Pawnstar 1.0.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it and/or
+Pawnstar 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the Free Software
 Foundation, version 3 of the License. It is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
+PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more details.
 
-The installers carry the executable of its release v1.0.0 unmodified, as published at
-https://github.com/reckless-technology/pawnstar/releases/tag/v1.0.0. It is a separate program:
+The installers carry the executable of its release v1.2.0 unmodified, as published at
+https://github.com/reckless-technology/pawnstar/releases/tag/v1.2.0. It is a separate program:
 Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
 and contains none of its code.
 
 The corresponding source of this version is the public repository
-https://github.com/reckless-technology/pawnstar at the tag v1.0.0:
-https://github.com/reckless-technology/pawnstar/tree/v1.0.0
+https://github.com/reckless-technology/pawnstar at the tag v1.2.0:
+https://github.com/reckless-technology/pawnstar/tree/v1.2.0
 
 The release also carries it as one archive:
-https://github.com/reckless-technology/pawnstar/releases/download/v1.0.0/pawnstar-1.0.0-source.tar.gz
+https://github.com/reckless-technology/pawnstar/releases/download/v1.2.0/pawnstar-1.2.0-source.tar.gz
 
 That source stays available there, without charge, for as long as this version of Reckless UCI Host
 is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-8. Zenith 2.0.0, a chess engine
+8. Zenith 2.1.0, a chess engine
 Used in: the installers, as a separate program beside Reckless UCI Host
 ====================================================================================================
 
-Zenith 2.0.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it and/or
+Zenith 2.1.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the Free Software
 Foundation, either version 3 of the License, or (at your option) any later version. It is
 distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License,
-section 13, for more details.
+section 12, for more details.
 
-The installers carry the executable of its release v2.0.0 unmodified, as published at
-https://github.com/reckless-technology/zenith/releases/tag/v2.0.0. It is a separate program:
+The installers carry the executable of its release v2.1.0 unmodified, as published at
+https://github.com/reckless-technology/zenith/releases/tag/v2.1.0. It is a separate program:
 Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
 and contains none of its code.
 
 The corresponding source of this version is the public repository
-https://github.com/reckless-technology/zenith at the tag v2.0.0:
-https://github.com/reckless-technology/zenith/tree/v2.0.0
+https://github.com/reckless-technology/zenith at the tag v2.1.0:
+https://github.com/reckless-technology/zenith/tree/v2.1.0
 
 GitHub serves it as one archive:
-https://github.com/reckless-technology/zenith/archive/refs/tags/v2.0.0.tar.gz
+https://github.com/reckless-technology/zenith/archive/refs/tags/v2.1.0.tar.gz
 
 That source stays available there, without charge, for as long as this version of Reckless UCI Host
 is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-9. Pawnstar-Go 1.0.0, a chess engine
+9. Pawnstar-Go 1.2.0, a chess engine
 Used in: the installers, as a separate program beside Reckless UCI Host
 ====================================================================================================
 
-Pawnstar-Go 1.0.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it
+Pawnstar-Go 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it
 and/or modify it under the terms of the GNU General Public License as published by the Free Software
 Foundation, version 3 of the License. It is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
+PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more details.
 
-The installers carry the executable of its release v1.0.0 unmodified, as published at
-https://github.com/reckless-technology/pawnstar-go/releases/tag/v1.0.0. It is a separate program:
+The installers carry the executable of its release v1.2.0 unmodified, as published at
+https://github.com/reckless-technology/pawnstar-go/releases/tag/v1.2.0. It is a separate program:
 Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
 and contains none of its code.
 
 The corresponding source of this version is the public repository
-https://github.com/reckless-technology/pawnstar-go at the tag v1.0.0:
-https://github.com/reckless-technology/pawnstar-go/tree/v1.0.0
+https://github.com/reckless-technology/pawnstar-go at the tag v1.2.0:
+https://github.com/reckless-technology/pawnstar-go/tree/v1.2.0
 
 The release also carries it as one archive:
-https://github.com/reckless-technology/pawnstar-go/releases/download/v1.0.0/pawnstar-go-1.0.0-source.tar.gz
+https://github.com/reckless-technology/pawnstar-go/releases/download/v1.2.0/pawnstar-go-1.2.0-source.tar.gz
 
 That source stays available there, without charge, for as long as this version of Reckless UCI Host
 is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-10. Pawnstar-RS 1.0.0, a chess engine
+10. Pawnstar-RS 1.2.0, a chess engine
 Used in: the installers, as a separate program beside Reckless UCI Host
 ====================================================================================================
 
-Pawnstar-RS 1.0.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it
+Pawnstar-RS 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it
 and/or modify it under the terms of the GNU General Public License as published by the Free Software
 Foundation, version 3 of the License. It is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
+PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more details.
 
-The installers carry the executable of its release v1.0.0 unmodified, as published at
-https://github.com/reckless-technology/pawnstar-rs/releases/tag/v1.0.0. It is a separate program:
+The installers carry the executable of its release v1.2.0 unmodified, as published at
+https://github.com/reckless-technology/pawnstar-rs/releases/tag/v1.2.0. It is a separate program:
 Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
 and contains none of its code.
 
 The corresponding source of this version is the public repository
-https://github.com/reckless-technology/pawnstar-rs at the tag v1.0.0:
-https://github.com/reckless-technology/pawnstar-rs/tree/v1.0.0
+https://github.com/reckless-technology/pawnstar-rs at the tag v1.2.0:
+https://github.com/reckless-technology/pawnstar-rs/tree/v1.2.0
 
 The release also carries it as one archive:
-https://github.com/reckless-technology/pawnstar-rs/releases/download/v1.0.0/pawnstar-rs-1.0.0-source.tar.gz
+https://github.com/reckless-technology/pawnstar-rs/releases/download/v1.2.0/pawnstar-rs-1.2.0-source.tar.gz
 
 That source stays available there, without charge, for as long as this version of Reckless UCI Host
 is offered for download. You may also ask for it at hello@recklesstechnology.com.
@@ -763,7 +762,7 @@ Stoopid Chess 3.0.0, Copyright (C) 2009-2026 Jonny Reckless, is free software: y
 it and/or modify it under the terms of the GNU General Public License as published by the Free
 Software Foundation, version 3 of the License. It is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
+PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more details.
 
 The installers carry the executable of its release v3.0.0 unmodified, as published at
 https://github.com/reckless-technology/stoopid-chess/releases/tag/v3.0.0. It is a separate program:
@@ -781,75 +780,7 @@ That source stays available there, without charge, for as long as this version o
 is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-12. libwinpthread-1.dll, beside Zenith
-Used in: the installers on Windows, beside Zenith
-====================================================================================================
-
-Winpthreads, the MinGW-w64 POSIX threads library Zenith's Windows builds link dynamically, taken
-unmodified from the release 20261006 of https://github.com/mstorsjo/llvm-mingw
-(llvm-mingw-20261006-ucrt-x86_64.zip), and installed beside Zenith's executable, which loads it. Its
-licence, as that release carries it:
-
-Copyright (c) 2011 mingw-w64 project
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-
-/*
- * Parts of this library are derived by:
- *
- * Posix Threads library for Microsoft Windows
- *
- * Use at own risk, there is no implied warranty to this code.
- * It uses undocumented features of Microsoft Windows that can change
- * at any time in the future.
- *
- * (C) 2010 Lockless Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- *
- *  * Redistributions of source code must retain the above copyright notice,
- *    this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *  * Neither the name of Lockless Inc. nor the names of its contributors may be
- *    used to endorse or promote products derived from this software without
- *    specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AN
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
- * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-====================================================================================================
-13. The GNU General Public License, version 3
+12. The GNU General Public License, version 3
 Used in: every engine above
 ====================================================================================================
 

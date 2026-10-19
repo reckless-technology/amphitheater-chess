@@ -9,8 +9,10 @@
 # GH_TOKEN, where set, lifts the GitHub API's anonymous rate limit; the releases are public, so none is needed.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
-python=python3
-for candidate in "$root/.venv/bin/python" "$root/.venv/Scripts/python.exe"; do
-    if [ -x "$candidate" ]; then python=$candidate; break; fi
+python=""
+# The first that runs: Windows' python3 on Git's bash may be the Store's stand-in, which only says Python is missing.
+for candidate in "$root/.venv/bin/python" "$root/.venv/Scripts/python.exe" python3 python; do
+    if "$candidate" -c "import sys; sys.exit(sys.version_info < (3, 9))" > /dev/null 2>&1; then python=$candidate; break; fi
 done
+[ -n "$python" ] || { echo "update-engines.sh: no Python 3.9 or later (tools/setup-dev.sh makes the repository's .venv)" >&2; exit 1; }
 exec "$python" -I "$root/tools/bundled_engines.py" update "$@"

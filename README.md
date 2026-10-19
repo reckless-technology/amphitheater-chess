@@ -260,12 +260,12 @@ Packaging downloads by pin into the tool cache and refuses an asset whose hash d
 Every engine must need nothing of a machine but its system. On Windows the stage reads each engine's import table and
 refuses a DLL that is neither Windows' own nor beside the engine, and it starts each engine with only the system's
 folders on the PATH, so a developer's toolchain cannot hide a missing runtime; on macOS every library an engine loads
-must be the system's. A library a release needs and does not carry can be pinned beside it as a companion, with its
-archive's hash, its own hash and its licence (which the notices reproduce): Zenith 2.0.0's Windows builds import
-libwinpthread-1.dll, so the pins put llvm-mingw 20261006's copy beside both until a Zenith release links it
-statically - delete the `companions` entry then. Pawnstar 1.0.0's and Pawnstar-RS 1.0.0's Windows builds import the
-VC++ runtime, so a release refuses them until their statically linked releases are pinned; a pull request's run leaves
-such an engine out with a warning (`--leave-out-unfit`) so the rest of the packaging is still proven.
+must be the system's. Every pinned release meets that: each Windows engine links its compiler's runtime statically
+and imports Windows' own DLLs alone. Should a release need a library it does not carry, the pins can put one beside
+it as a companion (an engine's `companions`, by platform: the archive it comes from with its hash, the file's own hash
+and its licence, which the notices then reproduce), and a release refuses an engine that still lacks one; a pull
+request's run leaves such an engine out with a warning (`--leave-out-unfit`) so the rest of the packaging is still
+proven.
 
 | Engine | Windows, Linux (x86-64) | macOS |
 |---|---|---|

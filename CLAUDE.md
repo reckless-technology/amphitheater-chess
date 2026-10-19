@@ -19,8 +19,8 @@ releases, then the notices are written again), laid out by `packaging/stage.py` 
 seeded into a person's engine list at every start by `src/app/BundledEngines.h`, whose rules the README spells out and
 `tests/app/BundledEnginesTest.cpp` holds. On macOS the bundled engines are arm64 only (the host is universal). No
 engine may ship that needs more than the system: the stage refuses a Windows engine importing a DLL Windows lacks (a
-compiler's runtime) unless a pinned companion lies beside it (Zenith's libwinpthread-1.dll, until a static Zenith
-exists), and starts every engine with only the system on its PATH.
+compiler's runtime) unless a pinned companion lies beside it (none is needed: every pinned release links its runtime
+statically), and starts every engine with only the system on its PATH.
 
 **The GUI is built on reckless-toolkit**, a git submodule at `external/reckless-toolkit` (private; CI reads it with
 the deploy key in the secret `RECKLESS_TOOLKIT_DEPLOY_KEY`, through `.github/actions/toolkit`), added with the
