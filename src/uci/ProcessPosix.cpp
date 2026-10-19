@@ -36,9 +36,22 @@ bool MakePipe(int ends[2])
     {
         return false;
     }
-    fcntl(ends[0], F_SETFD, FD_CLOEXEC);
-    fcntl(ends[1], F_SETFD, FD_CLOEXEC);
-    return true;
+    for (int end = 0; end < 2; ++end)
+    {
+        // A host started with its standard streams closed gets them back as pipe ends; one numbered 0, 1 or 2
+        // would make the child's dup2 onto it a no-op that leaves close-on-exec set. Every end goes to 3 or above.
+        if (ends[end] <= STDERR_FILENO)
+        {
+            const int moved = fcntl(ends[end], F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+            close(ends[end]);
+            ends[end] = moved;
+        }
+        else
+        {
+            fcntl(ends[end], F_SETFD, FD_CLOEXEC);
+        }
+    }
+    return ends[0] >= 0 && ends[1] >= 0;
 }
 
 /**
@@ -82,11 +95,13 @@ Result<std::unique_ptr<ChildProcess>> ChildProcess::Start(const ProcessOptions &
     static std::once_flag ignore_sigpipe;
     std::call_once(ignore_sigpipe, [] { std::signal(SIGPIPE, SIG_IGN); });
 
-    std::unique_ptr<ChildProcess> child(new ChildProcess());
-    Platform                     &platform = *child->platform_;
-    int                           input[2] = {-1, -1}, output[2] = {-1, -1}, error[2] = {-1, -1};
-    const auto                    close_all = [&]() {
-        for (int *ends : {input, output, error})
+    // The ChildProcess is made only once the spawn has succeeded, so no ChildProcess ever holds a process that did
+    // not start: its destructor kills what it holds, and a pid of -1 there would be kill(-1), every process the user
+    // owns.
+    pid_t      pid      = -1;
+    int        input[2] = {-1, -1}, output[2] = {-1, -1}, error[2] = {-1, -1}, wake[2] = {-1, -1};
+    const auto close_all = [&]() {
+        for (int *ends : {input, output, error, wake})
         {
             CloseDescriptor(ends[0]);
             CloseDescriptor(ends[1]);
@@ -105,7 +120,7 @@ Result<std::unique_ptr<ChildProcess>> ChildProcess::Start(const ProcessOptions &
     {
         std::lock_guard lock(spawn_mutex);
         if (!MakePipe(input) || !MakePipe(output) || (options.does_capture_error_output && !MakePipe(error)) ||
-            !MakePipe(platform.wake))
+            !MakePipe(wake))
         {
             const int code = errno;
             close_all();
@@ -138,32 +153,36 @@ Result<std::unique_ptr<ChildProcess>> ChildProcess::Start(const ProcessOptions &
         posix_spawnattr_setpgroup(&attributes, 0);
         posix_spawnattr_setflags(&attributes, POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
         const bool is_bare_name = options.executable.find('/') == std::string::npos;
-        const int result = is_bare_name ? posix_spawnp(&platform.pid, options.executable.c_str(), &actions, &attributes,
-                                                       arguments.data(), environ)
-                                        : posix_spawn(&platform.pid, options.executable.c_str(), &actions, &attributes,
-                                                      arguments.data(), environ);
+        const int  result =
+            is_bare_name
+                ? posix_spawnp(&pid, options.executable.c_str(), &actions, &attributes, arguments.data(), environ)
+                : posix_spawn(&pid, options.executable.c_str(), &actions, &attributes, arguments.data(), environ);
         posix_spawn_file_actions_destroy(&actions);
         posix_spawnattr_destroy(&attributes);
-        if (result != 0)
+        if (result != 0 || pid <= 0)
         {
             close_all();
-            CloseDescriptor(platform.wake[0]);
-            CloseDescriptor(platform.wake[1]);
             return Error{"cannot start '" + options.executable + "': " + std::strerror(result)};
         }
     }
+    std::unique_ptr<ChildProcess> child(new ChildProcess());
+    Platform                     &platform = *child->platform_;
+    platform.pid                           = pid;
+    platform.wake[0]                       = wake[0];
+    platform.wake[1]                       = wake[1];
+
     // The child's ends close here, so the pipes end when the child does.
     CloseDescriptor(input[0]);
     CloseDescriptor(output[1]);
     CloseDescriptor(error[1]);
     platform.input = input[1];
 
-    const int  wake   = platform.wake[0];
-    const auto reader = [wake](int descriptor) {
-        return [descriptor, wake](char *buffer, std::size_t size) -> long {
+    const int  wake_end = platform.wake[0];
+    const auto reader   = [wake_end](int descriptor) {
+        return [descriptor, wake_end](char *buffer, std::size_t size) -> long {
             while (true)
             {
-                pollfd watched[2] = {{descriptor, POLLIN, 0}, {wake, POLLIN, 0}};
+                pollfd watched[2] = {{descriptor, POLLIN, 0}, {wake_end, POLLIN, 0}};
                 if (poll(watched, 2, -1) < 0)
                 {
                     if (errno == EINTR)
@@ -288,7 +307,9 @@ std::optional<int> ChildProcess::ExitCode()
 
 bool ChildProcess::IsRunning()
 {
-    return !ExitCode().has_value();
+    // A child that never started (its spawn failed, pid -1) is not running: it must never reach Kill's signals, where
+    // a pid of -1 or 0 would signal every process the user owns, or the host's own process group.
+    return platform_->pid > 0 && !ExitCode().has_value();
 }
 
 bool ChildProcess::WaitForExit(std::chrono::milliseconds timeout)
@@ -307,9 +328,13 @@ bool ChildProcess::WaitForExit(std::chrono::milliseconds timeout)
 
 void ChildProcess::Kill()
 {
+    if (platform_->pid <= 0)
+    {
+        return; // Never started: there is nothing to signal, and kill(-1) or kill(0) would signal far too much.
+    }
     if (IsRunning())
     {
-        kill(-platform_->pid, SIGKILL);
+        kill(-platform_->pid, SIGKILL); // Its process group, its own children among it.
         kill(platform_->pid, SIGKILL);
     }
     std::lock_guard lock(platform_->mutex);
