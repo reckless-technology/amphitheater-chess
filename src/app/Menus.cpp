@@ -8,96 +8,85 @@ namespace uci_host::app
 namespace
 {
 
-using reckless::view::MenuItem;
+using reckless::app::MenuEntry;
+using reckless::app::Shortcut;
+using reckless::app::ShortcutKey;
 
 /**
  * An item.
- * @param text Its text.
- * @param command What it does.
+ * @param title Its text.
+ * @param command What it does: its id.
+ * @param shortcut Its key; none for no key.
  * @param is_enabled Whether it can be chosen now.
- * @param is_ticked Whether it shows a tick.
+ * @param is_checked Whether it shows a tick.
  * @return The item.
  */
-MenuItem Item(std::string text, int command, bool is_enabled = true, bool is_ticked = false)
+MenuEntry Item(std::string title, int command, Shortcut shortcut = {}, bool is_enabled = true, bool is_checked = false)
 {
-    MenuItem item;
-    item.text    = std::move(text);
-    item.id      = command;
-    item.enabled = is_enabled;
-    item.ticked  = is_ticked;
-    return item;
-}
-
-/** @return A rule between groups. */
-MenuItem Separator()
-{
-    MenuItem item;
-    item.separator = true;
-    return item;
+    MenuEntry entry = MenuEntry::Item(std::move(title), command, shortcut);
+    entry.enabled   = is_enabled;
+    entry.checked   = is_checked;
+    return entry;
 }
 
 /**
  * The games a person may follow on the board, as a submenu.
  * @param state What is going on.
- * @return The item, disabled with no game to follow.
+ * @return The entry, disabled with no game to follow.
  */
-MenuItem WatchItems(const MenuState &state)
+MenuEntry WatchItems(const MenuState &state)
 {
-    MenuItem item = Item("Watch a game", 0, !state.watchable_games.empty());
+    std::vector<MenuEntry> games;
     for (const auto &[number, title] : state.watchable_games)
     {
-        item.submenu.push_back(Item(title, kWatchGameBase + number));
+        games.push_back(Item(title, kWatchGameBase + number));
     }
-    return item;
+    if (games.empty())
+    {
+        return Item("Watch a game", kNoCommand, {}, false);
+    }
+    MenuEntry entry = MenuEntry::Menu("Watch a game", std::move(games));
+    return entry;
 }
 
 } // namespace
 
-std::vector<MenuBarEntry> BuildMenus(std::function<MenuState()> state)
+reckless::app::MenuBar BuildMenuBar(const MenuState &state)
 {
-    std::vector<MenuBarEntry> menus;
-    menus.push_back({"File", [] {
-                         return std::vector<MenuItem>{Item("Open PGN...", kOpenPgn), Item("Save PGN...", kSavePgn),
-                                                      Separator(), Item("Quit", kQuit)};
-                     }});
-    menus.push_back({"Edit", [] {
-                         return std::vector<MenuItem>{Item("Copy FEN", kCopyFen), Item("Copy PGN", kCopyPgn),
-                                                      Item("Paste FEN or PGN", kPasteFen)};
-                     }});
-    menus.push_back({"Game", [state] {
-                         const MenuState s = state();
-                         return std::vector<MenuItem>{Item("New game...", kNewGame),
-                                                      Item("Take back", kTakeBack, s.can_take_back),
-                                                      Item("Stop the game", kStopGame, s.is_game_running),
-                                                      Separator(),
-                                                      Item("First position", kFirst, s.can_step_back),
-                                                      Item("Back a move", kBack, s.can_step_back),
-                                                      Item("Forward a move", kForward, s.can_step_forward),
-                                                      Item("Last position", kLast, s.can_step_forward)};
-                     }});
-    menus.push_back({"Engines", [state] {
-                         const MenuState s = state();
-                         return std::vector<MenuItem>{Item("Manage engines...", kEngineManager), Separator(),
-                                                      Item("Analyse", kAnalyse, s.has_engines, s.is_analysing)};
-                     }});
-    menus.push_back({"Match", [state] {
-                         const MenuState s = state();
-                         return std::vector<MenuItem>{
-                             Item("New match...", kNewMatch, !s.is_match_running && !s.is_tournament_running),
-                             Item("Stop the match", kStopMatch, s.is_match_running), WatchItems(s)};
-                     }});
-    menus.push_back({"Tournament", [state] {
-                         const MenuState s = state();
-                         return std::vector<MenuItem>{
-                             Item("New tournament...", kNewTournament, !s.is_match_running && !s.is_tournament_running),
-                             Item("Stop the tournament", kStopTournament, s.is_tournament_running),
-                             Item("Standings and crosstable", kShowStandings, s.has_standings), WatchItems(s)};
-                     }});
-    menus.push_back(
-        {"View",
-         [] { return std::vector<MenuItem>{Item("Flip the board", kFlip), Item("Clear the engine log", kClearLog)}; }});
-    menus.push_back({"Help", [] { return std::vector<MenuItem>{Item("About Reckless UCI Host", kAbout)}; }});
-    return menus;
+    const bool             is_competing = state.is_match_running || state.is_tournament_running;
+    reckless::app::MenuBar bar{{
+        MenuEntry::Menu("File", {Item("Open PGN...", kOpenPgn, Shortcut::Primary('o')),
+                                 Item("Save PGN...", kSavePgn, Shortcut::Primary('s')), MenuEntry::Separator(),
+                                 Item("Quit", kQuit, Shortcut::Primary('q'))}),
+        MenuEntry::Menu("Edit", {Item("Copy FEN", kCopyFen, Shortcut::Primary('c')),
+                                 Item("Copy PGN", kCopyPgn, Shortcut::Primary('c', true)),
+                                 Item("Paste FEN or PGN", kPasteFen, Shortcut::Primary('v'))}),
+        MenuEntry::Menu("Game",
+                        {Item("New game...", kNewGame, Shortcut::Primary('n')),
+                         Item("Take back", kTakeBack, Shortcut::Primary('z'), state.can_take_back),
+                         Item("Stop the game", kStopGame, {}, state.is_game_running), MenuEntry::Separator(),
+                         Item("First position", kFirst, Shortcut::Plain(ShortcutKey::kHome), state.can_step_back),
+                         Item("Back a move", kBack, Shortcut::Plain(ShortcutKey::kLeft), state.can_step_back),
+                         Item("Forward a move", kForward, Shortcut::Plain(ShortcutKey::kRight), state.can_step_forward),
+                         Item("Last position", kLast, Shortcut::Plain(ShortcutKey::kEnd), state.can_step_forward)}),
+        MenuEntry::Menu("Engines",
+                        {Item("Manage engines...", kEngineManager, Shortcut::Primary('e')), MenuEntry::Separator(),
+                         Item("Analyse", kAnalyse, {}, state.has_engines, state.is_analysing)}),
+        MenuEntry::Menu("Match", {Item("New match...", kNewMatch, {}, !is_competing),
+                                  Item("Stop the match", kStopMatch, {}, state.is_match_running), WatchItems(state)}),
+        MenuEntry::Menu("Tournament",
+                        {Item("New tournament...", kNewTournament, {}, !is_competing),
+                         Item("Stop the tournament", kStopTournament, {}, state.is_tournament_running),
+                         Item("Standings and crosstable", kShowStandings, {}, state.has_standings), WatchItems(state)}),
+        MenuEntry::Menu(
+            "View", {Item("Flip the board", kFlip, Shortcut::Plain(U'f')), Item("Clear the engine log", kClearLog)}),
+        MenuEntry::Menu("Help", {Item("About Reckless UCI Host", kAbout)}),
+    }};
+    for (MenuEntry &menu : bar.menus)
+    {
+        menu.enabled = !state.is_dialog_open;
+    }
+    return bar;
 }
 
 } // namespace uci_host::app

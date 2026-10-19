@@ -430,8 +430,11 @@ TEST(MainController, NavigationStepsThroughTheGameAndFlipTurnsTheBoard)
     controller.Command(kFlip);
     EXPECT_TRUE(view.board().flipped());
     EXPECT_EQ(view.top_strip().state().name, "White") << "White's strip moves to the top";
-    EXPECT_TRUE(view.KeyPressed({reckless::view::Key::kRight, 0, {}}));
-    EXPECT_EQ(controller.view_ply(), 3);
+    controller.Frame(0.0); // the menu bar set again for the position shown
+    ASSERT_NE(controller.own_menus(), nullptr);
+    EXPECT_TRUE(
+        controller.own_menus()->PressShortcut(reckless::app::Shortcut::Plain(reckless::app::ShortcutKey::kRight)));
+    EXPECT_EQ(controller.view_ply(), 3) << "Right steps forward through the bar's shortcut";
 }
 
 TEST(MainView, TheWindowDrawsThroughSkiaAndTheBoardGrowsWithIt)
@@ -456,34 +459,6 @@ TEST(MainView, TheWindowDrawsThroughSkiaAndTheBoardGrowsWithIt)
         std::ofstream file(std::filesystem::path(*dir) / "uci-host-main-window.png", std::ios::binary);
         file.write(reinterpret_cast<const char *>(png.data()), static_cast<std::streamsize>(png.size()));
     }
-}
-
-} // namespace uci_host::app
-
-namespace uci_host::app
-{
-
-TEST(MainView, ShortcutsWithCommandTellTheirCommands)
-{
-    MainView         view(Pieces());
-    std::vector<int> told;
-    view.on_command  = [&](int command) { told.push_back(command); };
-    const auto press = [&](char32_t letter, bool command, bool shift = false) {
-        reckless::view::KeyEvent key;
-        key.key               = reckless::view::Key::kCharacter;
-        key.character         = letter;
-        key.modifiers.command = command;
-        key.modifiers.shift   = shift;
-        return view.KeyPressed(key);
-    };
-    EXPECT_TRUE(press(U'o', true));
-    EXPECT_TRUE(press(U'S', true));
-    EXPECT_TRUE(press(U'c', true, true));
-    EXPECT_TRUE(press(U'z', true));
-    EXPECT_TRUE(press(U'f', false));
-    EXPECT_FALSE(press(U'k', true));
-    EXPECT_FALSE(press(U'o', false));
-    EXPECT_EQ(told, (std::vector<int>{kOpenPgn, kSavePgn, kCopyPgn, kTakeBack, kFlip}));
 }
 
 } // namespace uci_host::app

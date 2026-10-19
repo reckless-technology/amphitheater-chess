@@ -16,6 +16,7 @@
 #include "Window.h"
 
 #include <cstdio>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -55,6 +56,15 @@ int main(int argc, char **argv)
     services.read_clipboard  = [&platform] { return platform->ClipboardText(); };
     services.write_clipboard = [&platform](const std::string &text) { return platform->SetClipboardText(text); };
     services.quit            = [&platform] { platform->CallSoon([&platform] { platform->Quit(); }); };
+    // The menu bar the platform's own - the screen's on a Mac, the window's on Windows - with its shortcuts working
+    // whichever view has the keyboard; on Linux, which has none, the platform's bar drawn across the window's top.
+    services.set_menu_bar = [&platform](const reckless::app::MenuBar &bar, std::function<void(int id)> chosen) {
+        platform->SetMenuBar(bar, std::move(chosen));
+    };
+    if (!platform->HasNativeMenuBar())
+    {
+        view.SetMenuBarView(platform->MakeMenuBarView(uci_host::app::theme::MenuBarLook()));
+    }
     uci_host::app::MainController controller(view, uci_host::app::ControllerFiles{}, services);
     for (const std::string &file : pgn_files)
     {
@@ -65,7 +75,8 @@ int main(int argc, char **argv)
     root.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
 
     reckless::app::AppRunHooks hooks;
-    hooks.on_frame = [&](double seconds) {
+    hooks.has_menu_bar = true;
+    hooks.on_frame     = [&](double seconds) {
         controller.Frame(seconds);
         root.Frame();
     };

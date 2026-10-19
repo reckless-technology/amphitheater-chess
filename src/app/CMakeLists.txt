@@ -32,7 +32,6 @@ add_library(uci_host_gui STATIC
     GamePickerDialog.cpp
     MainController.cpp
     MainView.cpp
-    MenuBar.cpp
     Menus.cpp
     MovesList.cpp
     NewGameDialog.cpp

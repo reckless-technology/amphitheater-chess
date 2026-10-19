@@ -137,10 +137,16 @@ row at its top. The last move lights both its squares, each shade in its own tin
 
 The pieces are the Staunton SVGs, carried inside the binary and drawn by the toolkit's SVG reader at whatever size the
 squares are. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
-promotion; the keys step through the game (Left, Right, Home, End) and F flips the board. With Command on a Mac and
-Control elsewhere, N starts a new game, O and S open and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN
-or a PGN, Z takes back, E manages the engines and Q quits; a list or a line that has the keyboard keeps its own keys.
-The lists' scroll bars are in the accent.
+promotion.
+
+The menu bar is the platform's own, built from the window's state by `Menus.h` on the toolkit's one description of a
+bar: the screen's menu bar on a Mac, the window's on Windows, drawn across the window's top on Linux (and in the render
+tool's images). Every item's shortcut shows beside it, and the platform offers every key no view takes to the bar, so
+the keys work as soon as the window has the keyboard, with no click into it first: Left, Right, Home and End step
+through the game and F flips the board; with Command on a Mac and Control elsewhere, N starts a new game, O and S open
+and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, Z takes back, E manages the engines and Q
+quits. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is open. The
+lists' scroll bars are in the accent.
 
 Game > New game plays a game on the board: either side the person at the window or any configured engine, under a
 time control (a preset or the command line's syntax), from the starting position or the position shown. The game is

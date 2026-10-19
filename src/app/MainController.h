@@ -42,8 +42,9 @@ struct GameInfo
     std::string score;           ///< A match's or a tournament's score so far.
 };
 
-/** What the controller asks of the window and the platform: the clipboard, the file dialog, the app's end. Each left
-    empty is the window's own: the clipboard and the dialog through the view's host, and no quit. */
+/** What the controller asks of the window and the platform: the clipboard, the file dialog, the app's end, the menu
+    bar. Each left empty is the window's own: the clipboard and the dialog through the view's host, no quit, and a menu
+    bar drawn across the window's top. */
 struct ControllerServices
 {
     std::function<std::string()>                 read_clipboard;  ///< The clipboard's text.
@@ -52,6 +53,9 @@ struct ControllerServices
     std::function<void(const reckless::view::FileRequest &request, std::function<void(const std::string &)> picked)>
                           choose_file;
     std::function<void()> quit; ///< File > Quit.
+    /** The menu bar shown, as the platform shows it (AppPlatform::SetMenuBar): `chosen` runs with each entry chosen,
+        by its click or its shortcut. The controller sets it again whenever what the menus can do changes. */
+    std::function<void(const reckless::app::MenuBar &bar, std::function<void(int id)> chosen)> set_menu_bar;
 };
 
 /** Where the controller keeps what it keeps. */
@@ -222,6 +226,19 @@ class MainController
     /** @return What the menus show as possible now. */
     MenuState Menus() const;
 
+    /** @return The menu bar as the controller last set it. */
+    const reckless::app::MenuBar &menu_bar() const
+    {
+        return menu_bar_;
+    }
+
+    /** @return The window's own menu bar - its model, drawn across the window's top - where the platform's is not
+        used; null where it is. */
+    reckless::app::MenuBarController *own_menus()
+    {
+        return own_menus_.get();
+    }
+
     /** @return The last thing that went wrong, as the status bar says it; empty for nothing. */
     const std::string &last_error() const
     {
@@ -237,6 +254,9 @@ class MainController
 
     /** The strips' names, details and clocks. */
     void RefreshStrips();
+
+    /** The menu bar set again when what the menus can do has changed since it was last set. */
+    void RefreshMenuBar();
 
     /** The analysis panel, the arrow and the status bar, from the engines' searches. */
     void RefreshSearches();
@@ -285,6 +305,10 @@ class MainController
 
     /** @return Whether the board waits for the person's move at the position shown. */
     bool IsPersonToMove() const;
+
+    std::shared_ptr<reckless::app::MenuBarController> own_menus_;   ///< The window's own bar, where no platform's.
+    std::optional<MenuState>                          menus_shown_; ///< What the menu bar was last set for.
+    reckless::app::MenuBar                            menu_bar_;    ///< The menu bar as last set.
 
     MainView                     &view_;       ///< The view.
     ControllerServices            services_;   ///< The clipboard, the file dialog, the app's end.

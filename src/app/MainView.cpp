@@ -40,7 +40,6 @@ MainView::MainView(const PieceSet &pieces)
     nav_[4].button->tooltip = "Turn the board round (F).";
     nav_[5].button->tooltip = "The selected engines analyse the position shown.";
 
-    AddChild(menu_bar_);
     AddChild(top_strip_);
     AddChild(board_);
     AddChild(bottom_strip_);
@@ -59,8 +58,7 @@ MainView::MainView(const PieceSet &pieces)
     AddChild(log_.view());
     AddChild(status_);
 
-    menu_bar_.on_command = [this](int command) { Tell(command); };
-    board_.on_move       = [this](chess::Move move) {
+    board_.on_move = [this](chess::Move move) {
         if (on_move)
         {
             on_move(move);
@@ -167,9 +165,18 @@ void MainView::SetStatus(std::vector<std::string> items)
     status_.SetItems(std::move(items));
 }
 
-void MainView::SetMenus(std::vector<MenuBarEntry> entries)
+void MainView::SetMenuBarView(std::unique_ptr<reckless::app::MenuBarView> bar)
 {
-    menu_bar_.SetEntries(std::move(entries));
+    if (menu_bar_)
+    {
+        RemoveChild(*menu_bar_);
+    }
+    menu_bar_ = std::move(bar);
+    if (menu_bar_)
+    {
+        AddChild(*menu_bar_);
+    }
+    Resized();
 }
 
 void MainView::SetOverlay(reckless::view::View *overlay)
@@ -192,13 +199,17 @@ void MainView::Resized()
     {
         overlay_->SetBounds(LocalBounds());
     }
-    const int w = width();
-    const int h = height();
-    menu_bar_.SetBounds({0, 0, w, kMenuHeight});
+    const int w           = width();
+    const int h           = height();
+    const int menu_height = menu_bar_ ? kMenuHeight : 0;
+    if (menu_bar_)
+    {
+        menu_bar_->SetBounds({0, 0, w, menu_height});
+    }
     status_.SetBounds({0, h - kStatusHeight, w, kStatusHeight});
 
     const int left   = kMargin;
-    const int top    = kMenuHeight + kMargin;
+    const int top    = menu_height + kMargin;
     const int right  = w - kMargin;
     const int bottom = h - kStatusHeight - kMargin;
 
@@ -260,57 +271,6 @@ void MainView::Resized()
 void MainView::Paint(reckless::gfx::Canvas &c)
 {
     c.FillAll(theme::kWindow);
-}
-
-bool MainView::KeyPressed(const reckless::view::KeyEvent &key)
-{
-    using reckless::view::Key;
-    switch (key.key)
-    {
-    case Key::kLeft:
-        Tell(kBack);
-        return true;
-    case Key::kRight:
-        Tell(kForward);
-        return true;
-    case Key::kHome:
-        Tell(kFirst);
-        return true;
-    case Key::kEnd:
-        Tell(kLast);
-        return true;
-    case Key::kCharacter: {
-        const char32_t letter =
-            key.character >= U'A' && key.character <= U'Z' ? key.character - U'A' + U'a' : key.character;
-        if (!key.modifiers.command)
-        {
-            if (letter == U'f')
-            {
-                Tell(kFlip);
-                return true;
-            }
-            return false;
-        }
-        // The window's shortcuts: Command on a Mac, Control elsewhere.
-        const int command = letter == U'n'   ? kNewGame
-                            : letter == U'o' ? kOpenPgn
-                            : letter == U's' ? kSavePgn
-                            : letter == U'c' ? (key.modifiers.shift ? kCopyPgn : kCopyFen)
-                            : letter == U'v' ? kPasteFen
-                            : letter == U'z' ? kTakeBack
-                            : letter == U'e' ? kEngineManager
-                            : letter == U'q' ? kQuit
-                                             : kNoCommand;
-        if (command == kNoCommand)
-        {
-            return false;
-        }
-        Tell(command);
-        return true;
-    }
-    default:
-        return false;
-    }
 }
 
 } // namespace uci_host::app

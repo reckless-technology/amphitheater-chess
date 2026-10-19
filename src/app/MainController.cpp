@@ -122,8 +122,18 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
     view_.on_command    = [this](int command) { Command(command); };
     view_.on_select_ply = [this](int ply) { ShowPly(ply); };
     view_.on_move       = [this](chess::Move move) { BoardMove(move); };
-    view_.SetMenus(BuildMenus([this] { return Menus(); }));
+    if (!services_.set_menu_bar)
+    {
+        // No platform's bar: the window's own, drawn across its top, its shortcuts pressed by whoever drives it.
+        own_menus_ = std::make_shared<reckless::app::MenuBarController>();
+        view_.SetMenuBarView(std::make_unique<reckless::app::MenuBarView>(own_menus_, theme::MenuBarLook()));
+        services_.set_menu_bar = [menus = own_menus_](const reckless::app::MenuBar &bar,
+                                                      std::function<void(int id)>   chosen) {
+            menus->Set(bar, std::move(chosen));
+        };
+    }
     Refresh();
+    RefreshMenuBar();
 }
 
 MainController::~MainController()
@@ -837,6 +847,7 @@ void MainController::Frame(double seconds)
                                    [](const std::unique_ptr<PlaySession> &session) { return session->IsFinished(); }),
                     retiring_.end());
     view_.log().Fit(); // the face measured by the window, which a first layout may come before
+    RefreshMenuBar();
     RefreshStrips();
     RefreshSearches();
 }
@@ -1023,9 +1034,22 @@ void MainController::RefreshSearches()
     }
 }
 
+void MainController::RefreshMenuBar()
+{
+    MenuState state = Menus();
+    if (menus_shown_ && *menus_shown_ == state)
+    {
+        return;
+    }
+    menu_bar_    = BuildMenuBar(state);
+    menus_shown_ = std::move(state);
+    services_.set_menu_bar(menu_bar_, [this](int id) { Command(id); });
+}
+
 MenuState MainController::Menus() const
 {
     MenuState state;
+    state.is_dialog_open   = dialog_ != nullptr;
     state.can_step_back    = view_ply_ > 0;
     state.can_step_forward = view_ply_ < game_.PlyCount();
     state.is_game_running  = IsPlaying();

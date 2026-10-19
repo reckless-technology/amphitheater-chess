@@ -8,6 +8,8 @@
 #include "ListView.h"
 #include "LookDrawing.h"
 #include "LookPalette.h"
+#include "MenuBarView.h"
+#include "PanelStyle.h"
 #include "Text.h"
 
 #include <string_view>
@@ -138,6 +140,31 @@ inline reckless::view::Button::Painter PlatePainter()
                                         static_cast<float>(bounds.height())},
                    reckless::gfx::Justify::kCentred, true);
     };
+}
+
+} // namespace uci_host::app::theme
+
+namespace uci_host::app::theme
+{
+
+/**
+ * The drawn menu bar (Linux's, and a window drawn to an image): the panel's colour under the interface's face, the
+ * menu whose title is open lit as a selected row, its drop-downs the series' menus.
+ * @return The bar's look.
+ */
+inline reckless::app::MenuBarStyle MenuBarLook()
+{
+    reckless::app::MenuBarStyle style;
+    style.background    = kPanel;
+    style.rule          = kRule;
+    style.text          = kInk;
+    style.disabled_text = kFaint;
+    style.highlight     = kSelect;
+    style.font          = fonts::Body().WithHeight(18.5f);
+    style.height        = 34;
+    style.padding       = 11;
+    style.menu          = reckless::panel::MenuStyle(Lists());
+    return style;
 }
 
 } // namespace uci_host::app::theme

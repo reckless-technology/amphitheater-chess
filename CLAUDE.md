@@ -63,8 +63,10 @@ GUI will save with the toolkit's JSON.
   that reads the generated version header; the command line and the window both link it.
 - `src/app/` (`uci_host_gui`, `RecklessUciHost`, `uci_host_render_main`): the window on the toolkit's app shell. Views
   (`MainView` lays them out as the mockup does; `BoardView`, `PlayerStrip`, `MovesList`, `GameCard`, `AnalysisPanel`,
-  `EvalGraph`, `EngineLog`, `MenuBar`, `StatusBar`) show what they are given and tell what a person does; the
-  controllers (`MainController`) hold the game and the engines and set the views each frame. A game on the board is a
+  `EvalGraph`, `EngineLog`, `StatusBar`) show what they are given and tell what a person does; the
+  controllers (`MainController`) hold the game and the engines and set the views each frame, and the menu bar
+  (`Menus.h`, the toolkit's `MenuBar` with its shortcuts, handed to the platform's `SetMenuBar`) whenever what it can
+  do changes. A game on the board is a
   `PlaySession`: `GameRunner` on its own thread, the person a `CallbackPlayer` waiting on a condition variable for the
   board's move (or the deadline, or the stop - `GameRunner` abandons a cancelled game whose side answers with no move),
   its progress and the engines' lines polled by the controller once a frame; a stopped session finishes its thread in
@@ -120,9 +122,7 @@ set a machine up (VS Code: "setup environment"; `-Check` / `--check` only report
 ## CI and repository rules
 
 Every job runs on the organisation's self-hosted runners (`[self-hosted, Linux, X64]`, `[self-hosted, Windows, X64]`,
-`[self-hosted, macOS, ARM64]`), never on hosted images; the short jobs (`changes`, `format`, `ci`) on `[light]`
-(`reckless-ci-lin-0-alt`, a second runner on lin-0 with no default labels, and lin-1's runner), so they never wait
-behind a long build. `build.yml`: Linux gcc, Linux sanitizers, Linux coverage
+`[self-hosted, macOS, ARM64]`), never on hosted images. `build.yml`: Linux gcc, Linux sanitizers, Linux coverage
 (gcovr 8.3, `--fail-under-line 90` on `src/`), Windows MSVC, macOS universal (lipo and minos checks), clang-format,
 and `CI`, the aggregate to require. Documentation-only changes build nothing.
 

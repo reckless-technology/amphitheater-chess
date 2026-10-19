@@ -1,8 +1,9 @@
 #pragma once
 /// @file MainView.h The main window's content, as the approved mockup lays it out
-/// (docs/design/main-window-mockup.html): the menu bar across the top; the board column - a player's strip above and
-/// below the board, the navigation plates under it - and beside it the moves and the game's card; across the foot the
-/// analysis with the evaluation graph, the engine log and the status bar. The board grows with the window; the foot
+/// (docs/design/main-window-mockup.html): the menu bar across the top where it is drawn (Linux, and a window drawn to
+/// an image), none where the platform shows the bar itself (macOS, Windows); the board column - a player's strip above
+/// and below the board, the navigation plates under it - and beside it the moves and the game's card; across the foot
+/// the analysis with the evaluation graph, the engine log and the status bar. The board grows with the window; the foot
 /// keeps its height.
 ///
 /// The view shows what it is given and tells what a person does: the controllers (GameController and the rest) hold
@@ -12,12 +13,12 @@
 #include "BoardView.h"
 #include "EngineLog.h"
 #include "EvalGraph.h"
-#include "MenuBar.h"
 #include "MovesList.h"
 #include "Panels.h"
 #include "PieceSet.h"
 
 #include "Button.h"
+#include "MenuBarView.h"
 #include "View.h"
 
 #include <functional>
@@ -115,8 +116,12 @@ class MainView final : public reckless::view::View
     /** @param items The status bar's phrases. */
     void SetStatus(std::vector<std::string> items);
 
-    /** @param entries The menu bar's menus. */
-    void SetMenus(std::vector<MenuBarEntry> entries);
+    /**
+     * The drawn menu bar across the top, or none where the platform shows the bar itself: the layout then starts at
+     * the top.
+     * @param bar The bar, owned from here on; null for none.
+     */
+    void SetMenuBarView(std::unique_ptr<reckless::app::MenuBarView> bar);
 
     /**
      * A view over the whole window - a dialog - sized with it and in front of everything; null takes it away.
@@ -186,10 +191,10 @@ class MainView final : public reckless::view::View
         return status_;
     }
 
-    /** @return The menu bar. */
-    MenuBar &menu_bar()
+    /** @return The drawn menu bar, or null where the platform shows the bar itself. */
+    reckless::app::MenuBarView *menu_bar()
     {
-        return menu_bar_;
+        return menu_bar_.get();
     }
 
     /**
@@ -210,20 +215,15 @@ class MainView final : public reckless::view::View
      */
     void Paint(reckless::gfx::Canvas &c) override;
 
-    /** @return True: a press anywhere gives the window the keys that step through the game. */
+    /**
+     * A press anywhere takes the keyboard off a list or a field, so the keys go to the menu bar's shortcuts (Menus.h),
+     * which the platform offers every key no view takes.
+     * @return True.
+     */
     bool WantsKeyboardFocus() const override
     {
         return true;
     }
-
-    /**
-     * The keys: Left and Right step a move, Home and End go to the start and the end, F flips the board; with Command
-     * (Control off a Mac) N a new game, O and S open and save PGN, C copies the FEN (with Shift the PGN), V pastes, Z
-     * takes back, E manages the engines, Q quits.
-     * @param key The key.
-     * @return Whether the key was used.
-     */
-    bool KeyPressed(const reckless::view::KeyEvent &key) override;
 
   private:
     /** A navigation plate and its command. */
@@ -240,24 +240,24 @@ class MainView final : public reckless::view::View
      */
     void Tell(int command);
 
-    MenuBar               menu_bar_;          ///< The menus.
-    PlayerStrip           top_strip_;         ///< The strip above the board.
-    BoardView             board_;             ///< The board.
-    PlayerStrip           bottom_strip_;      ///< The strip below the board.
-    std::vector<NavPlate> nav_;               ///< The navigation plates.
-    SectionLabel          moves_label_;       ///< "MOVES".
-    MovesList             moves_;             ///< The moves.
-    SectionLabel          card_label_;        ///< "GAME".
-    GameCard              card_;              ///< The game's card.
-    SectionLabel          analysis_label_;    ///< "ANALYSIS".
-    AnalysisPanel         analysis_;          ///< The engines' lines.
-    SectionLabel          graph_label_;       ///< "EVALUATION".
-    EvalGraph             graph_;             ///< The evaluation by move.
-    EngineLog             log_;               ///< The engine log.
-    StatusBar             status_;            ///< The status bar.
-    PlayerStripState      white_;             ///< White's strip.
-    reckless::view::View *overlay_ = nullptr; ///< The view over the window, if any.
-    PlayerStripState      black_;             ///< Black's strip.
+    std::unique_ptr<reckless::app::MenuBarView> menu_bar_;     ///< The drawn menus; null where the platform shows them.
+    PlayerStrip                                 top_strip_;    ///< The strip above the board.
+    BoardView                                   board_;        ///< The board.
+    PlayerStrip                                 bottom_strip_; ///< The strip below the board.
+    std::vector<NavPlate>                       nav_;          ///< The navigation plates.
+    SectionLabel                                moves_label_;  ///< "MOVES".
+    MovesList                                   moves_;        ///< The moves.
+    SectionLabel                                card_label_;   ///< "GAME".
+    GameCard                                    card_;         ///< The game's card.
+    SectionLabel                                analysis_label_;    ///< "ANALYSIS".
+    AnalysisPanel                               analysis_;          ///< The engines' lines.
+    SectionLabel                                graph_label_;       ///< "EVALUATION".
+    EvalGraph                                   graph_;             ///< The evaluation by move.
+    EngineLog                                   log_;               ///< The engine log.
+    StatusBar                                   status_;            ///< The status bar.
+    PlayerStripState                            white_;             ///< White's strip.
+    reckless::view::View                       *overlay_ = nullptr; ///< The view over the window, if any.
+    PlayerStripState                            black_;             ///< Black's strip.
 };
 
 } // namespace uci_host::app

@@ -1,9 +1,10 @@
 #pragma once
-/// @file Menus.h The menu bar's menus and their items, built from what the window can do as each menu opens.
+/// @file Menus.h The menu bar's menus, their items and their keyboard shortcuts, built from what the window can do
+/// now - the toolkit's one description of a bar, which macOS shows in the screen's menu bar, Windows on the window and
+/// Linux drawn across its top.
 
 #include "MenuBar.h"
 
-#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,15 +24,27 @@ struct MenuState
     bool is_match_running      = false; ///< A match being played.
     bool is_tournament_running = false; ///< A tournament being played.
     bool has_standings         = false; ///< A tournament's results to show.
+    bool is_dialog_open        = false; ///< A dialog over the window, which every menu waits for.
     /** The games of a match or a tournament in progress that the board may follow: the game's number and its title. */
     std::vector<std::pair<int, std::string>> watchable_games;
+
+    /**
+     * Whether two states show the same menus.
+     * @param a One state.
+     * @param b The other.
+     * @return Whether every field is the same.
+     */
+    friend bool operator==(const MenuState &a, const MenuState &b) = default;
 };
 
 /**
- * The menu bar's menus: File, Edit, Game, Engines, Match, Tournament, View, Help.
- * @param state What is possible now, asked as each menu opens.
- * @return The menus.
+ * The menu bar: File, Edit, Game, Engines, Match, Tournament, View, Help, each item's id its command (Commands.h) and
+ * its shortcut the primary modifier (Command on a Mac, Control elsewhere) with a letter, or a plain key for stepping
+ * through the game and turning the board. Every menu is disabled while a dialog is open, so neither a click nor a
+ * shortcut acts behind it.
+ * @param state What is possible now: the items enabled and ticked by it.
+ * @return The bar.
  */
-std::vector<MenuBarEntry> BuildMenus(std::function<MenuState()> state);
+reckless::app::MenuBar BuildMenuBar(const MenuState &state);
 
 } // namespace uci_host::app
