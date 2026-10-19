@@ -3,12 +3,16 @@
 #include "Commands.h"
 #include "Controls.h"
 #include "EngineManagerDialog.h"
+#include "GameFiles.h"
+#include "GamePickerDialog.h"
 #include "NewGameDialog.h"
 #include "Theme.h"
+#include "match/Openings.h"
 
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 
 namespace uci_host::app
 {
@@ -80,8 +84,30 @@ std::pair<std::string, std::string> BannerOf(const chess::Outcome &outcome)
 
 } // namespace
 
-MainController::MainController(MainView &view, ControllerFiles files) : view_(view), files_(std::move(files))
+MainController::MainController(MainView &view, ControllerFiles files, ControllerServices services)
+    : view_(view), services_(std::move(services)), files_(std::move(files))
 {
+    if (!services_.read_clipboard)
+    {
+        services_.read_clipboard = [this] {
+            reckless::view::Host *host = view_.host();
+            return host != nullptr ? host->ClipboardText() : std::string();
+        };
+    }
+    if (!services_.write_clipboard)
+    {
+        services_.write_clipboard = [this](const std::string &text) {
+            reckless::view::Host *host = view_.host();
+            return host != nullptr && host->SetClipboardText(text);
+        };
+    }
+    if (!services_.choose_file)
+    {
+        services_.choose_file = [this](const reckless::view::FileRequest       &request,
+                                       std::function<void(const std::string &)> picked) {
+            view_.ChooseFile(request, std::move(picked));
+        };
+    }
     std::string error;
     if (auto loaded = EngineCatalogue::Load(files_.engines, &error))
     {
@@ -130,8 +156,9 @@ void MainController::ShowGame(chess::Game game, GameInfo info)
         RetirePlay();
     }
     trackers_.clear();
-    game_     = std::move(game);
-    info_     = std::move(info);
+    game_ = std::move(game);
+    info_ = std::move(info);
+    source_pgn_.reset();
     view_ply_ = game_.PlyCount();
     evals_.assign(static_cast<std::size_t>(game_.PlyCount()), std::nullopt);
     view_.board().SetBanner({}, {});
@@ -181,6 +208,59 @@ void MainController::Command(int command)
         break;
     case kEngineManager:
         OpenEngineManager();
+        break;
+    case kOpenPgn: {
+        reckless::view::FileRequest request;
+        request.title    = "Open a PGN file";
+        request.patterns = {"*.pgn"};
+        services_.choose_file(request, [this](const std::string &path) {
+            if (!path.empty())
+            {
+                OpenPgn(path);
+            }
+        });
+        break;
+    }
+    case kSavePgn: {
+        reckless::view::FileRequest request;
+        request.title     = "Save the game as PGN";
+        request.patterns  = {"*.pgn"};
+        request.save      = true;
+        request.file_name = "game.pgn";
+        services_.choose_file(request, [this](const std::string &path) {
+            if (!path.empty())
+            {
+                SavePgn(path);
+            }
+        });
+        break;
+    }
+    case kCopyFen:
+        if (!services_.write_clipboard(game_.PositionAt(view_ply_).ToFen()))
+        {
+            error_ = "The clipboard would not take the FEN";
+        }
+        Refresh();
+        break;
+    case kCopyPgn:
+        if (!services_.write_clipboard(chess::WritePgn(CurrentPgn())))
+        {
+            error_ = "The clipboard would not take the PGN";
+        }
+        Refresh();
+        break;
+    case kPasteFen:
+        if (!Paste(services_.read_clipboard()))
+        {
+            error_ = "The clipboard holds no FEN and no PGN game";
+            Refresh();
+        }
+        break;
+    case kQuit:
+        if (services_.quit)
+        {
+            services_.quit();
+        }
         break;
     default:
         break;
@@ -384,6 +464,98 @@ void MainController::SetAnalysing(bool is_on)
     Refresh();
 }
 
+void MainController::ShowPgnGame(const chess::PgnGame &game)
+{
+    ShowGame(game.ToGame(), InfoFromPgn(game));
+    source_pgn_ = game;
+}
+
+void MainController::OpenPgn(const std::string &path)
+{
+    const auto text = match::ReadTextFile(path);
+    if (!text)
+    {
+        error_ = "The file could not be read: " + text.ErrorMessage();
+        Refresh();
+        return;
+    }
+    std::vector<std::string>    errors;
+    std::vector<chess::PgnGame> games = chess::ReadPgn(*text, &errors);
+    if (games.empty())
+    {
+        error_ = "The file holds no game that could be read" + (errors.empty() ? "" : ": " + errors.front());
+        Refresh();
+        return;
+    }
+    error_.clear();
+    if (games.size() == 1)
+    {
+        ShowPgnGame(games.front());
+        return;
+    }
+    auto dialog = std::make_unique<GamePickerDialog>(std::move(games), std::filesystem::path(path).filename().string(),
+                                                     errors.size());
+    dialog->on_close = [this] { CloseDialog(); };
+    dialog->on_open  = [this](const chess::PgnGame &game) {
+        const chess::PgnGame picked = game; // the dialog goes with the close
+        CloseDialog();
+        ShowPgnGame(picked);
+    };
+    OpenDialog(std::move(dialog));
+}
+
+chess::PgnGame MainController::CurrentPgn() const
+{
+    return PgnOf(game_, info_, source_pgn_, TodayInPgn());
+}
+
+bool MainController::SavePgn(const std::string &path)
+{
+    const std::string text = chess::WritePgn(CurrentPgn());
+    std::ofstream     file(std::filesystem::path(path), std::ios::binary | std::ios::trunc);
+    file.write(text.data(), static_cast<std::streamsize>(text.size()));
+    file.close();
+    if (!file)
+    {
+        error_ = "The game could not be written to " + path;
+        Refresh();
+        return false;
+    }
+    error_.clear();
+    Refresh();
+    return true;
+}
+
+bool MainController::Paste(const std::string &text)
+{
+    PastedGames pasted = ReadPasted(text);
+    if (pasted.position)
+    {
+        error_.clear();
+        ShowGame(chess::Game(*pasted.position), GameInfo{});
+        return true;
+    }
+    if (pasted.games.empty())
+    {
+        return false;
+    }
+    error_.clear();
+    if (pasted.games.size() == 1)
+    {
+        ShowPgnGame(pasted.games.front());
+        return true;
+    }
+    auto dialog      = std::make_unique<GamePickerDialog>(std::move(pasted.games), "the clipboard", pasted.skipped);
+    dialog->on_close = [this] { CloseDialog(); };
+    dialog->on_open  = [this](const chess::PgnGame &game) {
+        const chess::PgnGame picked = game;
+        CloseDialog();
+        ShowPgnGame(picked);
+    };
+    OpenDialog(std::move(dialog));
+    return true;
+}
+
 void MainController::OpenEngineManager()
 {
     auto dialog      = std::make_unique<EngineManagerDialog>(catalogue_);
@@ -524,6 +696,10 @@ void MainController::PollPlay()
         }
         const auto [title, detail] = BannerOf(game_.GetOutcome());
         view_.board().SetBanner(title, detail);
+        if (const auto record = play_->Record())
+        {
+            source_pgn_ = record->ToPgn(); // the game as played: its clocks, scores and depths as comments
+        }
     }
     Refresh();
 }

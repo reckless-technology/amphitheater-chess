@@ -29,8 +29,17 @@
 int main(int argc, char **argv)
 {
     using uci_host::app::MainView;
-    const reckless::app::AppOptions options =
-        reckless::app::ParseAppOptions(std::vector<std::string>(argv + 1, argv + argc));
+    reckless::app::AppOptions options = reckless::app::ParseAppOptions(std::vector<std::string>(argv + 1, argv + argc));
+    // A PGN file named on the command line (a file opened with the app) is shown as the window opens.
+    std::vector<std::string> pgn_files;
+    std::erase_if(options.unknown, [&pgn_files](const std::string &argument) {
+        const bool is_pgn = argument.size() > 4 && argument.substr(argument.size() - 4) == ".pgn";
+        if (is_pgn)
+        {
+            pgn_files.push_back(argument);
+        }
+        return is_pgn;
+    });
     uci_host::app::InstallFaces();
     std::string                   error;
     const uci_host::app::PieceSet pieces = uci_host::app::PieceSet::FromEmbedded(&error);
@@ -41,10 +50,18 @@ int main(int argc, char **argv)
 
     const std::unique_ptr<reckless::app::AppPlatform> platform =
         reckless::app::AppPlatform::Create("Reckless UCI Host", reckless::embedded::Find("RecklessAppIcon256.png"));
-    MainView                      view(pieces);
-    uci_host::app::MainController controller(view);
-    reckless::app::AppRoot        root(view, uci_host::app::theme::Shell().Tooltip(), {},
-                                       {MainView::kLayoutWidth, MainView::kLayoutHeight});
+    MainView                          view(pieces);
+    uci_host::app::ControllerServices services;
+    services.read_clipboard  = [&platform] { return platform->ClipboardText(); };
+    services.write_clipboard = [&platform](const std::string &text) { return platform->SetClipboardText(text); };
+    services.quit            = [&platform] { platform->CallSoon([&platform] { platform->Quit(); }); };
+    uci_host::app::MainController controller(view, uci_host::app::ControllerFiles{}, services);
+    for (const std::string &file : pgn_files)
+    {
+        controller.OpenPgn(file);
+    }
+    reckless::app::AppRoot root(view, uci_host::app::theme::Shell().Tooltip(), {},
+                                {MainView::kLayoutWidth, MainView::kLayoutHeight});
     root.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
 
     reckless::app::AppRunHooks hooks;

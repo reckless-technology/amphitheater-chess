@@ -112,6 +112,7 @@ runtime.
 | `integration` | `uci_host_integration_test` | a real engine, named by `UCI_HOST_TEST_ENGINE`; skipped when unset |
 | `gui` | `uci_host_window_test` | the window with no window: the pieces, the board's geometry and a person's moves on it, the lists, the graph, the controller, the window drawn through Skia |
 | `app_smoke` | `RecklessUciHost --smoke` | the app opens its window and draws thirty frames (label `window`: a display is needed) |
+| `render_main`, `render_flipped`, `render_newgame`, `render_engines` | `uci_host_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```
 UCI_HOST_TEST_ENGINE=/path/to/engine ctest --preset release -R integration --output-on-failure
@@ -158,6 +159,14 @@ a spin's line held to its range, a combo's list, a button pressed at every start
 its default no longer configured. The list is JSON, `reckless-technology/uci-host/engines.json` in the user's settings
 folder (`%APPDATA%` on Windows, `~/Library/Application Support` on macOS, `~/.config` on Linux).
 
+File > Open PGN shows a file's game, or lists a file's many games - number, players, result, event, date, length - to
+pick one from (a game that cannot be read is skipped and counted); a `.pgn` named on the command line opens with the
+window. File > Save PGN writes the game shown: the game as it was read, its tags, comments and variations whole, while
+its moves are unchanged; a game played on the board as the core records it, each move's score, depth and time as its
+comment; anything else with the Seven Tag Roster from what the card knows. Edit > Copy FEN and Copy PGN put the
+position shown or the game on the clipboard; Paste FEN or PGN takes a position, a game, or a list of games to pick
+from. The window reads and writes the clipboard through the toolkit's app platform.
+
 `uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]` draws the window to a PNG with the mockup's
 state, with no window and no display: the review images in `docs/design/` (`main-window.png`, `main-window-flipped.png`)
 are made with it.
@@ -197,6 +206,9 @@ says so. Nothing in the tree is edited to release.
 ## CI
 
 `.github/workflows/build.yml`, on the organisation's self-hosted runners only: Linux (gcc, Release), Linux under
-AddressSanitizer and UndefinedBehaviorSanitizer, Linux coverage (gcovr, red under 90 % of `src/`'s lines), Windows
-(MSVC, Release), macOS (universal, each binary held to arm64 and x86_64 and to macOS 13.3), clang-format 22.1.8, and
-`CI`, the one job to require.
+AddressSanitizer and UndefinedBehaviorSanitizer, Linux coverage (gcovr, red under 90 % of `src/`'s lines but the app's
+entry point, `src/app/Main.cpp`, which opens a window and runs in the window suites), Windows (MSVC, Release), macOS
+(universal, each binary held to arm64 and x86_64 and to macOS 13.3, the app's bundle to its signature, its icon and a
+plist that asks for no microphone), clang-format 22.1.8, and `CI`, the one job to require. Every job checks the toolkit
+submodule out with its read-only deploy key (`.github/actions/toolkit`); the window suites (label `window`) run under
+`xvfb-run` on Linux and on the runners' own displays elsewhere.

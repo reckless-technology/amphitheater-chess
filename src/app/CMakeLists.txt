@@ -26,6 +26,8 @@ add_library(uci_host_gui STATIC
     EngineLog.cpp
     EngineManagerDialog.cpp
     EvalGraph.cpp
+    GameFiles.cpp
+    GamePickerDialog.cpp
     MainController.cpp
     MainView.cpp
     MenuBar.cpp

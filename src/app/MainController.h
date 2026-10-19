@@ -11,8 +11,11 @@
 #include "SearchTracker.h"
 #include "chess/Game.h"
 
+#include "chess/Pgn.h"
+
 #include <chrono>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -37,6 +40,18 @@ struct GameInfo
     std::string book;            ///< The books in play.
 };
 
+/** What the controller asks of the window and the platform: the clipboard, the file dialog, the app's end. Each left
+    empty is the window's own: the clipboard and the dialog through the view's host, and no quit. */
+struct ControllerServices
+{
+    std::function<std::string()>                 read_clipboard;  ///< The clipboard's text.
+    std::function<bool(const std::string &text)> write_clipboard; ///< Put text on the clipboard.
+    /** The file dialog: `picked` runs with the path chosen, or an empty one. */
+    std::function<void(const reckless::view::FileRequest &request, std::function<void(const std::string &)> picked)>
+                          choose_file;
+    std::function<void()> quit; ///< File > Quit.
+};
+
 /** Where the controller keeps what it keeps. */
 struct ControllerFiles
 {
@@ -54,8 +69,9 @@ class MainController
     /**
      * @param view The view it drives; outlives the controller.
      * @param files Where it keeps the engine list.
+     * @param services The clipboard, the file dialog and the app's end; the window's own where left empty.
      */
-    explicit MainController(MainView &view, ControllerFiles files = {});
+    explicit MainController(MainView &view, ControllerFiles files = {}, ControllerServices services = {});
 
     /** Stops a game on the board and waits for the games still finishing. */
     ~MainController();
@@ -127,6 +143,35 @@ class MainController
     {
         return play_.get();
     }
+
+    /**
+     * Show a game read from PGN, keeping its tags, comments and variations for a save.
+     * @param game The game.
+     */
+    void ShowPgnGame(const chess::PgnGame &game);
+
+    /**
+     * Read a PGN file: its one game shown, or a list to pick one from when it holds more.
+     * @param path The file.
+     */
+    void OpenPgn(const std::string &path);
+
+    /**
+     * Write the game shown to a PGN file.
+     * @param path The file.
+     * @return Whether it was written.
+     */
+    bool SavePgn(const std::string &path);
+
+    /** @return The game shown as PGN, as Save PGN writes it. */
+    chess::PgnGame CurrentPgn() const;
+
+    /**
+     * Take a FEN or a PGN as pasted: the position, or the game, or a list of games to pick from.
+     * @param text The text.
+     * @return Whether it was a position or held a game.
+     */
+    bool Paste(const std::string &text);
 
     /** @return The configured engines. */
     EngineCatalogue &catalogue()
@@ -205,12 +250,14 @@ class MainController
     /** @return Whether the board waits for the person's move at the position shown. */
     bool IsPersonToMove() const;
 
-    MainView       &view_;      ///< The view.
-    EngineReaper    reaper_;    ///< Engines being quit off the window's thread; outlives the sessions below.
-    ControllerFiles files_;     ///< Where it keeps things.
-    EngineCatalogue catalogue_; ///< The configured engines.
-    chess::Game     game_;      ///< The game shown.
-    GameInfo        info_;      ///< What the card says of it.
+    MainView                     &view_;       ///< The view.
+    ControllerServices            services_;   ///< The clipboard, the file dialog, the app's end.
+    std::optional<chess::PgnGame> source_pgn_; ///< The PGN the game shown came from (a file, a game played).
+    EngineReaper                  reaper_; ///< Engines being quit off the window's thread; outlives the sessions below.
+    ControllerFiles               files_;  ///< Where it keeps things.
+    EngineCatalogue               catalogue_;                      ///< The configured engines.
+    chess::Game                   game_;                           ///< The game shown.
+    GameInfo                      info_;                           ///< What the card says of it.
     std::vector<std::optional<double>>        evals_;              ///< White's score after each ply, as known.
     int                                       view_ply_   = 0;     ///< The position shown.
     bool                                      is_flipped_ = false; ///< Black at the bottom.
