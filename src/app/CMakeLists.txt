@@ -21,6 +21,8 @@ add_library(uci_host_gui STATIC
     AnalysisPanel.cpp
     AnalysisSession.cpp
     BoardView.cpp
+    CompetitionDialog.cpp
+    CompetitionSession.cpp
     Controls.cpp
     EngineCatalogue.cpp
     EngineLog.cpp
@@ -38,10 +40,11 @@ add_library(uci_host_gui STATIC
     PieceSet.cpp
     PlaySession.cpp
     SearchTracker.cpp
-    Showcase.cpp)
+    Showcase.cpp
+    StandingsDialog.cpp)
 target_include_directories(uci_host_gui PUBLIC "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(uci_host_gui
-    PUBLIC  uci_host_match uci_host_version uci_host_assets reckless_app_shell reckless_common_panel reckless_gfx_skia
+    PUBLIC  uci_host_match uci_host_cli_core uci_host_version uci_host_assets reckless_app_shell reckless_common_panel reckless_gfx_skia
     PRIVATE uci_host_warnings)
 
 add_executable(RecklessUciHost Main.cpp)

@@ -71,7 +71,11 @@ GUI will save with the toolkit's JSON.
   the background (`retiring_`) so the window never waits on an engine's move. `SearchTracker` follows an engine's
   search from the lines it exchanges. `AnalysisSession` owns the analysing engines: started on worker threads
   (`std::async`), handed to the window's thread, polled with `PollEvent` once a frame, quit by `EngineReaper` on worker
-  threads; a new position is a "stop" and, once "bestmove" comes, "position" and "go infinite". `EngineCatalogue` is the engine list (`reckless-technology/uci-host/engines.json`
+  threads; a new position is a "stop" and, once "bestmove" comes, "position" and "go infinite". A match or a
+  tournament is a `CompetitionSession` over `match::Tournament` with `does_report_moves` on; its dialog
+  (`CompetitionDialog`) writes uci-host-cli's arguments and reads them with `cli::ParseTournamentArguments`, so the
+  window and the command line never disagree on an option - add an option to the command line, and to the dialog as an
+  argument. `EngineCatalogue` is the engine list (`reckless-technology/uci-host/engines.json`
   in the user's settings folder). `Theme.h` holds the
   mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
   the render tool and the suite draw. Files here never take a toolkit header's name (`View.h`, `Menu.h`, `Window.h`):

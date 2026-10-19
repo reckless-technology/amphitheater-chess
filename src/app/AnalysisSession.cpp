@@ -62,6 +62,11 @@ void EngineReaper::QuitWhenStarted(std::future<std::unique_ptr<uci::Engine>> sta
     }));
 }
 
+void EngineReaper::Later(std::function<void()> work)
+{
+    quitting_.push_back(std::async(std::launch::async, std::move(work)));
+}
+
 void EngineReaper::Collect()
 {
     quitting_.erase(std::remove_if(quitting_.begin(), quitting_.end(),

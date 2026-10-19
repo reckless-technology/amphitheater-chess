@@ -369,6 +369,36 @@ TEST(Tournament, ARoundRobinPlaysEveryGameInParallelAndReportsEach)
     std::filesystem::remove(settings.pgn_path);
 }
 
+TEST(Tournament, MovesAreEventsWhenTheSettingsAskForThem)
+{
+    TournamentSettings settings;
+    settings.engines                = {FakeEngine("One"), FakeEngine("Two", {"--seed", "5"})};
+    settings.time_control           = *chess::TimeControl::Parse("10+0.1");
+    settings.adjudication.max_moves = 6;
+    settings.does_report_moves      = true;
+    Tournament tournament(settings);
+    ASSERT_TRUE(tournament.Start());
+    int moves = 0;
+    int plies = -1;
+    while (auto event = tournament.Events().PopFor(30s))
+    {
+        if (event->kind == TournamentEvent::Kind::kMoveMade)
+        {
+            ++moves;
+            ASSERT_NE(event->game, nullptr);
+            ASSERT_NE(event->note, nullptr);
+            EXPECT_EQ(event->game->PlyCount(), moves) << "one event a move, in order";
+            EXPECT_GT(event->white_remaining.count(), 0);
+        }
+        else if (event->kind == TournamentEvent::Kind::kGameFinished)
+        {
+            plies = event->record->game.PlyCount();
+        }
+    }
+    EXPECT_EQ(moves, plies);
+    EXPECT_GT(moves, 0);
+}
+
 TEST(Tournament, StopAbandonsTheGamesInProgress)
 {
     TournamentSettings settings;

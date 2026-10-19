@@ -470,6 +470,7 @@ int RunTournament(const std::vector<std::string> &arguments, bool is_match, std:
         case match::TournamentEvent::Kind::kWarning:
             err << "Warning: " << event->message << '\n';
             break;
+        case match::TournamentEvent::Kind::kMoveMade: // never asked for here
         case match::TournamentEvent::Kind::kFinished:
             break;
         }

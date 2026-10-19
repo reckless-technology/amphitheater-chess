@@ -61,6 +61,7 @@ struct TournamentSettings
     std::string            site  = "?";          ///< PGN's Site.
     std::string            pgn_path;             ///< A file to append every finished game to; empty for none.
     TournamentEngineLogger engine_logger;        ///< Receives every engine line, may be empty.
+    bool does_report_moves = false; ///< Whether every move is an event (kMoveMade), for a window following a game.
 };
 
 /** Something that happened in a tournament. */
@@ -71,20 +72,25 @@ struct TournamentEvent
     {
         kGameStarted,  ///< A game began.
         kGameFinished, ///< A game ended.
+        kMoveMade,     ///< A move was made in a game in progress (only when the settings ask for moves).
         kWarning,      ///< Something went wrong without stopping play (an engine's option skipped, a file).
         kFinished,     ///< Every game has been played, or play was stopped; the last event.
     };
 
-    Kind                              kind        = Kind::kWarning; ///< What happened.
-    int                               game_number = 0;              ///< The game, from 1.
-    int                               total_games = 0;              ///< Games in the schedule.
-    int                               white       = 0;              ///< White's index.
-    int                               black       = 0;              ///< Black's index.
-    std::string                       white_name;                   ///< White's name.
-    std::string                       black_name;                   ///< Black's name.
-    chess::Outcome                    outcome;                      ///< For kGameFinished: how it ended.
-    std::string                       message;                      ///< For kWarning: what went wrong.
-    std::shared_ptr<const GameRecord> record;                       ///< For kGameFinished: the whole game.
+    Kind                               kind        = Kind::kWarning; ///< What happened.
+    int                                game_number = 0;              ///< The game, from 1.
+    int                                total_games = 0;              ///< Games in the schedule.
+    int                                white       = 0;              ///< White's index.
+    int                                black       = 0;              ///< Black's index.
+    std::string                        white_name;                   ///< White's name.
+    std::string                        black_name;                   ///< Black's name.
+    chess::Outcome                     outcome;                      ///< For kGameFinished: how it ended.
+    std::string                        message;                      ///< For kWarning: what went wrong.
+    std::shared_ptr<const GameRecord>  record;                       ///< For kGameFinished: the whole game.
+    std::shared_ptr<const chess::Game> game;                         ///< For kMoveMade: the game after the move.
+    std::shared_ptr<const MoveNote>    note;                         ///< For kMoveMade: what was said of the move.
+    chess::Milliseconds                white_remaining{0};           ///< For kMoveMade: White's clock after the move.
+    chess::Milliseconds                black_remaining{0};           ///< For kMoveMade: Black's clock after the move.
 };
 
 /** A match or a round robin. */

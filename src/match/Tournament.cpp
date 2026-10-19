@@ -153,7 +153,19 @@ void Tournament::Work()
         events_.Push(started);
 
         GameRunner runner(white, black, game);
-        auto       record = std::make_shared<GameRecord>(runner.Play({}, &is_stopping_));
+        const auto on_move = [&](const GameProgress &progress) {
+            TournamentEvent moved = started;
+            moved.kind            = TournamentEvent::Kind::kMoveMade;
+            moved.game            = std::make_shared<const chess::Game>(progress.game);
+            moved.note            = std::make_shared<const MoveNote>(progress.note);
+            moved.white_remaining = progress.white_clock.Remaining();
+            moved.black_remaining = progress.black_clock.Remaining();
+            events_.Push(std::move(moved));
+        };
+        auto record = std::make_shared<GameRecord>(runner.Play(settings_.does_report_moves
+                                                                   ? std::function<void(const GameProgress &)>(on_move)
+                                                                   : std::function<void(const GameProgress &)>(),
+                                                               &is_stopping_));
 
         for (const auto &[engine, player] : {std::pair{scheduled.white, &white}, std::pair{scheduled.black, &black}})
         {

@@ -16,62 +16,6 @@ namespace
 {
 
 /**
- * A line of arguments split into words: spaces part them, double quotes keep a word's spaces.
- * @param text The line.
- * @return The words.
- */
-std::vector<std::string> SplitArguments(const std::string &text)
-{
-    std::vector<std::string> words;
-    std::string              word;
-    bool                     is_quoted = false;
-    bool                     has_word  = false;
-    for (const char character : text)
-    {
-        if (character == '"')
-        {
-            is_quoted = !is_quoted;
-            has_word  = true;
-        }
-        else if (character == ' ' && !is_quoted)
-        {
-            if (has_word)
-            {
-                words.push_back(word);
-            }
-            word.clear();
-            has_word = false;
-        }
-        else
-        {
-            word += character;
-            has_word = true;
-        }
-    }
-    if (has_word)
-    {
-        words.push_back(word);
-    }
-    return words;
-}
-
-/**
- * Words joined into a line, a word with a space in it quoted.
- * @param words The words.
- * @return The line.
- */
-std::string JoinArguments(const std::vector<std::string> &words)
-{
-    std::string text;
-    for (const std::string &word : words)
-    {
-        text += (text.empty() ? "" : " ") +
-                (word.find(' ') != std::string::npos || word.empty() ? "\"" + word + "\"" : word);
-    }
-    return text;
-}
-
-/**
  * A whole number from a line, or none for an empty line or anything else.
  * @param text The line.
  * @return The number.

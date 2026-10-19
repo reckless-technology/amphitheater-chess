@@ -136,6 +136,52 @@ std::optional<EngineEntry> EntryFrom(const json::Value &object)
 
 } // namespace
 
+std::vector<std::string> SplitArguments(const std::string &text)
+{
+    std::vector<std::string> words;
+    std::string              word;
+    bool                     is_quoted = false;
+    bool                     has_word  = false;
+    for (const char character : text)
+    {
+        if (character == '"')
+        {
+            is_quoted = !is_quoted;
+            has_word  = true;
+        }
+        else if (character == ' ' && !is_quoted)
+        {
+            if (has_word)
+            {
+                words.push_back(word);
+            }
+            word.clear();
+            has_word = false;
+        }
+        else
+        {
+            word += character;
+            has_word = true;
+        }
+    }
+    if (has_word)
+    {
+        words.push_back(word);
+    }
+    return words;
+}
+
+std::string JoinArguments(const std::vector<std::string> &words)
+{
+    std::string text;
+    for (const std::string &word : words)
+    {
+        text += (text.empty() ? "" : " ") +
+                (word.find(' ') != std::string::npos || word.empty() ? "\"" + word + "\"" : word);
+    }
+    return text;
+}
+
 std::string EngineEntry::DisplayName() const
 {
     if (!config.name.empty())

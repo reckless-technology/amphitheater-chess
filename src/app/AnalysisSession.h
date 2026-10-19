@@ -11,6 +11,7 @@
 #include "uci/Engine.h"
 
 #include <chrono>
+#include <functional>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -48,6 +49,12 @@ class EngineReaper
      * @param starting The start under way.
      */
     void QuitWhenStarted(std::future<std::unique_ptr<uci::Engine>> starting);
+
+    /**
+     * Any other work that may wait - a tournament's workers finishing their games - run on a worker thread.
+     * @param work The work.
+     */
+    void Later(std::function<void()> work);
 
     /** Forget the quits that have finished. */
     void Collect();

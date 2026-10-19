@@ -1,11 +1,13 @@
 #include "MainController.h"
 
 #include "Commands.h"
+#include "CompetitionDialog.h"
 #include "Controls.h"
 #include "EngineManagerDialog.h"
 #include "GameFiles.h"
 #include "GamePickerDialog.h"
 #include "NewGameDialog.h"
+#include "StandingsDialog.h"
 #include "Theme.h"
 #include "match/Openings.h"
 
@@ -127,6 +129,7 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
 MainController::~MainController()
 {
     analysis_.reset();
+    competition_.reset(); // stops play; each worker finishes the move it is on
     if (dialog_)
     {
         view_.SetOverlay(nullptr);
@@ -155,6 +158,7 @@ void MainController::ShowGame(chess::Game game, GameInfo info)
     {
         RetirePlay();
     }
+    is_following_competition_ = false;
     trackers_.clear();
     game_ = std::move(game);
     info_ = std::move(info);
@@ -208,6 +212,22 @@ void MainController::Command(int command)
         break;
     case kEngineManager:
         OpenEngineManager();
+        break;
+    case kNewMatch:
+        OpenCompetition(false);
+        break;
+    case kNewTournament:
+        OpenCompetition(true);
+        break;
+    case kStopMatch:
+    case kStopTournament:
+        if (competition_)
+        {
+            competition_->Stop();
+        }
+        break;
+    case kShowStandings:
+        OpenStandings();
         break;
     case kOpenPgn: {
         reckless::view::FileRequest request;
@@ -263,6 +283,12 @@ void MainController::Command(int command)
         }
         break;
     default:
+        if (command > kWatchGameBase && competition_)
+        {
+            watched_                  = command - kWatchGameBase;
+            is_following_competition_ = true;
+            PollCompetition();
+        }
         break;
     }
 }
@@ -304,6 +330,7 @@ void MainController::StartGame(PlaySettings settings)
     {
         RetirePlay();
     }
+    is_following_competition_ = false;
     trackers_.clear();
     chess::Game start;
     if (!settings.start_fen.empty())
@@ -556,6 +583,159 @@ bool MainController::Paste(const std::string &text)
     return true;
 }
 
+void MainController::OpenCompetition(bool is_tournament)
+{
+    auto dialog      = std::make_unique<CompetitionDialog>(is_tournament, catalogue_.engines);
+    dialog->on_close = [this] { CloseDialog(); };
+    dialog->on_start = [this, is_tournament](const cli::TournamentOptions &options) {
+        match::TournamentSettings settings = options.settings;
+        CloseDialog();
+        StartCompetition(std::move(settings), !is_tournament);
+    };
+    OpenDialog(std::move(dialog));
+}
+
+void MainController::OpenStandings()
+{
+    if (!competition_)
+    {
+        return;
+    }
+    auto dialog      = std::make_unique<StandingsDialog>([this] {
+        return competition_ ? std::make_pair(competition_->EngineNames(), competition_->Results())
+                            : std::make_pair(std::vector<std::string>{}, std::vector<match::GameResultEntry>{});
+    });
+    dialog->on_close = [this] { CloseDialog(); };
+    OpenDialog(std::move(dialog));
+}
+
+void MainController::RetireCompetition()
+{
+    if (!competition_)
+    {
+        return;
+    }
+    competition_->Stop();
+    std::shared_ptr<CompetitionSession> retiring(competition_.release());
+    reaper_.Later([retiring]() mutable { retiring.reset(); });
+    is_following_competition_ = false;
+}
+
+void MainController::StartCompetition(match::TournamentSettings settings, bool is_match)
+{
+    if (play_)
+    {
+        RetirePlay();
+    }
+    RetireCompetition();
+    competition_ = std::make_unique<CompetitionSession>(std::move(settings), is_match);
+    if (!competition_->start_error().empty())
+    {
+        error_ = (is_match ? "The match could not start: " : "The tournament could not start: ") +
+                 competition_->start_error();
+        Refresh();
+        return;
+    }
+    error_.clear();
+    is_following_competition_ = true;
+    watched_                  = 0;
+    watched_shown_            = 0;
+    competition_trackers_.clear();
+    view_.board().SetBanner({}, {});
+    PollCompetition();
+}
+
+void MainController::PollCompetition()
+{
+    if (!competition_)
+    {
+        return;
+    }
+    const bool  is_changed = competition_->Poll();
+    const auto &live       = competition_->live();
+    int         shown      = 0;
+    if (watched_ != 0 && live.count(watched_) != 0)
+    {
+        shown = watched_;
+    }
+    else if (!live.empty())
+    {
+        shown = live.begin()->first;
+    }
+    for (const CompetitionLogLine &line : competition_->DrainLog())
+    {
+        if (line.game_number != 0 && (!is_following_competition_ || line.game_number != shown))
+        {
+            continue;
+        }
+        const bool is_to_engine = line.direction == uci::LineDirection::kToEngine;
+        view_.log().Add(line.engine,
+                        is_to_engine                                        ? LogDirection::kToEngine
+                        : line.direction == uci::LineDirection::kFromEngine ? LogDirection::kFromEngine
+                                                                            : LogDirection::kError,
+                        line.text);
+        if (line.game_number != 0)
+        {
+            competition_trackers_.try_emplace(line.engine, line.engine)
+                .first->second.Feed(is_to_engine, line.text, line.at);
+        }
+    }
+    if (!is_following_competition_ || (!is_changed && shown == watched_shown_))
+    {
+        return;
+    }
+    if (shown != watched_shown_)
+    {
+        competition_trackers_.clear();
+        watched_shown_ = shown;
+    }
+    const int total    = competition_->total_games();
+    info_              = GameInfo{};
+    info_.score        = competition_->ScoreText();
+    info_.time_control = TimeControlText(competition_->settings().time_control);
+    const char *kind   = competition_->is_match() ? "Engine match" : "Engine tournament";
+    if (shown != 0)
+    {
+        const LiveGame &game = live.at(shown);
+        info_.white          = game.white_name;
+        info_.black          = game.black_name;
+        info_.white_details  = "White Â· engine";
+        info_.black_details  = "Black Â· engine";
+        info_.event          = std::string(kind) + ", game " + std::to_string(shown) + " of " + std::to_string(total);
+        const bool was_following = view_ply_ >= game_.PlyCount();
+        game_                    = game.game ? *game.game : chess::Game{};
+        evals_.assign(static_cast<std::size_t>(game_.PlyCount()), std::nullopt);
+        for (std::size_t ply = 0; ply < game.notes.size() && ply < evals_.size(); ++ply)
+        {
+            if (const auto &score = game.notes[ply].score)
+            {
+                evals_[ply] = WhitePawns(*score, game_.PositionAt(static_cast<int>(ply)).SideToMove());
+            }
+        }
+        if (was_following || view_ply_ > game_.PlyCount())
+        {
+            view_ply_ = game_.PlyCount();
+        }
+        source_pgn_.reset();
+    }
+    else if (!competition_->finished().empty())
+    {
+        const auto &record = competition_->finished().back();
+        info_.white        = record->white_name;
+        info_.black        = record->black_name;
+        info_.event        = std::string(kind) + (competition_->IsFinished() ? ", finished" : "");
+        game_              = record->game;
+        evals_.assign(static_cast<std::size_t>(game_.PlyCount()), std::nullopt);
+        view_ply_   = game_.PlyCount();
+        source_pgn_ = record->ToPgn();
+        if (competition_->IsFinished())
+        {
+            view_.board().SetBanner("Finished", info_.score.empty() ? std::string(kind) + " over" : info_.score);
+        }
+    }
+    Refresh();
+}
+
 void MainController::OpenEngineManager()
 {
     auto dialog      = std::make_unique<EngineManagerDialog>(catalogue_);
@@ -629,6 +809,7 @@ void MainController::Frame(double seconds)
         dialog_->Frame();
     }
     PollPlay();
+    PollCompetition();
     if (analysis_)
     {
         analysis_->SetPosition(game_, view_ply_);
@@ -839,6 +1020,18 @@ MenuState MainController::Menus() const
     state.can_step_forward = view_ply_ < game_.PlyCount();
     state.is_game_running  = IsPlaying();
     state.has_engines      = !catalogue_.engines.empty();
+    if (competition_)
+    {
+        const bool running          = !competition_->IsFinished();
+        state.is_match_running      = running && competition_->is_match();
+        state.is_tournament_running = running && !competition_->is_match();
+        state.has_standings         = !competition_->is_match() && !competition_->Results().empty();
+        for (const auto &[number, game] : competition_->live())
+        {
+            state.watchable_games.emplace_back(number, "Game " + std::to_string(number) + ": " + game.white_name +
+                                                           " - " + game.black_name);
+        }
+    }
     if (IsPlaying())
     {
         const PlaySettings &settings = play_->settings();
@@ -882,6 +1075,10 @@ void MainController::Refresh()
     if (!info_.book.empty())
     {
         card.push_back({"Book", info_.book});
+    }
+    if (!info_.score.empty())
+    {
+        card.push_back({competition_ && !competition_->is_match() ? "Standing" : "Match score", info_.score});
     }
     card.push_back({"FEN", position.ToFen(), true});
     view_.SetCard(std::move(card));

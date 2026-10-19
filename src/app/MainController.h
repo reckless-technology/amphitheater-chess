@@ -4,6 +4,7 @@
 /// dialogs, and sets what the view shows once a frame.
 
 #include "AnalysisSession.h"
+#include "CompetitionSession.h"
 #include "EngineCatalogue.h"
 #include "MainView.h"
 #include "Menus.h"
@@ -38,6 +39,7 @@ struct GameInfo
     std::string opening;         ///< The opening's name.
     std::string time_control;    ///< The time control, as a person reads it.
     std::string book;            ///< The books in play.
+    std::string score;           ///< A match's or a tournament's score so far.
 };
 
 /** What the controller asks of the window and the platform: the clipboard, the file dialog, the app's end. Each left
@@ -173,6 +175,25 @@ class MainController
      */
     bool Paste(const std::string &text);
 
+    /**
+     * Play a match or a tournament, the board following its games; one under way is stopped first.
+     * @param settings How to play it.
+     * @param is_match Whether it is a match.
+     */
+    void StartCompetition(match::TournamentSettings settings, bool is_match);
+
+    /** @return The match or the tournament under way or last played, or null. */
+    CompetitionSession *competition()
+    {
+        return competition_.get();
+    }
+
+    /** @return The number of the competition's game the board follows, or 0. */
+    int watched_game() const
+    {
+        return watched_shown_;
+    }
+
     /** @return The configured engines. */
     EngineCatalogue &catalogue()
     {
@@ -238,6 +259,21 @@ class MainController
     /** Engines > Manage engines. */
     void OpenEngineManager();
 
+    /**
+     * Match > New match, or Tournament > New tournament.
+     * @param is_tournament Which.
+     */
+    void OpenCompetition(bool is_tournament);
+
+    /** Tournament > Standings and crosstable. */
+    void OpenStandings();
+
+    /** The competition's progress taken in, and the game the board follows shown. */
+    void PollCompetition();
+
+    /** The competition set aside to finish its workers in the background. */
+    void RetireCompetition();
+
     /** Game > Take back: the person's last move and the engine's reply, or the last move with no game played. */
     void TakeBack();
 
@@ -267,9 +303,14 @@ class MainController
     std::vector<std::unique_ptr<PlaySession>> retiring_;           ///< Stopped games finishing their threads.
     std::map<std::string, SearchTracker>      trackers_;           ///< The playing engines' searches, by name.
     std::unique_ptr<AnalysisSession>          analysis_;           ///< The engines analysing the position shown.
-    std::unique_ptr<DialogFrame>              dialog_;             ///< The dialog over the window.
-    std::vector<std::unique_ptr<DialogFrame>> closed_dialogs_;     ///< Closed, to be destroyed next frame.
-    std::string                               error_;              ///< The last thing that went wrong.
+    std::unique_ptr<CompetitionSession>       competition_;        ///< The match or the tournament.
+    bool is_following_competition_ = false;                        ///< The board follows the competition's games.
+    int  watched_                  = 0; ///< The game a person asked to follow; 0 for the lowest in progress.
+    int  watched_shown_            = 0; ///< The game the board shows.
+    std::map<std::string, SearchTracker>      competition_trackers_; ///< The followed game's engines' searches.
+    std::unique_ptr<DialogFrame>              dialog_;               ///< The dialog over the window.
+    std::vector<std::unique_ptr<DialogFrame>> closed_dialogs_;       ///< Closed, to be destroyed next frame.
+    std::string                               error_;                ///< The last thing that went wrong.
 };
 
 } // namespace uci_host::app

@@ -1,12 +1,12 @@
 // uci_host_render_main: the main window drawn to a PNG with no window and no display, through Skia, as the app draws
 // it - the review images in docs/design/ are made with it.
 //
-//   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines]
+//   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines] [tournament]
 //
 // The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the
 // board; "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on
-// two engines, the first with options of every type. The scale is the device pixels per design
-// pixel, 1 by default; the size is the window's, in design pixels.
+// two engines, the first with options of every type; "tournament" opens Tournament > New tournament on three. The scale
+// is the device pixels per design pixel, 1 by default; the size is the window's, in design pixels.
 
 #include "Commands.h"
 #include "Faces.h"
@@ -69,10 +69,11 @@ int main(int argc, char **argv)
     }
     const std::string        out = argv[1];
     std::vector<std::string> numbers;
-    bool                     is_flipped = false;
-    bool                     is_empty   = false;
-    bool                     is_newgame = false;
-    bool                     is_engines = false;
+    bool                     is_flipped    = false;
+    bool                     is_empty      = false;
+    bool                     is_newgame    = false;
+    bool                     is_engines    = false;
+    bool                     is_tournament = false;
     for (int index = 2; index < argc; ++index)
     {
         const std::string argument = argv[index];
@@ -91,6 +92,10 @@ int main(int argc, char **argv)
         else if (argument == "engines")
         {
             is_engines = true;
+        }
+        else if (argument == "tournament")
+        {
+            is_tournament = true;
         }
         else
         {
@@ -160,6 +165,17 @@ int main(int argc, char **argv)
         zenith.author                  = "Jonny Reckless";
         controller.catalogue().engines = {pawnstar, zenith};
         controller.Command(uci_host::app::kEngineManager);
+    }
+    if (is_tournament)
+    {
+        for (const char *name : {"Pawnstar 2.1", "Zenith 0.9", "Stoopid Chess 1.4"})
+        {
+            uci_host::app::EngineEntry engine;
+            engine.config.name       = name;
+            engine.config.executable = name;
+            controller.catalogue().engines.push_back(engine);
+        }
+        controller.Command(uci_host::app::kNewTournament);
     }
 
     reckless::gfx::Image image = reckless::gfx::MakeImage(static_cast<int>(static_cast<float>(width) * scale + 0.5f),

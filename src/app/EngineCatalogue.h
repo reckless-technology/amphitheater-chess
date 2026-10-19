@@ -62,6 +62,20 @@ struct EngineEntry
     std::string Summary() const;
 };
 
+/**
+ * A line of arguments split into words: spaces part them, double quotes keep a word's spaces.
+ * @param text The line.
+ * @return The words.
+ */
+std::vector<std::string> SplitArguments(const std::string &text);
+
+/**
+ * Words joined into a line, a word with a space in it quoted.
+ * @param words The words.
+ * @return The line.
+ */
+std::string JoinArguments(const std::vector<std::string> &words);
+
 /** The configured engines, and the file they are kept in. */
 class EngineCatalogue
 {

@@ -167,6 +167,17 @@ comment; anything else with the Seven Tag Roster from what the card knows. Edit 
 position shown or the game on the clipboard; Paste FEN or PGN takes a position, a game, or a list of games to pick
 from. The window reads and writes the clipboard through the toolkit's app platform.
 
+Match > New match and Tournament > New tournament take the engines and uci-host-cli's options - the time control,
+games and rounds, a double round robin, repeated openings, concurrency, an opening file, the adjudications, a PGN
+file, and any other the command line has, typed as it takes them - and write them as the command line's own
+arguments, which its own reader turns into the tournament's settings (`cli::ParseTournamentArguments`), so the window
+and the command line agree on every option and every check. The tournament plays on the core's worker threads
+(`CompetitionSession`), reporting every move (`TournamentSettings::does_report_moves`, a `kMoveMade` event): the board
+follows the lowest-numbered game in progress, or the one chosen under Watch a game, with its clocks, its engines'
+blocks and their lines in the log; the card carries the match's score with its Elo, margin and LOS, or the
+tournament's leader. Tournament > Standings and crosstable shows both in the toolkit's lists, followed as games
+finish. Stop abandons the games in progress; the workers finish their moves in the background.
+
 `uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]` draws the window to a PNG with the mockup's
 state, with no window and no display: the review images in `docs/design/` (`main-window.png`, `main-window-flipped.png`)
 are made with it.
