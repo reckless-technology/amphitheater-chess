@@ -149,6 +149,31 @@ TEST(Files, AFileOfManyGamesOffersAListAndShowsThePickedOne)
     EXPECT_NE(rig.controller.last_error().find("could not be read"), std::string::npos);
 }
 
+TEST(Files, TheWindowsTitleFollowsTheGameAndItsFile)
+{
+    Rig rig;
+    EXPECT_EQ(rig.controller.WindowTitle(), "White vs Black - Reckless UCI Host") << "a fresh window";
+    rig.controller.OpenPgn(WriteFile("uci-host-files/title.pgn", kAnnotated));
+    EXPECT_EQ(rig.controller.WindowTitle(), "Alpha vs Beta - title.pgn - Reckless UCI Host");
+
+    rig.chosen = reckless::test::ScratchPath("uci-host-files/renamed.pgn").string();
+    rig.controller.Command(kSavePgn);
+    EXPECT_EQ(rig.controller.WindowTitle(), "Alpha vs Beta - renamed.pgn - Reckless UCI Host") << "saved under a name";
+
+    rig.clipboard = "8/8/8/8/8/8/8/k3K3 w - - 0 1";
+    rig.controller.Command(kPasteFen);
+    EXPECT_EQ(rig.controller.WindowTitle(), "White vs Black - Reckless UCI Host") << "a pasted position is no file";
+
+    std::string many = kAnnotated;
+    many += "[Event \"Second\"]\n[White \"Gamma\"]\n[Black \"Delta\"]\n[Result \"*\"]\n\n1. d4 d5 *\n\n";
+    rig.controller.OpenPgn(WriteFile("uci-host-files/two.pgn", many));
+    auto *picker = dynamic_cast<GamePickerDialog *>(rig.controller.dialog());
+    ASSERT_NE(picker, nullptr);
+    picker->Open(1);
+    rig.controller.Frame(0.0);
+    EXPECT_EQ(rig.controller.WindowTitle(), "Gamma vs Delta - two.pgn - Reckless UCI Host") << "a game picked";
+}
+
 TEST(Files, FenAndPgnGoToTheClipboardAndComeBackFromIt)
 {
     Rig rig;

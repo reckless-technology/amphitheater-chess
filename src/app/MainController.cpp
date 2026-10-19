@@ -173,6 +173,7 @@ void MainController::ShowGame(chess::Game game, GameInfo info)
     game_ = std::move(game);
     info_ = std::move(info);
     source_pgn_.reset();
+    file_name_.clear();
     view_ply_ = game_.PlyCount();
     evals_.assign(static_cast<std::size_t>(game_.PlyCount()), std::nullopt);
     view_.board().SetBanner({}, {});
@@ -341,6 +342,7 @@ void MainController::StartGame(PlaySettings settings)
         RetirePlay();
     }
     is_following_competition_ = false;
+    file_name_.clear();
     trackers_.clear();
     chess::Game start;
     if (!settings.start_fen.empty())
@@ -534,18 +536,20 @@ void MainController::OpenPgn(const std::string &path)
         return;
     }
     error_.clear();
+    const std::string name = std::filesystem::path(path).filename().string();
     if (games.size() == 1)
     {
         ShowPgnGame(games.front());
+        file_name_ = name;
         return;
     }
-    auto dialog = std::make_unique<GamePickerDialog>(std::move(games), std::filesystem::path(path).filename().string(),
-                                                     errors.size());
+    auto dialog      = std::make_unique<GamePickerDialog>(std::move(games), name, errors.size());
     dialog->on_close = [this] { CloseDialog(); };
-    dialog->on_open  = [this](const chess::PgnGame &game) {
+    dialog->on_open  = [this, name](const chess::PgnGame &game) {
         const chess::PgnGame picked = game; // the dialog goes with the close
         CloseDialog();
         ShowPgnGame(picked);
+        file_name_ = name;
     };
     OpenDialog(std::move(dialog));
 }
@@ -568,8 +572,19 @@ bool MainController::SavePgn(const std::string &path)
         return false;
     }
     error_.clear();
+    file_name_ = std::filesystem::path(path).filename().string();
     Refresh();
     return true;
+}
+
+std::string MainController::WindowTitle() const
+{
+    std::string title = info_.white + " vs " + info_.black;
+    if (!file_name_.empty())
+    {
+        title += " - " + file_name_;
+    }
+    return title + " - Reckless UCI Host";
 }
 
 bool MainController::Paste(const std::string &text)
@@ -657,8 +672,9 @@ void MainController::StartCompetition(match::TournamentSettings settings, bool i
     }
     error_.clear();
     is_following_competition_ = true;
-    watched_                  = 0;
-    watched_shown_            = 0;
+    file_name_.clear();
+    watched_       = 0;
+    watched_shown_ = 0;
     competition_trackers_.clear();
     view_.board().SetBanner({}, {});
     PollCompetition();

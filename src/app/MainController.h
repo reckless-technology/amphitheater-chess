@@ -173,6 +173,13 @@ class MainController
     chess::PgnGame CurrentPgn() const;
 
     /**
+     * The window's title, following the game shown: "White vs Black - Reckless UCI Host", the file's name before the
+     * app's while the game shown is one opened from a file or saved to one.
+     * @return The title.
+     */
+    std::string WindowTitle() const;
+
+    /**
      * Take a FEN or a PGN as pasted: the position, or the game, or a list of games to pick from.
      * @param text The text.
      * @return Whether it was a position or held a game.
@@ -313,6 +320,7 @@ class MainController
     MainView                     &view_;       ///< The view.
     ControllerServices            services_;   ///< The clipboard, the file dialog, the app's end.
     std::optional<chess::PgnGame> source_pgn_; ///< The PGN the game shown came from (a file, a game played).
+    std::string                   file_name_;  ///< The file the game shown was opened from or saved to; empty for none.
     EngineReaper                  reaper_; ///< Engines being quit off the window's thread; outlives the sessions below.
     ControllerFiles               files_;  ///< Where it keeps things.
     EngineCatalogue               catalogue_;                      ///< The configured engines.

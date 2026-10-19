@@ -18,7 +18,9 @@
 #include <cstdio>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 /**
@@ -74,11 +76,24 @@ int main(int argc, char **argv)
                                 {MainView::kLayoutWidth, MainView::kLayoutHeight});
     root.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
 
+    // The window titled after the game it shows, retitled whenever the game or its file changes.
+    reckless::app::AppWindow  *window = nullptr;
+    std::string                title;
     reckless::app::AppRunHooks hooks;
     hooks.has_menu_bar = true;
+    hooks.on_open      = [&](reckless::app::AppWindow &opened) { window = &opened; };
     hooks.on_frame     = [&](double seconds) {
         controller.Frame(seconds);
         root.Frame();
+        if (std::string now = controller.WindowTitle(); window != nullptr && now != title)
+        {
+            title = std::move(now);
+            window->SetTitle(title);
+        }
+    };
+    hooks.on_end = [&](std::optional<std::pair<int, int>> position) {
+        static_cast<void>(position);
+        window = nullptr;
     };
     return reckless::app::RunApp(*platform, root, {MainView::kMinimumWidth, MainView::kMinimumHeight}, options,
                                  "Reckless UCI Host", uci_host::VersionText(), &reckless::window::CreateChildWindow,

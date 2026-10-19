@@ -146,7 +146,8 @@ the keys work as soon as the window has the keyboard, with no click into it firs
 through the game and F flips the board; with Command on a Mac and Control elsewhere, N starts a new game, O and S open
 and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, Z takes back, E manages the engines and Q
 quits. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is open. The
-lists' scroll bars are in the accent.
+window's title follows the game - "White vs Black - Reckless UCI Host", the file's name before the app's while the game
+shown was opened from a file or saved to one. The lists' scroll bars are in the accent.
 
 Game > New game plays a game on the board: either side the person at the window or any configured engine, under a
 time control (a preset or the command line's syntax), from the starting position or the position shown. The game is
