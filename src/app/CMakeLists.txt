@@ -24,6 +24,7 @@ add_library(uci_host_gui STATIC
     Controls.cpp
     EngineCatalogue.cpp
     EngineLog.cpp
+    EngineManagerDialog.cpp
     EvalGraph.cpp
     MainController.cpp
     MainView.cpp

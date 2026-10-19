@@ -45,6 +45,19 @@ struct EngineEntry
      */
     void SetOption(const std::string &name, const std::string &value);
 
+    /**
+     * Configure an option no longer: it is left at the engine's default.
+     * @param name The option's name.
+     */
+    void ClearOption(const std::string &name);
+
+    /**
+     * Whether an option is configured.
+     * @param name The option's name.
+     * @return Whether it is.
+     */
+    bool HasOption(const std::string &name) const;
+
     /** @return A line of what is set: "Threads 1, Hash 64 MB, ponder, book". */
     std::string Summary() const;
 };

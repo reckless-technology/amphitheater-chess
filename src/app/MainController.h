@@ -190,6 +190,9 @@ class MainController
     /** Game > New game. */
     void OpenNewGame();
 
+    /** Engines > Manage engines. */
+    void OpenEngineManager();
+
     /** Game > Take back: the person's last move and the engine's reply, or the last move with no game played. */
     void TakeBack();
 

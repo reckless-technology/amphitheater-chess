@@ -150,6 +150,14 @@ another position stops the search under way and starts the next when its "bestmo
 engine's block, the board the first engine's best move as an amber arrow, and the graph the first engine's score for
 each position analysed. Engines are quit on worker threads too (`EngineReaper`), so the window never waits on one.
 
+Engines > Manage engines keeps the engine list: Add... chooses a program and runs its handshake on a worker thread,
+which fills the engine's name, author and every option it declares; Detect runs it again. The selected engine's
+editor sets the name to show, the program's arguments, pondering, whether Analyse runs it, a depth limit for its
+games, its own Polyglot book and the book's depth, and each declared option as a control of its kind - a check box,
+a spin's line held to its range, a combo's list, a button pressed at every start, a string's line - a value back at
+its default no longer configured. The list is JSON, `reckless-technology/uci-host/engines.json` in the user's settings
+folder (`%APPDATA%` on Windows, `~/Library/Application Support` on macOS, `~/.config` on Linux).
+
 `uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]` draws the window to a PNG with the mockup's
 state, with no window and no display: the review images in `docs/design/` (`main-window.png`, `main-window-flipped.png`)
 are made with it.

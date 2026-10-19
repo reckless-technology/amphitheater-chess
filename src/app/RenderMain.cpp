@@ -1,10 +1,11 @@
 // uci_host_render_main: the main window drawn to a PNG with no window and no display, through Skia, as the app draws
 // it - the review images in docs/design/ are made with it.
 //
-//   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame]
+//   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines]
 //
 // The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the
-// board; "newgame" opens Game > New game over it, offering two engines. The scale is the device pixels per design
+// board; "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on
+// two engines, the first with options of every type. The scale is the device pixels per design
 // pixel, 1 by default; the size is the window's, in design pixels.
 
 #include "Commands.h"
@@ -22,6 +23,36 @@
 #include <fstream>
 #include <string>
 #include <vector>
+
+namespace
+{
+
+/** The window's host with no window: text measured as Skia draws it, so a line of text lays out as the window does. */
+class RenderHost final : public reckless::view::Host
+{
+  public:
+    /**
+     * Nothing to repaint: the whole window is drawn once.
+     * @param root_area The area.
+     */
+    void Invalidate(reckless::gfx::RectI root_area) override
+    {
+        static_cast<void>(root_area);
+    }
+
+    /**
+     * Text measured as Skia draws it.
+     * @param font The font.
+     * @param text The text.
+     * @return Its width.
+     */
+    float TextWidth(const reckless::gfx::Font &font, std::string_view text) const override
+    {
+        return reckless::gfx::MeasureText(font, text);
+    }
+};
+
+} // namespace
 
 /**
  * Draw the main window into a PNG.
@@ -41,6 +72,7 @@ int main(int argc, char **argv)
     bool                     is_flipped = false;
     bool                     is_empty   = false;
     bool                     is_newgame = false;
+    bool                     is_engines = false;
     for (int index = 2; index < argc; ++index)
     {
         const std::string argument = argv[index];
@@ -55,6 +87,10 @@ int main(int argc, char **argv)
         else if (argument == "newgame")
         {
             is_newgame = true;
+        }
+        else if (argument == "engines")
+        {
+            is_engines = true;
         }
         else
         {
@@ -78,7 +114,9 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "uci_host_render_main: the pieces: %s\n", error.c_str());
         return 1;
     }
-    uci_host::app::MainView       view(pieces);
+    RenderHost              host;
+    uci_host::app::MainView view(pieces);
+    view.SetHost(&host);
     uci_host::app::MainController controller(view, uci_host::app::ControllerFiles{{}});
     if (!is_empty)
     {
@@ -96,6 +134,32 @@ int main(int argc, char **argv)
             controller.catalogue().engines.push_back(engine);
         }
         controller.Command(uci_host::app::kNewGame);
+    }
+    if (is_engines)
+    {
+        uci_host::app::EngineEntry pawnstar;
+        pawnstar.config.executable  = "C:/Engines/pawnstar/pawnstar.exe";
+        pawnstar.engine_name        = "Pawnstar 2.1";
+        pawnstar.author             = "Jonny Reckless";
+        pawnstar.config.does_ponder = true;
+        pawnstar.book_path          = "C:/Books/openings.bin";
+        pawnstar.book_depth         = 16;
+        for (const char *line :
+             {"option name Threads type spin default 1 min 1 max 256",
+              "option name Hash type spin default 16 min 1 max 65536", "option name Clear Hash type button",
+              "option name Ponder type check default false", "option name MultiPV type spin default 1 min 1 max 256",
+              "option name Style type combo default Normal var Solid var Normal var Risky",
+              "option name UCI_ShowWDL type check default false", "option name SyzygyPath type string default <empty>"})
+        {
+            pawnstar.declared.push_back(*uci_host::uci::ParseOptionLine(line));
+        }
+        pawnstar.SetOption("Hash", "64");
+        uci_host::app::EngineEntry zenith;
+        zenith.config.executable       = "C:/Engines/zenith/zenith.exe";
+        zenith.engine_name             = "Zenith 0.9";
+        zenith.author                  = "Jonny Reckless";
+        controller.catalogue().engines = {pawnstar, zenith};
+        controller.Command(uci_host::app::kEngineManager);
     }
 
     reckless::gfx::Image image = reckless::gfx::MakeImage(static_cast<int>(static_cast<float>(width) * scale + 0.5f),

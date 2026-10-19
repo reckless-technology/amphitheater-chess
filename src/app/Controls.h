@@ -182,6 +182,11 @@ class DialogFrame : public reckless::view::View
     /** @return Where the content goes: inside the card, under the title, over the buttons. */
     reckless::gfx::RectI ContentArea() const;
 
+    /** Once a display frame, while the dialog is up: what it waits on, moved on (an engine's handshake). */
+    virtual void Frame()
+    {
+    }
+
     /** @param height The card's height, in design pixels; lays it out again. */
     void SetCardHeight(int height);
 

@@ -2,6 +2,7 @@
 
 #include "Commands.h"
 #include "Controls.h"
+#include "EngineManagerDialog.h"
 #include "NewGameDialog.h"
 #include "Theme.h"
 
@@ -177,6 +178,9 @@ void MainController::Command(int command)
         break;
     case kAnalyse:
         SetAnalysing(analysis_ == nullptr);
+        break;
+    case kEngineManager:
+        OpenEngineManager();
         break;
     default:
         break;
@@ -380,6 +384,26 @@ void MainController::SetAnalysing(bool is_on)
     Refresh();
 }
 
+void MainController::OpenEngineManager()
+{
+    auto dialog      = std::make_unique<EngineManagerDialog>(catalogue_);
+    dialog->on_close = [this] { CloseDialog(); };
+    dialog->on_save  = [this](const EngineCatalogue &edited) {
+        catalogue_ = edited;
+        if (!files_.engines.empty() && !catalogue_.Save(files_.engines))
+        {
+            error_ = "The engine list could not be written to " + files_.engines.string();
+        }
+        else
+        {
+            error_.clear();
+        }
+        CloseDialog();
+        Refresh();
+    };
+    OpenDialog(std::move(dialog));
+}
+
 void MainController::OpenNewGame()
 {
     auto dialog      = std::make_unique<NewGameDialog>(catalogue_.engines, game_.PlyCount() > 0 || view_ply_ > 0 ||
@@ -428,6 +452,10 @@ void MainController::Frame(double seconds)
 {
     static_cast<void>(seconds);
     closed_dialogs_.clear();
+    if (dialog_)
+    {
+        dialog_->Frame();
+    }
     PollPlay();
     if (analysis_)
     {

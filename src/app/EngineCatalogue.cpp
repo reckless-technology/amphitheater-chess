@@ -181,6 +181,20 @@ void EngineEntry::SetOption(const std::string &name, const std::string &value)
     config.options.emplace_back(name, value);
 }
 
+void EngineEntry::ClearOption(const std::string &name)
+{
+    auto &options = config.options;
+    options.erase(std::remove_if(options.begin(), options.end(),
+                                 [&name](const auto &option) { return SameName(option.first, name); }),
+                  options.end());
+}
+
+bool EngineEntry::HasOption(const std::string &name) const
+{
+    return std::any_of(config.options.begin(), config.options.end(),
+                       [&name](const auto &option) { return SameName(option.first, name); });
+}
+
 std::string EngineEntry::Summary() const
 {
     std::vector<std::string> parts;
