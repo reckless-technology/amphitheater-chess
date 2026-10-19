@@ -10,6 +10,7 @@
 #include "Menus.h"
 #include "PlaySession.h"
 #include "SearchTracker.h"
+#include "UpdateCheck.h"
 #include "chess/Game.h"
 
 #include "chess/Pgn.h"
@@ -118,10 +119,26 @@ class MainController
     void StartGame(PlaySettings settings);
 
     /**
-     * One display frame: the game on the board polled, the engines' lines read, the clocks and the analysis moved on.
+     * One display frame: the game on the board polled, the engines' lines read, the clocks and the analysis moved on,
+     * the update check polled about once a second.
      * @param seconds Since the last.
      */
     void Frame(double seconds);
+
+    /**
+     * The update check the window runs: its menu under Help > Updates, the status bar saying when a newer release is
+     * out. None (a launch's check, a suite, checks switched off by the environment) for no check and no menu.
+     * @param checker The check, or null.
+     * @param open_url Opens the newer release's page in the person's browser.
+     */
+    void SetUpdateChecker(std::unique_ptr<reckless::update::Checker>  checker,
+                          std::function<void(const std::string &url)> open_url);
+
+    /** @return The update check, or null. */
+    reckless::update::Checker *update_checker()
+    {
+        return updates_.get();
+    }
 
     /** @return The game shown. */
     const chess::Game &game() const
@@ -316,6 +333,9 @@ class MainController
     std::shared_ptr<reckless::app::MenuBarController> own_menus_;   ///< The window's own bar, where no platform's.
     std::optional<MenuState>                          menus_shown_; ///< What the menu bar was last set for.
     reckless::app::MenuBar                            menu_bar_;    ///< The menu bar as last set.
+    std::unique_ptr<reckless::update::Checker>        updates_;     ///< The update check, or none.
+    std::function<void(const std::string &url)>       open_url_;    ///< Opens a release's page.
+    double                                            update_poll_ = 0.0; ///< Seconds since it was last polled.
 
     MainView                     &view_;       ///< The view.
     ControllerServices            services_;   ///< The clipboard, the file dialog, the app's end.

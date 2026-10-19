@@ -1,6 +1,7 @@
 // The menu bar and its menus: every menu the mockup names, in its order, each item enabled as the window's state says,
 // the games a person may follow as a submenu, every shortcut the window answers to and the command it chooses, the
-// whole bar waiting while a dialog is open, and the window's own bar drawn across its top where no platform shows one.
+// whole bar waiting while a dialog is open, the window's own bar drawn across its top where no platform shows one, and
+// the update check's menu under Help.
 
 #include "app/Menus.h"
 #include "app/Commands.h"
@@ -9,6 +10,9 @@
 #include "app/MainView.h"
 #include "app/PieceSet.h"
 #include "chess/Notation.h"
+
+#include "ScratchPath.h"
+#include "UpdateCheck.h"
 
 #include <gtest/gtest.h>
 
@@ -186,6 +190,36 @@ TEST(Menus, AWindowWhoseBarThePlatformShowsDrawsNoneAndLaysOutFromTheTop)
 
     view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
     EXPECT_LT(view.top_strip().bounds().y(), MainView::kMenuHeight) << "no bar drawn: the layout starts at the top";
+}
+
+TEST(Menus, TheUpdateChecksMenuStandsUnderHelpAndFollowsTheCheck)
+{
+    MainView          view(Pieces());
+    MainController    controller(view, ControllerFiles{{}});
+    const std::size_t rows_before = controller.menu_bar().menus.back().submenu.size();
+
+    // A check that never reaches the network: switched off, as the environment switches it off on a runner.
+    const auto file    = reckless::test::ScratchPath("uci-host-updates") / "uci-host-updates.json";
+    auto       checker = std::make_unique<reckless::update::Checker>(
+        file, reckless::update::Version{0, 1, 2}, "https://recklesstechnology.com/updates/uci-host.json",
+        [] { return std::unique_ptr<reckless::net::Transport>(); }, [] { return 1.0e9; }, false, "RecklessUciHost");
+    std::vector<std::string> opened;
+    controller.SetUpdateChecker(std::move(checker), [&](const std::string &url) { opened.push_back(url); });
+    const MenuEntry &help = controller.menu_bar().menus.back();
+    ASSERT_EQ(help.submenu.size(), rows_before + 2) << "a rule and the Updates menu";
+    const MenuEntry &updates = help.submenu.back();
+    EXPECT_EQ(updates.title, "Updates");
+    ASSERT_FALSE(updates.submenu.empty());
+    EXPECT_NE(updates.submenu.front().title.find("0.1.2"), std::string::npos) << "the status row names the version";
+    EXPECT_FALSE(updates.submenu.front().enabled);
+    controller.Frame(1.5);
+    for (const std::string &item : view.status().items())
+    {
+        EXPECT_EQ(item.find("UPDATE"), std::string::npos) << "no newer release known";
+    }
+
+    controller.SetUpdateChecker(nullptr, {});
+    EXPECT_EQ(controller.menu_bar().menus.back().submenu.size(), rows_before) << "no check, no menu";
 }
 
 } // namespace uci_host::app

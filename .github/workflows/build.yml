@@ -43,6 +43,10 @@ concurrency:
   group: build-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# No job's launch, suite or smoke run reaches the network for the update check, as on every product's runners.
+env:
+  RECKLESS_UPDATE_CHECK: "off"
+
 jobs:
   changes:
     name: What changed

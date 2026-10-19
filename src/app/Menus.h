@@ -5,6 +5,7 @@
 
 #include "MenuBar.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,6 +28,8 @@ struct MenuState
     bool is_dialog_open        = false; ///< A dialog over the window, which every menu waits for.
     /** The games of a match or a tournament in progress that the board may follow: the game's number and its title. */
     std::vector<std::pair<int, std::string>> watchable_games;
+    /** The update check's revision, so its menu says what the check says now. */
+    std::uint64_t updates_revision = 0;
 
     /**
      * Whether two states show the same menus.

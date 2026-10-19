@@ -149,6 +149,13 @@ quits. A list or a line that has the keyboard keeps its own keys, and every menu
 window's title follows the game - "White vs Black - Reckless UCI Host", the file's name before the app's while the game
 shown was opened from a file or saved to one. The lists' scroll bars are in the accent.
 
+Help > Updates is the toolkit's update check (`update::Checker`, `app::MakeUpdateChecker`): at most once a day, while the
+window shows, a plain GET of `https://recklesstechnology.com/updates/uci-host.json` (the website writes it as a release
+is promoted; until then a check finds nothing and says so), the answer kept in `reckless-technology/uci-host-updates.json`
+in the user's settings folder; its menu says what the check found, opens a newer release's page and turns checking by
+the clock on and off, and the status bar says UPDATE while a newer release is out. Nothing is downloaded or installed.
+A launch's check (`--smoke`) makes none, and `RECKLESS_UPDATE_CHECK=off` - every CI job sets it - switches it off.
+
 Game > New game plays a game on the board: either side the person at the window or any configured engine, under a
 time control (a preset or the command line's syntax), from the starting position or the position shown. The game is
 the core's `GameRunner` on a thread of its own (`PlaySession`): an engine is an `EnginePlayer`, the person a

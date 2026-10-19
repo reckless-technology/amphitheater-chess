@@ -11,6 +11,8 @@
 #include "Theme.h"
 #include "match/Openings.h"
 
+#include "AppUpdates.h"
+
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
@@ -835,9 +837,27 @@ void MainController::CloseDialog()
     view_.GrabKeyboardFocus();
 }
 
+void MainController::SetUpdateChecker(std::unique_ptr<reckless::update::Checker>  checker,
+                                      std::function<void(const std::string &url)> open_url)
+{
+    updates_     = std::move(checker);
+    open_url_    = std::move(open_url);
+    menus_shown_ = std::nullopt; // the bar set again, with its Updates or without
+    RefreshMenuBar();
+}
+
 void MainController::Frame(double seconds)
 {
-    static_cast<void>(seconds);
+    if (updates_)
+    {
+        // About once a second, as the check asks: it starts one when one is due, the window being on a screen.
+        update_poll_ += seconds;
+        if (update_poll_ >= 1.0)
+        {
+            update_poll_ = 0.0;
+            updates_->Poll(true);
+        }
+    }
     closed_dialogs_.clear();
     if (dialog_)
     {
@@ -1041,6 +1061,14 @@ void MainController::RefreshSearches()
     {
         status.push_back(error_);
     }
+    if (updates_)
+    {
+        if (const auto release = updates_->available())
+        {
+            status.push_back("UPDATE: version " + reckless::update::VersionText(release->version) +
+                             " is out (Help > Updates)");
+        }
+    }
     view_.SetAnalysis(std::move(blocks));
     view_.SetArrows(std::move(arrows));
     view_.SetStatus(std::move(status));
@@ -1057,7 +1085,14 @@ void MainController::RefreshMenuBar()
     {
         return;
     }
-    menu_bar_    = BuildMenuBar(state);
+    menu_bar_ = BuildMenuBar(state);
+    if (updates_)
+    {
+        // Help > Updates: the toolkit's rows, each choosing through its own action.
+        reckless::app::MenuEntry &help = menu_bar_.menus.back();
+        help.submenu.push_back(reckless::app::MenuEntry::Separator());
+        help.submenu.push_back(reckless::app::UpdatesMenuEntry(*updates_, open_url_));
+    }
     menus_shown_ = std::move(state);
     services_.set_menu_bar(menu_bar_, [this](int id) { Command(id); });
 }
@@ -1066,6 +1101,7 @@ MenuState MainController::Menus() const
 {
     MenuState state;
     state.is_dialog_open   = dialog_ != nullptr;
+    state.updates_revision = updates_ ? updates_->revision() : 0;
     state.can_step_back    = view_ply_ > 0;
     state.can_step_forward = view_ply_ < game_.PlyCount();
     state.is_game_running  = IsPlaying();

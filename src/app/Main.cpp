@@ -12,6 +12,7 @@
 #include "AppPlatform.h"
 #include "AppRoot.h"
 #include "AppRun.h"
+#include "AppUpdates.h"
 #include "Embedded.h"
 #include "Window.h"
 
@@ -68,6 +69,16 @@ int main(int argc, char **argv)
         view.SetMenuBarView(platform->MakeMenuBarView(uci_host::app::theme::MenuBarLook()));
     }
     uci_host::app::MainController controller(view, uci_host::app::ControllerFiles{}, services);
+    // The update check, as every product on the toolkit runs it: once a day at most while the window shows, never in a
+    // launch's check, and none where RECKLESS_UPDATE_CHECK=off (every CI runner).
+    if (!options.is_smoke)
+    {
+        const reckless::update::Product product{"RecklessUciHost", uci_host::VersionText(),
+                                                "https://recklesstechnology.com/updates/uci-host.json",
+                                                "uci-host-updates.json"};
+        controller.SetUpdateChecker(reckless::app::MakeUpdateChecker(product),
+                                    [](const std::string &url) { reckless::window::OpenInBrowser(url); });
+    }
     for (const std::string &file : pgn_files)
     {
         controller.OpenPgn(file);
