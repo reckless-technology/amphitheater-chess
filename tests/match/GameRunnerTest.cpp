@@ -367,8 +367,9 @@ TEST(EnginePlayer, GoCarriesTheClocksAndTheLimits)
 
 TEST(EnginePlayer, LogsTheEnginesLinesAndReportsAMissingEngine)
 {
-    EnginePlayer player(Fake({"--name", "Logged"}), Control("1"));
+    // Declared before the player, whose engine still logs its quit as it goes.
     int          lines = 0;
+    EnginePlayer player(Fake({"--name", "Logged"}), Control("1"));
     player.SetLogger([&](uci::LineDirection, std::string_view) { ++lines; });
     chess::Game game;
     ASSERT_TRUE(player.StartGame(game));

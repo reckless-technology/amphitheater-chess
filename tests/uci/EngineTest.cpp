@@ -177,8 +177,9 @@ TEST(Engine, SetsConfiguredOptionsAndWarnsAboutBadOnes)
 {
     auto config    = FakeEngine();
     config.options = {{"Hash", "64"}, {"No Such Option", "1"}, {"Threads", "999"}, {"clear hash", ""}};
-    Engine                   engine(config);
+    // Declared before the engine, whose destructor still logs its quit.
     std::vector<std::string> sent;
+    Engine                   engine(config);
     engine.SetLogger([&](LineDirection direction, std::string_view line) {
         if (direction == LineDirection::kToEngine)
         {
@@ -388,8 +389,9 @@ TEST(Engine, ASlowStartIsWaitedFor)
 
 TEST(Engine, ErrorOutputArrivesAsEventsAndInTheLog)
 {
-    Engine engine(FakeEngine({"--stderr"}));
+    // Declared before the engine, whose destructor still logs its quit.
     int    error_lines = 0;
+    Engine engine(FakeEngine({"--stderr"}));
     engine.SetLogger([&](LineDirection direction, std::string_view) {
         error_lines += direction == LineDirection::kFromEngineError ? 1 : 0;
     });
