@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 namespace uci_host::match
 {
 namespace
@@ -63,7 +65,10 @@ TEST(GameRunner, PlaysAGameToItsEndAndRecordsIt)
     EXPECT_EQ(pgn.Tag("TimeControl"), "10+0.1");
     EXPECT_EQ(pgn.Tag("PlyCount"), std::to_string(record.game.PlyCount()));
     EXPECT_EQ(pgn.Tag("Date").size(), 10u);
-    EXPECT_NE(text.find(record.game.GetOutcome().description), std::string::npos) << text;
+    // The writer wraps at 80 columns, so the closing comment may be split across lines.
+    std::string unwrapped = text;
+    std::replace(unwrapped.begin(), unwrapped.end(), '\n', ' ');
+    EXPECT_NE(unwrapped.find(record.game.GetOutcome().description), std::string::npos) << text;
     // It reads back as the same game.
     std::vector<std::string> errors;
     const auto               back = chess::ReadPgn(text, &errors);
