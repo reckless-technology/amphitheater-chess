@@ -10,9 +10,13 @@ model, the command line, the tests).
 decided. Keep everything compatible with either: the code adapted from pawnstar and the piece set are Jonny's own, and
 nothing third-party may come in whose licence would close off either option.
 
-**The plan: the GUI comes on reckless-toolkit.** It will be drawn with Skia on the shared toolkit being extracted
-from the vst-plugins repository. Nothing here depends on the toolkit or on vst-plugins: keep it that way, so the
-libraries stay testable on their own.
+**The GUI is built on reckless-toolkit**, a git submodule at `external/reckless-toolkit` (private; CI reads it with
+the deploy key in the secret `RECKLESS_TOOLKIT_DEPLOY_KEY`, through `.github/actions/toolkit`), added with the
+toolkit's GUI on, its suites off and no audio device layer. Only `src/app/` uses it: the libraries under `src/chess`,
+`src/uci`, `src/match` and `src/cli` depend on nothing of the toolkit or of vst-plugins, so they stay testable on their
+own, and `-DUCI_HOST_GUI=OFF` builds them with no submodule. The toolkit's include namespace is flat (`"View.h"`), so
+the host's headers are included by their directory (`"chess/Position.h"`) and never take a toolkit header's name. A
+bump of the submodule points at a commit on the toolkit's `main` (the changes job checks).
 
 **The pieces** are Jonny's own Staunton set, `assets/pieces/staunton/{w,b}{K,Q,R,B,N,P}.svg`, written by
 `gen_pieces.py` beside them (`preview.png` shows them); regenerate rather than edit by hand. Each is a 100 x 100

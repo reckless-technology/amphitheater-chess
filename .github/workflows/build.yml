@@ -14,6 +14,14 @@ name: build
 #
 # The version every binary reports is MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag (cmake/UciHostVersion.cmake),
 # which a shallow clone cuts off: every checkout is fetch-depth 0.
+#
+# The window is built on the toolkit, a git submodule (reckless-technology/reckless-toolkit at external/reckless-toolkit)
+# in a private repository the workflow's token cannot read. Every job that builds checks it out right after its own
+# checkout through .github/actions/toolkit, over SSH with the toolkit's read-only deploy key (the secret
+# RECKLESS_TOOLKIT_DEPLOY_KEY; on Windows through Git's bash and its ssh), at the commit this repository pins; the changes
+# job also holds that commit to the toolkit's main. The window's suites (CTest label window) need a display: Linux runs
+# them under xvfb-run, macOS on the runner's window server, Windows on its runner's window station, which draws though
+# nothing shows; the sanitizer and coverage jobs leave them out.
 on:
   push:
     branches: [main]
@@ -41,6 +49,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          clean: false
+      # The toolkit at the commit this change pins, which must be on the toolkit's main: a bump points at a commit the
+      # toolkit has merged, never at one only a branch of it holds, which could be rewritten under a commit here.
+      - name: The toolkit submodule, at a commit on the toolkit's main
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
+          require-on-main: "true"
       - name: Decide what this run needs
         id: pick
         shell: bash
@@ -78,6 +94,11 @@ jobs:
         with:
           fetch-depth: 0
           clean: false
+      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
+      - name: The toolkit submodule
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
@@ -88,7 +109,10 @@ jobs:
       - name: Build
         run: cmake --build build/ci-linux -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
-        run: ctest --test-dir build/ci-linux --output-on-failure -j "$(nproc)"
+        run: ctest --test-dir build/ci-linux --output-on-failure -j "$(nproc)" -LE '^window$'
+      # The window's suites (label window) on a display of their own, one at a time.
+      - name: Test the window on a display (xvfb-run)
+        run: xvfb-run -a -s "-screen 0 1600x1200x24" ctest --test-dir build/ci-linux --output-on-failure -L '^window$'
 
   sanitizers:
     name: Linux sanitizers (address, undefined)
@@ -101,6 +125,11 @@ jobs:
         with:
           fetch-depth: 0
           clean: false
+      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
+      - name: The toolkit submodule
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
@@ -114,7 +143,7 @@ jobs:
         env:
           ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: ctest --test-dir build/ci-asan --output-on-failure -j "$(nproc)"
+        run: ctest --test-dir build/ci-asan --output-on-failure -j "$(nproc)" -LE '^window$'
 
   # Coverage of the host's own code (src/), gcc's, read by gcovr: a debug build instrumented, every suite run, and the
   # run red under 90 % of lines. The report is kept with the run.
@@ -129,6 +158,11 @@ jobs:
         with:
           fetch-depth: 0
           clean: false
+      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
+      - name: The toolkit submodule
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
@@ -145,7 +179,7 @@ jobs:
           find build/ci-coverage -name '*.gcda' -delete
           cmake --build build/ci-coverage -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
-        run: ctest --test-dir build/ci-coverage --output-on-failure -j "$(nproc)"
+        run: ctest --test-dir build/ci-coverage --output-on-failure -j "$(nproc)" -LE '^window$'
       - name: Coverage, 90 % of lines or red
         run: >
           mkdir -p build/ci-coverage/coverage &&
@@ -175,13 +209,18 @@ jobs:
         with:
           fetch-depth: 0
           clean: false
+      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
+      - name: The toolkit submodule
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
       - name: Configure
         run: >
           cmake -S . -B build/ci-windows -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
-          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: cmake --build build/ci-windows -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
@@ -198,6 +237,11 @@ jobs:
         with:
           fetch-depth: 0
           clean: false
+      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
+      - name: The toolkit submodule
+        uses: ./.github/actions/toolkit
+        with:
+          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
@@ -205,17 +249,29 @@ jobs:
         run: >
           cmake -S . -B build/ci-macos -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
           -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
-          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: cmake --build build/ci-macos -j ${{ steps.cpp.outputs.jobs }}
       - name: Every binary holds arm64 and x86_64, for macOS 13.3 on
         run: |
-          for binary in build/ci-macos/src/cli/uci-host-cli build/ci-macos/tests/uci_host_*; do
+          for binary in build/ci-macos/src/cli/uci-host-cli build/ci-macos/tests/uci_host_*                         build/ci-macos/src/app/RecklessUciHost.app/Contents/MacOS/RecklessUciHost; do
             lipo -info "$binary"
             for arch in arm64 x86_64; do lipo "$binary" -verify_arch "$arch"; done
             [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}' | sort -u)" = 13.3 ] || { echo "::error::$binary is not for macOS 13.3"; exit 1; }
           done
+      # The app's bundle as the system checks it: signed whole, and a plist that names its icon and asks for nothing
+      # the host does not use (no microphone).
+      - name: The app's bundle
+        run: |
+          app=build/ci-macos/src/app/RecklessUciHost.app
+          codesign --verify --deep --strict "$app"
+          [ -f "$app/Contents/Resources/Icon.icns" ] || { echo "::error::the bundle has no Icon.icns"; exit 1; }
+          if /usr/libexec/PlistBuddy -c "Print :NSMicrophoneUsageDescription" "$app/Contents/Info.plist" 2> /dev/null; then
+            echo "::error::the plist asks for the microphone"; exit 1
+          fi
       - name: Test
+        env:
+          RECKLESS_REQUIRE_WINDOW: "1"
         run: ctest --test-dir build/ci-macos --output-on-failure -j "$(sysctl -n hw.ncpu)"
 
   # Every C++ file clang-format clean under the repository's .clang-format, with 22.1.8 from the PyPI wheel (the one

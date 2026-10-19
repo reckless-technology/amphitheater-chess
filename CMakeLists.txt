@@ -10,7 +10,7 @@ endif()
 
 # Reckless UCI Host: a chess GUI and UCI engine host. The toolkit-free core: the rules of chess (src/chess), UCI
 # engines as child processes (src/uci), games, matches and tournaments between them (src/match) and the
-# command-line runner (src/cli). The GUI comes later, drawn with Skia on reckless-toolkit.
+# command-line runner (src/cli) - and the window, Reckless UCI Host (src/app), drawn with Skia on reckless-toolkit.
 
 # The oldest macOS the Mac binaries run on, set before project(): 13.3, the floor every Reckless product shares
 # (the toolkit the GUI will be built on writes numbers with the floating-point std::to_chars Apple's libc++ first
@@ -46,6 +46,7 @@ if(MSVC)
 endif()
 
 option(UCI_HOST_BUILD_TESTS "Build the test suites" ON)
+option(UCI_HOST_GUI "Build the window, Reckless UCI Host, on the toolkit submodule (external/reckless-toolkit)" ON)
 option(UCI_HOST_COVERAGE "Instrument the host's own code for coverage (gcc, clang or clang-cl)" OFF)
 option(UCI_HOST_ASAN "Build everything with AddressSanitizer (and UndefinedBehaviorSanitizer on gcc and clang)" OFF)
 
@@ -122,6 +123,53 @@ if(UCI_HOST_BUILD_TESTS)
             target_compile_options(gtest_main PRIVATE -Wno-character-conversion)
         endif()
     endif()
+endif()
+
+# The window, Reckless UCI Host, is drawn on the toolkit (reckless-technology/reckless-toolkit), a git submodule at
+# external/reckless-toolkit: its views, its look, its child window on Skia and its app platform. The core and the
+# command line need none of it, and build with the GUI off.
+if(UCI_HOST_GUI)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/reckless-toolkit/CMakeLists.txt")
+        message(FATAL_ERROR "The window is built on the toolkit, a git submodule at external/reckless-toolkit, which this "
+                            "checkout does not hold. Fetch it with 'git submodule update --init' (tools/setup-dev.ps1 "
+                            "and tools/setup-dev.sh do), or build the core and the command line alone with "
+                            "-DUCI_HOST_GUI=OFF.")
+    endif()
+
+    # The app's icon (the toolkit's reckless_bundle_icon: an .icns on macOS, an .ico on Windows) is rendered at build
+    # time by a Python 3 with Pillow: the repository's own .venv where there is one (made by the setup scripts), else
+    # the first Python 3 on the PATH; -DPython3_EXECUTABLE names one outright (CI passes a venv of its own).
+    if(APPLE OR WIN32)
+        set(_uci_host_venv_python "")
+        foreach(_candidate "${CMAKE_CURRENT_SOURCE_DIR}/.venv/Scripts/python.exe"
+                           "${CMAKE_CURRENT_SOURCE_DIR}/.venv/bin/python")
+            if(EXISTS "${_candidate}")
+                set(_uci_host_venv_python "${_candidate}")
+                break()
+            endif()
+        endforeach()
+        if(NOT Python3_EXECUTABLE AND _uci_host_venv_python)
+            set(Python3_EXECUTABLE "${_uci_host_venv_python}" CACHE FILEPATH "The Python the app's icon is made with")
+        endif()
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import PIL"
+                        RESULT_VARIABLE _uci_host_pillow OUTPUT_QUIET ERROR_QUIET)
+        if(NOT _uci_host_pillow EQUAL 0)
+            message(FATAL_ERROR "The app's icon is made with Pillow, which ${Python3_EXECUTABLE} lacks. Make the "
+                                "repository's .venv (tools/setup-dev.ps1 or tools/setup-dev.sh do it; by hand, "
+                                "'uv venv .venv' and 'uv pip install --python <the venv's python> Pillow'), then "
+                                "configure again, or -DPython3_EXECUTABLE=<a Python that has Pillow>.")
+        endif()
+        message(STATUS "The app's icon: ${Python3_EXECUTABLE} (Python ${Python3_VERSION}, Pillow found)")
+    endif()
+
+    # The toolkit's options, as normal variables before it is added: its windowed parts on, its own suites off (the
+    # host's suites are its own), and no audio device layer - the host plays no sound.
+    set(RECKLESS_TOOLKIT_BUILD_TESTS OFF)
+    set(RECKLESS_TOOLKIT_GUI ON)
+    set(RECKLESS_BUILD_AUDIO OFF)
+    set(RECKLESS_ASIO OFF)
+    add_subdirectory(external/reckless-toolkit EXCLUDE_FROM_ALL)
 endif()
 
 add_subdirectory(src)

@@ -1,9 +1,9 @@
 # Reckless UCI Host
 
 A chess GUI and UCI engine host for Windows, macOS and Linux, in C++20. This repository holds its toolkit-free core -
-the rules of chess, UCI engines as child processes, games, matches and tournaments between them - and `uci-host-cli`,
-a command-line match and tournament runner on that core. The GUI comes next, drawn with Skia on reckless-toolkit; it
-will drive the same libraries.
+the rules of chess, UCI engines as child processes, games, matches and tournaments between them - `uci-host-cli`, a
+command-line match and tournament runner on that core, and the window, `RecklessUciHost`, drawn with Skia on
+reckless-toolkit (a git submodule at `external/reckless-toolkit`), which drives the same libraries.
 
 Proprietary: see [LICENSE](LICENSE). Everything in it is Jonny Reckless's own work, the piece set in
 `assets/pieces/staunton/` for the GUI among it (twelve SVGs, the generator that wrote them and a preview); the tests
@@ -76,8 +76,16 @@ however the host goes; on Linux and macOS each runs in a process group of its ow
 ## Building
 
 Set up a machine with `tools/setup-dev.ps1` (Windows) or `tools/setup-dev.sh` (Linux, macOS) - the compiler, CMake,
-Ninja, clang-format 22.1.8 and gcovr, the git hooks and the editor's extensions; `-Check` / `--check` only reports. In
-VS Code these are the "setup environment" and "check environment" tasks.
+Ninja, clang-format 22.1.8 and gcovr, the toolkit submodule, a `.venv` with Pillow for the app's icon (Windows and
+macOS), the libraries the window links on Linux (X11, FreeType, fontconfig), the git hooks and the editor's
+extensions; `-Check` / `--check` only reports. In VS Code these are the "setup environment" and "check environment"
+tasks.
+
+The window is built on the toolkit, a private repository at `external/reckless-toolkit`: clone with
+`git clone --recurse-submodules`, or `git submodule update --init` after a plain clone. `-DUCI_HOST_GUI=OFF` builds
+the core, the command line and their suites alone, with no submodule. The app lands at
+`build/<preset>/src/app/RecklessUciHost.exe` on Windows, `build/<preset>/src/app/RecklessUciHost.app` on macOS and
+`build/<preset>/src/app/RecklessUciHost` on Linux.
 
 ```
 cmake --preset release && cmake --build --preset release && ctest --preset release

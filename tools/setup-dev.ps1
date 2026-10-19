@@ -16,6 +16,8 @@
       clang-cl with its llvm-profdata and llvm-cov (the coverage-windows preset, tools/coverage-windows.ps1) and
       AddressSanitizer (the asan-windows preset)
     - uv, Astral's tool installer, and with it clang-format and gcovr at the versions CI pins (build.yml)
+    - the toolkit submodule (external/reckless-toolkit), which the window is built on, and the repository's .venv with
+      Pillow, which renders the app's icon
     - the repo's git hooks (core.hooksPath .githooks) and the VS Code extensions .vscode/extensions.json recommends
 
   Building happens in Visual Studio's developer environment (VsDevCmd.bat), which puts cmake, ninja and cl on the
@@ -124,6 +126,32 @@ function Install-VisualStudio([string[]]$components) {
       '--accept-package-agreements', '--accept-source-agreements', '--override', "`"$override`"") -Wait -PassThru -NoNewWindow
   }
   if ($p.ExitCode -notin 0, 3010) { throw "the Visual Studio installer exited with $($p.ExitCode)" }
+}
+
+# The toolkit submodule (external/reckless-toolkit), which the window is built on, at the commit this repository pins.
+function Set-ToolkitSubmodule {
+  if (Test-Path 'external/reckless-toolkit/CMakeLists.txt') {
+    Write-Ok 'toolkit submodule' (git -C external/reckless-toolkit log -1 --format='%h %s')
+    return
+  }
+  if ($Check) { Write-Missing 'toolkit submodule' 'git submodule update --init'; return }
+  Write-Installing 'toolkit submodule' 'git submodule update --init'
+  git submodule update --init
+  if ($LASTEXITCODE -ne 0) { throw "git submodule update --init failed ($LASTEXITCODE)" }
+}
+
+# The repository's .venv with Pillow, which renders the app's icon (the configure finds it there).
+function Set-IconPython {
+  $python = Join-Path (Get-Location) '.venv\Scripts\python.exe'
+  if (Test-Path $python) {
+    & $python -c 'import PIL' 2> $null
+    if ($LASTEXITCODE -eq 0) { Write-Ok 'Pillow (.venv)' "$(& $python --version)"; return }
+  }
+  if ($Check -or -not $script:uv) { Write-Missing 'Pillow (.venv)' 'uv venv .venv; uv pip install --python .venv\Scripts\python.exe Pillow'; return }
+  Write-Installing 'Pillow (.venv)' 'uv venv .venv, then Pillow into it'
+  if (-not (Test-Path $python)) { & $script:uv venv .venv; if ($LASTEXITCODE -ne 0) { throw "uv venv failed ($LASTEXITCODE)" } }
+  & $script:uv pip install --python $python Pillow
+  if ($LASTEXITCODE -ne 0) { throw "Pillow did not install ($LASTEXITCODE)" }
 }
 
 function Set-GitHooks {
@@ -243,6 +271,8 @@ else {
 Install-UvTool 'clang-format' $ClangFormatVersion 'which the pre-commit hook and CI format with'
 Install-UvTool 'gcovr' $GcovrVersion "CI's coverage report" -AtLeast
 
+Set-ToolkitSubmodule
+Set-IconPython
 Set-GitHooks
 Install-VSCodeExtensions
 

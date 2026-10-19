@@ -1,0 +1,55 @@
+name: The toolkit submodule
+description: >
+  The toolkit (reckless-technology/reckless-toolkit, a private repository) checked out at external/reckless-toolkit at
+  the commit this repository pins, through the toolkit's read-only deploy key: the workflow's token reads this
+  repository alone. Made for the kept workspaces of the organisation's self-hosted runners, where a checkout is
+  clean: false - the submodule is put at the pinned commit every run whatever an earlier run left in it. With
+  require-on-main, the pinned commit must also be on the toolkit's main: a pointer to a commit only a branch holds
+  would build here and vanish there.
+inputs:
+  deploy-key:
+    description: The private half of the toolkit's read-only deploy key (secrets.RECKLESS_TOOLKIT_DEPLOY_KEY)
+    required: true
+  require-on-main:
+    description: "'true' to fail unless the pinned commit is on the toolkit's main"
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: The toolkit submodule, through the deploy key
+      shell: bash
+      env:
+        DEPLOY_KEY: ${{ inputs.deploy-key }}
+        REQUIRE_ON_MAIN: ${{ inputs.require-on-main }}
+      run: |
+        set -euo pipefail
+        path=external/reckless-toolkit
+        mode=$(git ls-tree HEAD "$path" | awk '{print $1}')
+        if [ "$mode" != "160000" ]; then
+          echo "$path is no submodule at this commit; nothing to check out"
+          exit 0
+        fi
+        if [ -z "$DEPLOY_KEY" ]; then
+          echo "::error::RECKLESS_TOOLKIT_DEPLOY_KEY is not set: CI cannot read the toolkit submodule"; exit 1
+        fi
+        temp="$RUNNER_TEMP"
+        if command -v cygpath > /dev/null; then temp=$(cygpath -m "$RUNNER_TEMP"); fi
+        key="$temp/reckless-toolkit-deploy-key"
+        trap 'rm -f "$key"' EXIT
+        (umask 077; printf '%s\n' "$DEPLOY_KEY" > "$key")
+        export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+        git submodule sync --recursive
+        # --force: the pinned commit's files whatever an earlier run changed in them; then nothing untracked kept.
+        git submodule update --init --recursive --force
+        git submodule foreach --quiet --recursive 'git clean -ffdxq'
+        pinned=$(git -C "$path" rev-parse HEAD)
+        if [ "$REQUIRE_ON_MAIN" = "true" ]; then
+          git -C "$path" fetch --quiet origin main
+          if ! git -C "$path" merge-base --is-ancestor "$pinned" FETCH_HEAD; then
+            echo "::error::$path pins $pinned, which is not on the toolkit's main. A submodule bump points at a commit the toolkit's main holds: merge the toolkit's pull request first, then bump to it."
+            exit 1
+          fi
+          echo "the pinned commit is on the toolkit's main"
+        fi
+        echo "toolkit at $(git -C "$path" log -1 --format='%h %s')"

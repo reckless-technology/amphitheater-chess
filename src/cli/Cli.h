@@ -15,6 +15,7 @@
 #include "chess/Result.h"
 #include "match/Tournament.h"
 #include "uci/EngineConfig.h"
+#include "version/Version.h"
 
 #include <atomic>
 #include <iosfwd>
@@ -28,8 +29,7 @@ namespace uci_host::cli
 /** @return The full usage text. */
 std::string UsageText();
 
-/** @return The host's version, MAJOR.MINOR.BUILD. */
-std::string VersionText();
+using uci_host::VersionText; // The host's version, MAJOR.MINOR.BUILD (version/Version.h).
 
 /** What "match" and "tournament" were asked for, read from the arguments. */
 struct TournamentOptions

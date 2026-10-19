@@ -8,7 +8,10 @@
 # What it sets up:
 #   - the compiler, CMake and Ninja (build-essential, cmake, ninja-build, gdb on Linux; Xcode's command-line tools and
 #     Homebrew's cmake and ninja on macOS)
+#   - the libraries the window's toolkit links on Linux (X11, FreeType, fontconfig) and xvfb for its suites' display
 #   - uv, Astral's tool installer, and with it clang-format and gcovr at the versions CI pins (build.yml)
+#   - the toolkit submodule (external/reckless-toolkit), which the window is built on, and on macOS the repository's
+#     .venv with Pillow, which renders the app's icon
 #   - the repo's git hooks (core.hooksPath .githooks) and the VS Code extensions .vscode/extensions.json recommends
 #
 #   tools/setup-dev.sh                # set up
@@ -126,6 +129,24 @@ linux_base() {
     fi
 }
 
+# The toolkit submodule, which the window is built on: initialised at the commit this repository pins.
+toolkit_submodule() {
+    if [ -f external/reckless-toolkit/CMakeLists.txt ]; then ok 'toolkit submodule' "$(git -C external/reckless-toolkit log -1 --format='%h %s')"
+    elif [ "$check" = 1 ]; then miss 'toolkit submodule' 'git submodule update --init'
+    else installing 'toolkit submodule' 'git submodule update --init'; git submodule update --init; fi
+}
+
+# The repository's .venv with Pillow, which renders the app's icon on macOS (the configure finds it there).
+icon_python() {
+    if [ -x .venv/bin/python ] && .venv/bin/python -c 'import PIL' 2>/dev/null; then ok 'Pillow (.venv)' "$(.venv/bin/python --version)"
+    elif [ "$check" = 1 ] || ! have uv; then miss 'Pillow (.venv)' "uv venv .venv && uv pip install --python .venv/bin/python Pillow"
+    else
+        installing 'Pillow (.venv)' 'uv venv .venv, then Pillow into it'
+        [ -x .venv/bin/python ] || uv venv .venv
+        uv pip install --python .venv/bin/python Pillow
+    fi
+}
+
 set_git_hooks() {
     [ -d .githooks ] || return 0
     if [ "$(git config core.hooksPath || true)" = .githooks ]; then ok 'git hooks' 'core.hooksPath .githooks'
@@ -180,7 +201,8 @@ echo "Reckless UCI Host: $([ "$check" = 1 ] && echo checking || echo 'setting up
 
 local_bin="$HOME/.local/bin"
 case "$os" in
-    Linux) linux_base build-essential cmake ninja-build gdb curl git ;;
+    Linux) linux_base build-essential cmake ninja-build gdb curl git pkg-config libx11-dev libfreetype-dev \
+        libfontconfig1-dev xvfb xauth ;;
     Darwin) macos_base; have brew && brew_packages cmake ninja ;;
     *) echo "unsupported system: $os (tools/setup-dev.ps1 is the Windows script)" >&2; exit 2 ;;
 esac
@@ -209,6 +231,8 @@ fi
 uv_tool clang-format "$clang_format_version" exact 'which the pre-commit hook and CI format with'
 uv_tool gcovr "$gcovr_version" at-least "CI's coverage report"
 
+toolkit_submodule
+[ "$os" = Darwin ] && icon_python
 set_git_hooks
 install_vscode_extensions
 
