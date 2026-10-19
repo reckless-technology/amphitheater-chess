@@ -178,6 +178,12 @@ jobs:
         run: |
           find build/ci-coverage -name '*.gcda' -delete
           cmake --build build/ci-coverage -j ${{ steps.cpp.outputs.jobs }}
+          # The kept tree keeps the notes of sources that have moved or gone, which gcov can no longer read: the
+          # objects no longer built are removed, and with them every note whose object is gone.
+          ninja -C build/ci-coverage -t cleandead
+          find build/ci-coverage -name '*.gcno' | while read -r note; do
+            [ -f "${note%.gcno}.o" ] || { echo "a stale note: $note"; rm -f "$note"; }
+          done
       - name: Test
         run: ctest --test-dir build/ci-coverage --output-on-failure -j "$(nproc)" -LE '^window$'
       - name: Coverage, 90 % of lines or red
