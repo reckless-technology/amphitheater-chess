@@ -4,7 +4,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace uci_host::app
 {
@@ -129,14 +133,93 @@ void GameCard::SetLines(std::vector<CardLine> lines)
     Repaint();
 }
 
-int GameCard::PreferredHeight() const
+namespace
 {
-    int height = 20;
+
+constexpr float kCardPadding  = 12.0f; ///< Inside the card's sides.
+constexpr float kCardTop      = 10.0f; ///< Above the first line and below the last.
+constexpr float kCardLine     = 22.0f; ///< A value's line.
+constexpr float kCardSpacing  = 3.0f;  ///< Between one label's value and the next.
+constexpr float kCardLabelGap = 16.0f; ///< Between the labels and the values.
+
+/** @return A value's face: the interface's, or the monospaced family for a FEN. */
+reckless::gfx::Font ValueFont(bool is_mono)
+{
+    return is_mono ? fonts::Mono().WithHeight(15.0f) : fonts::Small().WithHeight(17.0f);
+}
+
+} // namespace
+
+float GameCard::Measure(const reckless::gfx::Font &font, std::string_view text) const
+{
+    if (const reckless::view::Host *h = host())
+    {
+        return h->TextWidth(font, text);
+    }
+    return 0.5f * font.height * static_cast<float>(text.size());
+}
+
+GameCard::Columns GameCard::ColumnsAt(float width) const
+{
+    float label_width = 0.0f;
     for (const CardLine &line : lines_)
     {
-        height += line.is_mono ? 44 : 25;
+        label_width = std::max(label_width, Measure(fonts::Small(), line.label));
     }
-    return height;
+    const float value_x = kCardPadding + label_width + kCardLabelGap;
+    return {label_width, value_x, std::max(40.0f, width - value_x - kCardPadding)};
+}
+
+std::vector<std::string> GameCard::ValueLines(const CardLine &line, float width) const
+{
+    const reckless::gfx::Font font = ValueFont(line.is_mono);
+    std::vector<std::string>  lines;
+    std::string               current;
+    // Words added while the line fits; a word wider than a line alone broken where the line runs out.
+    std::size_t at = 0;
+    while (at < line.value.size())
+    {
+        const std::size_t space = line.value.find(' ', at);
+        const std::string word  = line.value.substr(at, space == std::string::npos ? std::string::npos : space - at);
+        at                      = space == std::string::npos ? line.value.size() : space + 1;
+        const std::string tried = current.empty() ? word : current + " " + word;
+        if (Measure(font, tried) <= width)
+        {
+            current = tried;
+            continue;
+        }
+        if (!current.empty())
+        {
+            lines.push_back(current);
+        }
+        current = word;
+        while (current.size() > 1 && Measure(font, current) > width)
+        {
+            std::size_t fits = current.size() - 1;
+            while (fits > 1 && Measure(font, std::string_view(current).substr(0, fits)) > width)
+            {
+                --fits;
+            }
+            lines.push_back(current.substr(0, fits));
+            current.erase(0, fits);
+        }
+    }
+    if (!current.empty() || lines.empty())
+    {
+        lines.push_back(current);
+    }
+    return lines;
+}
+
+int GameCard::PreferredHeight(int width) const
+{
+    const Columns columns = ColumnsAt(static_cast<float>(width));
+    float         height  = 2.0f * kCardTop;
+    for (const CardLine &line : lines_)
+    {
+        height += kCardLine * static_cast<float>(ValueLines(line, columns.value_width).size()) + kCardSpacing;
+    }
+    return static_cast<int>(std::ceil(height));
 }
 
 void GameCard::Paint(reckless::gfx::Canvas &c)
@@ -147,37 +230,22 @@ void GameCard::Paint(reckless::gfx::Canvas &c)
     c.SetColor(theme::kRule);
     c.DrawRect(bounds, 1.0f);
 
-    // The labels' column is as wide as the widest label.
-    float label_width = 0.0f;
+    const Columns columns = ColumnsAt(bounds.width());
+    float         y       = kCardTop;
     for (const CardLine &line : lines_)
     {
-        label_width = std::max(label_width, c.TextWidth(fonts::Small(), line.label));
-    }
-    const float left  = 12.0f;
-    const float value = left + label_width + 16.0f;
-    float       y     = 10.0f;
-    for (const CardLine &line : lines_)
-    {
-        const float row = line.is_mono ? 44.0f : 25.0f;
         c.SetFont(fonts::Small());
         c.SetColor(theme::kMuted);
-        c.DrawText(line.label, RectF{left, y, label_width, 25.0f}, Justify::kCentredLeft, false);
+        c.DrawText(line.label, RectF{kCardPadding, y, columns.label_width, kCardLine}, Justify::kCentredLeft, false);
+        c.SetFont(ValueFont(line.is_mono));
         c.SetColor(theme::kInk);
-        if (line.is_mono)
+        for (const std::string &part : ValueLines(line, columns.value_width))
         {
-            c.SetFont(fonts::Mono().WithHeight(15.0f));
-            c.DrawFittedText(line.value,
-                             reckless::gfx::RectI{static_cast<int>(value), static_cast<int>(y) + 3,
-                                                  static_cast<int>(bounds.right() - value - 12.0f),
-                                                  static_cast<int>(row) - 4},
-                             Justify::kTopLeft, 2, 1.0f);
+            c.DrawText(part, RectF{columns.value_x, y, columns.value_width + 2.0f, kCardLine}, Justify::kCentredLeft,
+                       false);
+            y += kCardLine;
         }
-        else
-        {
-            c.SetFont(fonts::Small().WithHeight(17.0f));
-            c.DrawText(line.value, RectF{value, y, bounds.right() - value - 12.0f, 25.0f}, Justify::kCentredLeft, true);
-        }
-        y += row;
+        y += kCardSpacing;
     }
 }
 

@@ -47,9 +47,10 @@ class MainView final : public reckless::view::View
     static constexpr int kStripHeight    = 54;  ///< A player's strip.
     static constexpr int kNavHeight      = 32;  ///< The navigation plates.
     static constexpr int kLabelHeight    = 28;  ///< A section's label.
-    static constexpr int kAnalysisHeight = 190; ///< The analysis panel and the graph, under their labels.
-    static constexpr int kLogHeight      = 136; ///< The engine log, at most; less in a shorter window.
-    static constexpr int kColumnWidth    = 384; ///< The board column at least: the strips and the plates.
+    static constexpr int kAnalysisHeight = 192; ///< The analysis panel and the graph, under their labels.
+    static constexpr int kLogHeight      = 100; ///< The engine log, at most: four rows; less in a shorter window.
+    static constexpr int kMovesWidth     = 250; ///< The moves' column at least: a number and two moves in SAN.
+    static constexpr int kSideWidth      = 380; ///< The players' column at least: the strips, the card, the plates.
     static constexpr int kGraphWidth     = 320; ///< The evaluation graph's column.
 
     /** @param pieces The pieces the board draws with; outlives the view. */

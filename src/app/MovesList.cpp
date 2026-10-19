@@ -91,7 +91,7 @@ reckless::view::ListView::Style MovesStyle()
     style.grid              = theme::kRule;
     style.row_height        = 30;
     style.header_height     = 34;
-    style.padding           = 12;
+    style.padding           = 10;
     return style;
 }
 
@@ -101,7 +101,7 @@ MovesList::MovesList() : list_(MovesStyle())
 {
     list_.SetModel(&model_);
     theme::AccentScrollBar(list_);
-    list_.SetColumns({{"", 64, 0.0f, reckless::gfx::Justify::kCentredRight},
+    list_.SetColumns({{"", 46, 0.0f, reckless::gfx::Justify::kCentredRight},
                       {"White", 0, 1.0f, reckless::gfx::Justify::kCentredLeft},
                       {"Black", 0, 1.0f, reckless::gfx::Justify::kCentredLeft}});
     list_.SetSelectionMode(reckless::view::ListView::SelectionMode::kNone);

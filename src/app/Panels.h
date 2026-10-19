@@ -7,6 +7,7 @@
 #include "View.h"
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -80,10 +81,11 @@ struct CardLine
 {
     std::string label;           ///< "Event".
     std::string value;           ///< "Engine match, game 7 of 20".
-    bool        is_mono = false; ///< Set in the monospaced face (a FEN), and wrapped onto two lines.
+    bool        is_mono = false; ///< Set in the monospaced face (a FEN).
 };
 
-/** The game's card: its labels down the left, their values beside them. */
+/** The game's card: its labels down the left, their values beside them, each value wrapped onto as many lines as the
+    card's width needs - at a space, and a FEN where its fields run out of room. */
 class GameCard final : public reckless::view::View
 {
   public:
@@ -98,8 +100,12 @@ class GameCard final : public reckless::view::View
         return lines_;
     }
 
-    /** @return The height the lines take, in design pixels. */
-    int PreferredHeight() const;
+    /**
+     * The height the lines take at a width, every value wrapped to it.
+     * @param width The card's width, in design pixels.
+     * @return The height, in design pixels.
+     */
+    int PreferredHeight(int width) const;
 
     /**
      * The card and its lines.
@@ -108,6 +114,37 @@ class GameCard final : public reckless::view::View
     void Paint(reckless::gfx::Canvas &c) override;
 
   private:
+    /** Where the values start and how wide they may be, at a width. */
+    struct Columns
+    {
+        float label_width; ///< The labels' column, as wide as the widest label.
+        float value_x;     ///< Where each value starts.
+        float value_width; ///< How wide a value's line may be.
+    };
+
+    /**
+     * The columns at a width, the labels measured as the window draws them.
+     * @param width The card's width.
+     * @return The columns.
+     */
+    Columns ColumnsAt(float width) const;
+
+    /**
+     * A value broken into the lines it takes in a width.
+     * @param line The card's line.
+     * @param width How wide a line may be.
+     * @return The lines, at least one.
+     */
+    std::vector<std::string> ValueLines(const CardLine &line, float width) const;
+
+    /**
+     * How wide some text is, as the window draws it (an estimate with no window).
+     * @param font The font.
+     * @param text The text.
+     * @return Its width.
+     */
+    float Measure(const reckless::gfx::Font &font, std::string_view text) const;
+
     std::vector<CardLine> lines_; ///< The lines.
 };
 

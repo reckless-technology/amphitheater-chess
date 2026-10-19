@@ -122,12 +122,16 @@ UCI_HOST_PERFT_BUDGET=200000000 build/release/tests/uci_host_chess_test --gtest_
 ## The window
 
 `RecklessUciHost` is the GUI, on the toolkit's app shell (`AppRun`, `AppRoot`: the window, its loop, the zoom below the
-layout's least and the tooltips), its child window on Skia and its views. The layout is the approved mockup's
-(`docs/design/main-window-mockup.html`, viewable through `docs/design/build-mockup.py`): the menu bar; the board
-column - a player's strip above and below the board, with the running clock lit amber, and the plates |< < > >| Flip
-Analyse - beside the moves and the game's card; across the foot the analysis, the evaluation graph and the engine log in
-Monaspace Xenon, its long lines wrapped to its width at a space and indented under their text; the status bar. The board
-grows with the window; under 1240 x 1000 design pixels the whole layout is zoomed down rather than squeezed. The moves
+layout's least and the tooltips), its child window on Skia and its views. The layout follows the approved mockup
+(`docs/design/main-window-mockup.html`, viewable through `docs/design/build-mockup.py`) with the board given the room:
+the menu bar; the board, as large as the height above the foot allows, its squares whole pixels (80 at the 1380 x 1120
+design size); beside it two narrow columns - the moves, a number and two moves in SAN, down the whole height, and the
+players' column, a player's strip level with the board's top and the other level with its bottom (the running clock
+lit amber), the plates |< < > >| Flip Analyse over the lower one and the game's card between, its values wrapped to its
+width; across the foot, at the full width, the analysis, the evaluation graph and the engine log in Monaspace Xenon,
+its long lines wrapped to its width at a space and indented under their text; the status bar. A larger window gives
+the board the room first and the columns what width it leaves; under 1240 x 1000 design pixels the whole layout is
+zoomed down rather than squeezed. The moves
 and the log are a whole number of rows tall, so a list kept on the move shown or the newest line never leaves part of a
 row at its top. The last move lights both its squares, each shade in its own tint of the accent.
 

@@ -214,43 +214,47 @@ void MainView::Resized()
     graph_label_.SetBounds({graph_left, foot_top, kGraphWidth, kLabelHeight});
     graph_.SetBounds({graph_left, foot_top + kLabelHeight, kGraphWidth, kAnalysisHeight});
 
-    // The board column: as large a board as the height leaves, and no wider than about half the window.
+    // The board: as large as the room above the foot allows beside the two narrow columns, its squares whole pixels;
+    // the width it leaves goes to the columns.
     const int column_bottom = foot_top - kGap;
-    const int board_height  = column_bottom - top - 2 * kStripHeight - 3 * 8 - kNavHeight - 2;
-    const int across        = (right - left) * 52 / 100 - BoardView::kRankGutter - 2 * BoardView::kFrame;
-    const int down          = board_height - BoardView::kFileGutter - 2 * BoardView::kFrame;
-    const int square        = std::max(8, std::min(across, down) / 8);
-    const int board_width   = BoardView::kRankGutter + 2 * BoardView::kFrame + 8 * square;
-    const int board_tall    = BoardView::kFileGutter + 2 * BoardView::kFrame + 8 * square;
-    const int column_width  = std::max(board_width, kColumnWidth);
-    int       y             = top;
-    top_strip_.SetBounds({left, y, column_width, kStripHeight});
-    y += kStripHeight + 8;
-    board_.SetBounds({left, y, board_width, board_tall});
-    y += board_tall + 8;
-    bottom_strip_.SetBounds({left, y, column_width, kStripHeight});
-    y += kStripHeight + 10;
-    int x = left;
+    const int across =
+        right - left - kMovesWidth - kSideWidth - 2 * kGap - BoardView::kRankGutter - 2 * BoardView::kFrame;
+    const int down        = column_bottom - top - BoardView::kFileGutter - 2 * BoardView::kFrame;
+    const int square      = std::max(8, std::min(across, down) / 8);
+    const int board_width = BoardView::kRankGutter + 2 * BoardView::kFrame + 8 * square;
+    const int board_tall  = BoardView::kFileGutter + 2 * BoardView::kFrame + 8 * square;
+    board_.SetBounds({left, top, board_width, board_tall});
+    const int spare      = std::max(0, right - left - board_width - kMovesWidth - kSideWidth - 2 * kGap);
+    const int moves_left = left + board_width + kGap;
+    const int moves_wide = kMovesWidth + spare / 3;
+    const int side_left  = moves_left + moves_wide + kGap;
+    const int side_wide  = std::max(120, right - side_left);
+
+    // The moves, down the whole height, a whole number of rows tall: the list scrolls by the pixel, so a height
+    // between rows would leave the top row half under the header whenever the move shown is kept in view.
+    moves_label_.SetBounds({moves_left, top - 6, moves_wide, kLabelHeight});
+    const int moves_top = top - 6 + kLabelHeight;
+    moves_.view().SetBounds(
+        {moves_left, moves_top, moves_wide, moves_.FittedHeight(std::max(60, column_bottom - moves_top))});
+    moves_.SetCurrentPly(moves_.model().current_ply()); // the move shown kept in view at the list's new size
+
+    // The players' column beside it: the strip of the player at the board's top level with its top, the other's
+    // level with its bottom, the plates over that, and the game's card filling the room between.
+    const int board_bottom = top + board_tall - BoardView::kFileGutter;
+    top_strip_.SetBounds({side_left, top, side_wide, kStripHeight});
+    const int strip_y = std::max(top + kStripHeight + kGap, board_bottom - kStripHeight);
+    bottom_strip_.SetBounds({side_left, strip_y, side_wide, kStripHeight});
+    const int plates_y = strip_y - 10 - kNavHeight;
+    int       x        = side_left;
     for (NavPlate &plate : nav_)
     {
-        plate.button->SetBounds({x, y, plate.width, kNavHeight});
+        plate.button->SetBounds({x, plates_y, plate.width, kNavHeight});
         x += plate.width + 6;
     }
-
-    // The right column: the moves over the game's card.
-    const int side_left  = left + column_width + kGap + 6;
-    const int side_width = std::max(120, right - side_left);
-    const int card_tall  = card_.PreferredHeight();
-    const int card_top   = column_bottom - card_tall;
-    card_.SetBounds({side_left, card_top, side_width, card_tall});
-    card_label_.SetBounds({side_left, card_top - kLabelHeight, side_width, kLabelHeight});
-    moves_label_.SetBounds({side_left, top - 6, side_width, kLabelHeight});
-    // The moves a whole number of rows tall: the list scrolls by the pixel, so a height between rows would leave the
-    // top row half under the header whenever the move shown is kept in view at the bottom.
-    const int moves_top = top - 6 + kLabelHeight;
-    moves_.view().SetBounds({side_left, moves_top, side_width,
-                             moves_.FittedHeight(std::max(60, card_top - kLabelHeight - kGap - moves_top))});
-    moves_.SetCurrentPly(moves_.model().current_ply()); // the move shown kept in view at the list's new size
+    const int card_label_y = top + kStripHeight + kGap - 6;
+    card_label_.SetBounds({side_left, card_label_y, side_wide, kLabelHeight});
+    const int card_top = card_label_y + kLabelHeight;
+    card_.SetBounds({side_left, card_top, side_wide, std::max(40, plates_y - kGap - card_top)});
 }
 
 void MainView::Paint(reckless::gfx::Canvas &c)

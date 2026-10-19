@@ -21,6 +21,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -264,13 +265,14 @@ TEST(MainView, TheMovesAndTheLogShowWholeRowsKeptOnTheMoveShownAndTheNewestLine)
 {
     MainView view(Pieces());
     ShowSample(view);
+    view.SetMoves(std::vector<std::string>(120, "Nf3"), 1, false, 120); // a long game: the moves outrun the list
     for (const int height : {MainView::kDesignHeight, MainView::kLayoutHeight, MainView::kDesignHeight - 23})
     {
         view.SetBounds({MainView::kDesignWidth, height});
         const auto &list  = view.moves().view();
         const auto &style = list.style();
         EXPECT_EQ((list.height() - style.header_height) % style.row_height, 0) << height;
-        EXPECT_GT(list.scroll(), 0) << "the sample's moves outrun the list";
+        EXPECT_GT(list.scroll(), 0) << "the moves outrun the list";
         EXPECT_EQ(list.scroll() % style.row_height, 0) << "no row half under the header at " << height;
         const auto &log = view.log().view();
         EXPECT_EQ(log.height() % log.style().row_height, 0) << height;
@@ -328,6 +330,26 @@ TEST(EngineLog, TheLogWrapsToItsWidthByDefaultAndCanCut)
     const int wide = log.model().wrap_columns();
     view.SetBounds({MainView::kDesignWidth - 300, MainView::kDesignHeight});
     EXPECT_LT(log.model().wrap_columns(), wide) << "a narrower window, shorter rows";
+}
+
+TEST(MainView, TheBoardTakesTheRoomAndTheColumnsBesideItAreNarrow)
+{
+    MainView view(Pieces());
+    ShowSample(view);
+    view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
+    const float square = view.board().SquareSize();
+    EXPECT_GE(square, 80.0f) << "the review size's squares";
+    EXPECT_EQ(square, std::floor(square)) << "whole pixels, crisp";
+    EXPECT_LE(view.moves().view().width(), MainView::kMovesWidth + 20);
+    EXPECT_LE(view.card().width(), MainView::kSideWidth + 40);
+    EXPECT_EQ(view.top_strip().bounds().y(), view.board().bounds().y()) << "the top player level with the board";
+    EXPECT_EQ(view.bottom_strip().bounds().bottom(), view.board().bounds().bottom() - BoardView::kFileGutter);
+    EXPECT_EQ(view.log().view().bounds().width(), MainView::kDesignWidth - 2 * MainView::kMargin)
+        << "the log keeps the full width";
+
+    view.SetBounds({MainView::kDesignWidth + 300, MainView::kDesignHeight + 300});
+    EXPECT_GT(view.board().SquareSize(), square) << "a larger window, a larger board";
+    EXPECT_GE(view.card().PreferredHeight(view.card().width()), 6 * 22) << "every line of the card, the FEN wrapped";
 }
 
 TEST(MainView, TheListsScrollBarsAreInTheAccent)
