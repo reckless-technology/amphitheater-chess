@@ -215,6 +215,7 @@ reckless::view::ListView::Style LogStyle()
 EngineLog::EngineLog() : list_(LogStyle())
 {
     list_.SetModel(&model_);
+    theme::AccentScrollBar(list_);
     list_.SetSelectionMode(reckless::view::ListView::SelectionMode::kMultiple);
     list_.stick_to_bottom = true;
 }

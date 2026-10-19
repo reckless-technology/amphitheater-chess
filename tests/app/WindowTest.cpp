@@ -330,6 +330,13 @@ TEST(EngineLog, TheLogWrapsToItsWidthByDefaultAndCanCut)
     EXPECT_LT(log.model().wrap_columns(), wide) << "a narrower window, shorter rows";
 }
 
+TEST(MainView, TheListsScrollBarsAreInTheAccent)
+{
+    MainView view(Pieces());
+    EXPECT_EQ(view.moves().view().scroll_bar().thumb_colour(), theme::kAmber);
+    EXPECT_EQ(view.log().view().scroll_bar().thumb_colour(), theme::kAmber);
+}
+
 TEST(MovesModel, MovesFillRowsFromWhitesColumnOrBlacksAndTheCurrentOneIsLit)
 {
     MovesModel model;

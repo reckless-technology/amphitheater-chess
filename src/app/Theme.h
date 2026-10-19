@@ -5,6 +5,7 @@
 #include "AppTheme.h"
 #include "Button.h"
 #include "Color.h"
+#include "ListView.h"
 #include "LookDrawing.h"
 #include "LookPalette.h"
 #include "Text.h"
@@ -49,6 +50,15 @@ inline reckless::app::Theme Shell()
 inline reckless::look::Palette Lists()
 {
     return Shell().Palette();
+}
+
+/**
+ * A list's scroll bar thumb in the accent, in place of the toolkit's blue.
+ * @param list The list.
+ */
+inline void AccentScrollBar(reckless::view::ListView &list)
+{
+    list.scroll_bar().SetThumbColour(kAmber);
 }
 
 /** @return The series' palette for the buttons: the plate a step lighter than a card, its edge the accent at rest. */

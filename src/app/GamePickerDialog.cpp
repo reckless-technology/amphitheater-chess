@@ -55,6 +55,7 @@ GamePickerDialog::GamePickerDialog(std::vector<chess::PgnGame> games, const std:
       list_(GamesStyle()), note_({}, true)
 {
     list_.SetModel(&model_);
+    theme::AccentScrollBar(list_);
     list_.SetColumns({{"#", 60, 0.0f, reckless::gfx::Justify::kCentredRight},
                       {"White", 0, 1.2f},
                       {"Black", 0, 1.2f},

@@ -268,6 +268,7 @@ EngineManagerDialog::EngineManagerDialog(EngineCatalogue catalogue)
       options_label_("Options"), note_({}, true)
 {
     list_.SetModel(&model_);
+    theme::AccentScrollBar(list_);
     list_.SetColumns({{"Engine", 0, 1.0f}, {"Author", 0, 1.0f}});
     list_.SetSelectionMode(reckless::view::ListView::SelectionMode::kSingle);
     list_.on_selection_changed = [this] {

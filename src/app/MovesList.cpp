@@ -100,6 +100,7 @@ reckless::view::ListView::Style MovesStyle()
 MovesList::MovesList() : list_(MovesStyle())
 {
     list_.SetModel(&model_);
+    theme::AccentScrollBar(list_);
     list_.SetColumns({{"", 64, 0.0f, reckless::gfx::Justify::kCentredRight},
                       {"White", 0, 1.0f, reckless::gfx::Justify::kCentredLeft},
                       {"Black", 0, 1.0f, reckless::gfx::Justify::kCentredLeft}});

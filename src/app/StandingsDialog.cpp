@@ -104,6 +104,7 @@ StandingsDialog::StandingsDialog(Source source)
 {
     using reckless::gfx::Justify;
     standings_.SetModel(&standings_model_);
+    theme::AccentScrollBar(standings_);
     standings_.SetColumns({{"#", 44, 0.0f, Justify::kCentredRight},
                            {"Engine", 0, 1.0f},
                            {"Points", 80, 0.0f, Justify::kCentredRight},
@@ -115,6 +116,7 @@ StandingsDialog::StandingsDialog(Source source)
                            {"SB", 80, 0.0f, Justify::kCentredRight}});
     standings_.SetSelectionMode(reckless::view::ListView::SelectionMode::kNone);
     crosstable_.SetModel(&crosstable_model_);
+    theme::AccentScrollBar(crosstable_);
     crosstable_.SetSelectionMode(reckless::view::ListView::SelectionMode::kNone);
     AddChild(standings_label_);
     AddChild(standings_);

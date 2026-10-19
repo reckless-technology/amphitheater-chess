@@ -136,6 +136,7 @@ squares are. The board takes a person's moves by click or by drag, marks the leg
 promotion; the keys step through the game (Left, Right, Home, End) and F flips the board. With Command on a Mac and
 Control elsewhere, N starts a new game, O and S open and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN
 or a PGN, Z takes back, E manages the engines and Q quits; a list or a line that has the keyboard keeps its own keys.
+The lists' scroll bars are in the accent.
 
 Game > New game plays a game on the board: either side the person at the window or any configured engine, under a
 time control (a preset or the command line's syntax), from the starting position or the position shown. The game is
