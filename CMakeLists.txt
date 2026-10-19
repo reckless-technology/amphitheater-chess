@@ -57,8 +57,10 @@ if(UCI_HOST_ASAN)
         add_compile_options(/fsanitize=address)
         add_link_options(/INCREMENTAL:NO)
     else()
-        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address,undefined)
+        # UndefinedBehaviorSanitizer's vptr check reads the type information of every polymorphic class a checked call
+        # reaches, and the window's prebuilt Skia is built without it (-fno-rtti): the check is left out, the rest kept.
+        add_compile_options(-fsanitize=address,undefined -fno-sanitize=vptr -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined -fno-sanitize=vptr)
     endif()
 endif()
 

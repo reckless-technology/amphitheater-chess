@@ -416,7 +416,8 @@ TEST(Engine, QuitKillsAnEngineThatIgnoresIt)
     ASSERT_TRUE(engine.Start());
     const auto start = Clock::now();
     engine.Quit();
-    EXPECT_GE(Clock::now() - start, 190ms);
+    // A wait's own timeout may end a tick of the system's clock early (Windows' 15.6 ms), so the floor allows for one.
+    EXPECT_GE(Clock::now() - start, 170ms);
     EXPECT_LT(Clock::now() - start, 5s);
     EXPECT_FALSE(engine.IsRunning());
 }
