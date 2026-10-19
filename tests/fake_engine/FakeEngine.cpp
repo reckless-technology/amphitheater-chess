@@ -127,6 +127,15 @@ void Say(const std::string &line)
     std::cout << line << '\n' << std::flush;
 }
 
+// Leave at once: the input thread may be blocked inside getline holding stdin's lock, and the C runtime's exit-time
+// cleanup of the standard streams can wait on that lock for ever. What was written is flushed first.
+[[noreturn]] void Exit(int code)
+{
+    std::cout.flush();
+    std::cerr.flush();
+    std::_Exit(code);
+}
+
 [[noreturn]] void HangForever()
 {
     while (true)
@@ -323,7 +332,7 @@ int main(int argc, char **argv)
                 {
                     HangForever();
                 }
-                return 0;
+                Exit(0);
             }
             continue;
         }
@@ -338,7 +347,7 @@ int main(int argc, char **argv)
         {
             if (script.does_exit_on_uci)
             {
-                return 0;
+                Exit(0);
             }
             if (script.is_without_uciok)
             {
@@ -416,7 +425,7 @@ int main(int argc, char **argv)
             ++go_count;
             if (go_count == script.crash_at)
             {
-                std::exit(3);
+                Exit(3);
             }
             if (go_count == script.hang_at)
             {
@@ -494,7 +503,7 @@ int main(int argc, char **argv)
                 }
                 if (next && *next == "quit" && !script.does_hang_on_quit)
                 {
-                    return 0;
+                    Exit(0);
                 }
                 if (input.IsEnded())
                 {
@@ -525,7 +534,7 @@ int main(int argc, char **argv)
             {
                 HangForever();
             }
-            return 0;
+            Exit(0);
         }
         else if (script.is_garbage)
         {

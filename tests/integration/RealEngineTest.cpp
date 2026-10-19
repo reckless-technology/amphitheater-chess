@@ -36,14 +36,15 @@ TEST(RealEngine, HandshakeAndSearch)
     std::printf("engine: %s by %s, %zu options\n", engine.Name().c_str(), engine.Author().c_str(),
                 engine.Options().size());
     ASSERT_TRUE(engine.NewGame());
-    engine.SetPosition("", {"e2e4", "e7e5"});
+    // An endgame no opening book holds, so the engine searches and says so.
+    const std::string fen = "8/5pk1/6p1/8/3R4/6P1/5PK1/3r4 w - - 0 40";
+    engine.SetPosition(fen, {"d4d7"});
     uci::GoParameters parameters;
     parameters.move_time = 200ms;
     const auto result    = engine.Search(parameters, std::chrono::steady_clock::now() + 10s);
     ASSERT_EQ(result.ending, uci::SearchResult::Ending::kBestMove);
-    auto position = chess::Position::Start();
-    position      = position.MakeMove(*chess::ParseUciMove(position, "e2e4"));
-    position      = position.MakeMove(*chess::ParseUciMove(position, "e7e5"));
+    auto position = *chess::Position::FromFen(fen);
+    position      = position.MakeMove(*chess::ParseUciMove(position, "d4d7"));
     EXPECT_TRUE(chess::ParseUciMove(position, result.best_move.move)) << result.best_move.move;
     EXPECT_TRUE(result.info.depth.has_value());
     EXPECT_TRUE(result.info.score.has_value());
