@@ -176,6 +176,73 @@ TEST(Board, APromotionOpensThePickerAndThePieceChosenIsTheMove)
     EXPECT_EQ(rig.moves.size(), 1u);
 }
 
+namespace
+{
+
+/**
+ * A board drawn through Skia.
+ * @param board The board.
+ * @return Its picture as a PNG.
+ */
+std::vector<std::uint8_t> Drawn(BoardView &board)
+{
+    reckless::gfx::Image image = reckless::gfx::MakeImage(board.width(), board.height());
+    {
+        const auto canvas = reckless::gfx::MakeImageCanvas(image, 1.0f);
+        if (canvas)
+        {
+            board.Paint(*canvas);
+        }
+    }
+    return reckless::gfx::EncodePng(image);
+}
+
+} // namespace
+
+TEST(Board, EachStateItShowsChangesItsPicture)
+{
+    // White's king in check from the rook on e8, White's pawn one step from promoting.
+    BoardRig   rig("4r2k/1P6/8/8/8/8/8/4K3 w - - 0 1");
+    const auto plain = Drawn(rig.board);
+    ASSERT_GT(plain.size(), 1000u);
+
+    rig.Click("e1");
+    ASSERT_TRUE(rig.board.selected().has_value());
+    const auto selected = Drawn(rig.board);
+    EXPECT_NE(selected, plain) << "the selection and its targets";
+
+    const PointF e1 = rig.Centre("e1");
+    rig.board.MouseDown(At(e1));
+    rig.board.MouseDrag(At(rig.Centre("d3"), e1));
+    const auto dragged = Drawn(rig.board);
+    EXPECT_NE(dragged, selected) << "the king under the pointer, off its square";
+    rig.board.MouseUp(At(rig.Centre("d3"), e1));
+
+    rig.board.SetPosition(*chess::Position::FromFen("8/1P6/8/8/8/8/8/k3K3 w - - 0 1"), std::nullopt);
+    rig.Click("b7");
+    rig.Click("b8");
+    ASSERT_EQ(rig.board.promotion_choices().size(), 4u);
+    const auto picker = Drawn(rig.board);
+    rig.board.MouseDown(At(rig.Centre("h1")));
+    EXPECT_NE(picker, Drawn(rig.board)) << "the picker over the dimmed board";
+
+    rig.board.SetFlipped(true);
+    rig.Click("b7");
+    rig.Click("b8");
+    EXPECT_LT(rig.board.PromotionChoiceBounds(1).y(), rig.board.PromotionChoiceBounds(0).y())
+        << "flipped, the eighth rank at the bottom: the picker runs up from it";
+    EXPECT_NE(Drawn(rig.board), picker);
+    rig.board.MouseDown(At(rig.Centre("h1")));
+
+    rig.board.SetArrows({{chess::Square("e1"), chess::Square("e2"), theme::kAmber}});
+    rig.board.SetBanner("1-0", "White mates");
+    const auto banner = Drawn(rig.board);
+    EXPECT_EQ(rig.board.banner(), "1-0");
+    rig.board.MouseDown(At(rig.Centre("a8")));
+    EXPECT_TRUE(rig.board.banner().empty()) << "a press hides the card";
+    EXPECT_NE(Drawn(rig.board), banner);
+}
+
 TEST(MovesModel, MovesFillRowsFromWhitesColumnOrBlacksAndTheCurrentOneIsLit)
 {
     MovesModel model;

@@ -235,4 +235,39 @@ TEST(SearchTracker, FollowsAnEnginesLinesIntoItsBlock)
     EXPECT_EQ(NodesText(1050000000), "1.05 Gn");
 }
 
+TEST(SearchTracker, ReadsAFensPositionMateScoresAndRefusesWhatItCannotRead)
+{
+    SearchTracker tracker("Mater");
+    const auto    now = std::chrono::steady_clock::now();
+    EXPECT_FALSE(tracker.BestWhitePawns().has_value());
+    EXPECT_FALSE(tracker.BestScoreText().has_value());
+    tracker.Feed(true, "", now);
+    tracker.Feed(true, "position", now);
+    tracker.Feed(true, "position fen not a fen at all", now);
+    tracker.Feed(true, "position somewhere", now);
+    tracker.Feed(true, "position startpos moves e2e5", now);
+    EXPECT_EQ(tracker.position().ToFen(), chess::Position::Start().ToFen()) << "nothing it could not read was taken";
+
+    // Black to move, a rook on the second rank.
+    tracker.Feed(true, "position fen 6k1/5ppp/8/8/8/8/r4PPP/6K1 w - - 0 1 moves h2h3", now);
+    tracker.Feed(true, "go infinite", now);
+    tracker.Feed(false, "info depth 5 multipv 1 score mate 2 pv a2a1 g1h2 a1a3", now);
+    tracker.Feed(false, "info depth 5 multipv 2 score mate -3 pv h7h6", now);
+    tracker.Feed(false, "info depth 5 multipv 3 score cp 0 pv g7g6", now);
+    EXPECT_EQ(tracker.BestScoreText(), std::optional<std::string>("#-2")) << "a mate for Black, from White's side";
+    ASSERT_TRUE(tracker.BestWhitePawns().has_value());
+    EXPECT_LT(*tracker.BestWhitePawns(), -10.0) << "a mate is off the graph's scale";
+    const EngineBlock block = tracker.Block(now, 2);
+    ASSERT_EQ(block.lines.size(), 2u) << "held to the lines asked for";
+    EXPECT_EQ(block.lines[1].score, "#3");
+    EXPECT_EQ(block.stats, "depth 5");
+    EXPECT_EQ(PvToSan(tracker.position(), {"a2a1", "g1h2", "a1a3"}, 2), "1...Ra1+ 2.Kh2");
+
+    const uci::Score white_mates{uci::Score::Kind::kMate, 1};
+    EXPECT_GT(WhitePawns(white_mates, chess::kWhite), 10.0);
+    EXPECT_EQ(WhiteScoreText(white_mates, chess::kWhite), "#1");
+    tracker.End();
+    EXPECT_FALSE(tracker.IsSearching());
+}
+
 } // namespace uci_host::app
