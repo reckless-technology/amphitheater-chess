@@ -142,6 +142,14 @@ back removes the person's last move and the engine's reply and resumes the game 
 Stop the game abandons it and keeps it on the board; a finished game's result and reason show over the board. With
 no game being played, a move on the board takes the game shown on from the position shown.
 
+Analyse (the plate, or Engines > Analyse) runs the engines marked for analysis in the engine list - every configured
+engine where none is marked - in infinite mode on the position the board shows, with three lines each where an engine
+offers MultiPV (`AnalysisSession`). Each engine is started on a worker thread - its process, its handshake, MultiPV and
+UCI_AnalyseMode - then handed to the window's thread, which polls its events once a frame and never waits: stepping to
+another position stops the search under way and starts the next when its "bestmove" comes. The panel shows each
+engine's block, the board the first engine's best move as an amber arrow, and the graph the first engine's score for
+each position analysed. Engines are quit on worker threads too (`EngineReaper`), so the window never waits on one.
+
 `uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]` draws the window to a PNG with the mockup's
 state, with no window and no display: the review images in `docs/design/` (`main-window.png`, `main-window-flipped.png`)
 are made with it.

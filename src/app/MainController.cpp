@@ -99,6 +99,7 @@ MainController::MainController(MainView &view, ControllerFiles files) : view_(vi
 
 MainController::~MainController()
 {
+    analysis_.reset();
     if (dialog_)
     {
         view_.SetOverlay(nullptr);
@@ -173,6 +174,9 @@ void MainController::Command(int command)
         break;
     case kTakeBack:
         TakeBack();
+        break;
+    case kAnalyse:
+        SetAnalysing(analysis_ == nullptr);
         break;
     default:
         break;
@@ -337,6 +341,45 @@ void MainController::TakeBack()
     Refresh();
 }
 
+void MainController::SetAnalysing(bool is_on)
+{
+    if (!is_on)
+    {
+        analysis_.reset();
+        view_.SetAnalysing(false);
+        Refresh();
+        return;
+    }
+    if (analysis_)
+    {
+        return;
+    }
+    std::vector<EngineEntry> engines;
+    for (const EngineEntry &entry : catalogue_.engines)
+    {
+        if (entry.is_analysing)
+        {
+            engines.push_back(entry);
+        }
+    }
+    if (engines.empty())
+    {
+        engines = catalogue_.engines;
+    }
+    if (engines.empty())
+    {
+        error_ = "No engine to analyse with: add one under Engines > Manage engines";
+        view_.SetAnalysing(false);
+        Refresh();
+        return;
+    }
+    error_.clear();
+    analysis_ = std::make_unique<AnalysisSession>(engines, kAnalysisLines, reaper_);
+    analysis_->SetPosition(game_, view_ply_);
+    view_.SetAnalysing(true);
+    Refresh();
+}
+
 void MainController::OpenNewGame()
 {
     auto dialog      = std::make_unique<NewGameDialog>(catalogue_.engines, game_.PlyCount() > 0 || view_ply_ > 0 ||
@@ -386,6 +429,20 @@ void MainController::Frame(double seconds)
     static_cast<void>(seconds);
     closed_dialogs_.clear();
     PollPlay();
+    if (analysis_)
+    {
+        analysis_->SetPosition(game_, view_ply_);
+        analysis_->Poll(Clock::now());
+        for (const AnalysisLogLine &line : analysis_->DrainLog())
+        {
+            view_.log().Add(line.engine,
+                            line.direction == uci::LineDirection::kToEngine     ? LogDirection::kToEngine
+                            : line.direction == uci::LineDirection::kFromEngine ? LogDirection::kFromEngine
+                                                                                : LogDirection::kError,
+                            line.text);
+        }
+    }
+    reaper_.Collect();
     retiring_.erase(std::remove_if(retiring_.begin(), retiring_.end(),
                                    [](const std::unique_ptr<PlaySession> &session) { return session->IsFinished(); }),
                     retiring_.end());
@@ -477,12 +534,52 @@ void MainController::RefreshStrips()
 
 void MainController::RefreshSearches()
 {
-    const auto               now   = Clock::now();
-    const chess::Position   &shown = game_.PositionAt(view_ply_);
+    const auto               now         = Clock::now();
+    bool                     graph_dirty = false;
+    const chess::Position   &shown       = game_.PositionAt(view_ply_);
     std::vector<EngineBlock> blocks;
     std::vector<BoardArrow>  arrows;
     std::vector<std::string> status;
     status.push_back(shown.SideToMove() == chess::kWhite ? "White to move" : "Black to move");
+    if (analysis_)
+    {
+        std::string names;
+        for (const std::string &name : analysis_->Names())
+        {
+            names += (names.empty() ? "" : ", ") + name;
+        }
+        status.push_back("Analysing with " + names);
+        for (const SearchTracker *tracker : analysis_->Trackers())
+        {
+            blocks.push_back(tracker->Block(now, kAnalysisLines));
+            if (tracker->position() != shown)
+            {
+                continue;
+            }
+            if (arrows.empty())
+            {
+                if (const auto best = tracker->BestMove())
+                {
+                    arrows.push_back({best->From(), best->To(), theme::kAmber.WithAlpha(0.85f)});
+                }
+            }
+            // The first engine's word on the position shown is the graph's for it.
+            if (const auto pawns = tracker->BestWhitePawns();
+                pawns && view_ply_ > 0 && blocks.size() == 1 && view_ply_ <= static_cast<int>(evals_.size()))
+            {
+                auto &slot = evals_[static_cast<std::size_t>(view_ply_ - 1)];
+                if (slot != pawns)
+                {
+                    slot        = pawns;
+                    graph_dirty = true;
+                }
+            }
+        }
+        for (const std::string &failure : analysis_->Failures())
+        {
+            status.push_back(failure);
+        }
+    }
     for (const SideSpec *side : play_
                                     ? std::vector<const SideSpec *>{&play_->settings().white, &play_->settings().black}
                                     : std::vector<const SideSpec *>{})
@@ -525,6 +622,10 @@ void MainController::RefreshSearches()
     view_.SetAnalysis(std::move(blocks));
     view_.SetArrows(std::move(arrows));
     view_.SetStatus(std::move(status));
+    if (graph_dirty)
+    {
+        view_.SetEval(evals_, view_ply_, EvalCaption());
+    }
 }
 
 MenuState MainController::Menus() const
@@ -581,21 +682,26 @@ void MainController::Refresh()
     card.push_back({"FEN", position.ToFen(), true});
     view_.SetCard(std::move(card));
 
-    std::string caption;
-    if (view_ply_ > 0)
-    {
-        const chess::Position &before = game_.PositionAt(view_ply_ - 1);
-        caption = std::to_string(before.FullmoveNumber()) + (before.SideToMove() == chess::kWhite ? "." : "...") +
-                  game_.San(view_ply_ - 1);
-        if (view_ply_ <= static_cast<int>(evals_.size()) && evals_[static_cast<std::size_t>(view_ply_ - 1)])
-        {
-            char text[32];
-            std::snprintf(text, sizeof text, "  %+.2f", *evals_[static_cast<std::size_t>(view_ply_ - 1)]);
-            caption += text;
-        }
-    }
-    view_.SetEval(evals_, view_ply_, caption);
+    view_.SetEval(evals_, view_ply_, EvalCaption());
     RefreshSearches();
+}
+
+std::string MainController::EvalCaption() const
+{
+    if (view_ply_ <= 0)
+    {
+        return {};
+    }
+    const chess::Position &before  = game_.PositionAt(view_ply_ - 1);
+    std::string            caption = std::to_string(before.FullmoveNumber()) +
+                                     (before.SideToMove() == chess::kWhite ? "." : "...") + game_.San(view_ply_ - 1);
+    if (view_ply_ <= static_cast<int>(evals_.size()) && evals_[static_cast<std::size_t>(view_ply_ - 1)])
+    {
+        char text[32];
+        std::snprintf(text, sizeof text, "  %+.2f", *evals_[static_cast<std::size_t>(view_ply_ - 1)]);
+        caption += text;
+    }
+    return caption;
 }
 
 } // namespace uci_host::app

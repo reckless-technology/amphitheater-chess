@@ -59,7 +59,7 @@ add_test(NAME integration COMMAND uci_host_integration_test)
 # drawn through Skia (its review image written where RECKLESS_SCREENSHOT_DIR names).
 if(UCI_HOST_GUI)
     uci_host_suite(uci_host_window_test
-        SOURCES app/WindowTest.cpp app/PlayTest.cpp app/CatalogueTest.cpp app/ControlsTest.cpp
+        SOURCES app/WindowTest.cpp app/PlayTest.cpp app/CatalogueTest.cpp app/ControlsTest.cpp app/AnalysisTest.cpp
         LIBRARIES uci_host_gui reckless_toolkit_test_support)
     target_compile_definitions(uci_host_window_test PRIVATE UCI_HOST_FAKE_ENGINE="$<TARGET_FILE:uci_host_fake_engine>")
     add_dependencies(uci_host_window_test uci_host_fake_engine)

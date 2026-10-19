@@ -3,6 +3,7 @@
 /// plays games on the board (PlaySession), answers the menus, the plates, the keys, the board and the lists, opens the
 /// dialogs, and sets what the view shows once a frame.
 
+#include "AnalysisSession.h"
 #include "EngineCatalogue.h"
 #include "MainView.h"
 #include "Menus.h"
@@ -47,6 +48,8 @@ class MainController
 {
   public:
     using Clock = std::chrono::steady_clock; ///< The clock the window's times are on.
+
+    static constexpr int kAnalysisLines = 3; ///< The lines each analysing engine is asked for (MultiPV).
 
     /**
      * @param view The view it drives; outlives the controller.
@@ -131,6 +134,19 @@ class MainController
         return catalogue_;
     }
 
+    /** @return The analysis under way, or null. */
+    AnalysisSession *analysis()
+    {
+        return analysis_.get();
+    }
+
+    /**
+     * Analyse, or stop analysing: the engines marked for analysis in the list - every configured engine where none is
+     * marked - thinking about the position shown.
+     * @param is_on Whether to analyse.
+     */
+    void SetAnalysing(bool is_on);
+
     /** @return The dialog open over the window, or null. */
     DialogFrame *dialog()
     {
@@ -149,6 +165,9 @@ class MainController
   private:
     /** The view brought to the game, the position shown and the players. */
     void Refresh();
+
+    /** @return The graph's caption: the move shown and White's score after it, "12...b4  +0.42". */
+    std::string EvalCaption() const;
 
     /** The strips' names, details and clocks. */
     void RefreshStrips();
@@ -183,11 +202,12 @@ class MainController
     /** @return Whether the board waits for the person's move at the position shown. */
     bool IsPersonToMove() const;
 
-    MainView                                 &view_;               ///< The view.
-    ControllerFiles                           files_;              ///< Where it keeps things.
-    EngineCatalogue                           catalogue_;          ///< The configured engines.
-    chess::Game                               game_;               ///< The game shown.
-    GameInfo                                  info_;               ///< What the card says of it.
+    MainView       &view_;      ///< The view.
+    EngineReaper    reaper_;    ///< Engines being quit off the window's thread; outlives the sessions below.
+    ControllerFiles files_;     ///< Where it keeps things.
+    EngineCatalogue catalogue_; ///< The configured engines.
+    chess::Game     game_;      ///< The game shown.
+    GameInfo        info_;      ///< What the card says of it.
     std::vector<std::optional<double>>        evals_;              ///< White's score after each ply, as known.
     int                                       view_ply_   = 0;     ///< The position shown.
     bool                                      is_flipped_ = false; ///< Black at the bottom.
@@ -196,6 +216,7 @@ class MainController
     PlaySnapshot                              snapshot_;           ///< Its snapshot as last taken in.
     std::vector<std::unique_ptr<PlaySession>> retiring_;           ///< Stopped games finishing their threads.
     std::map<std::string, SearchTracker>      trackers_;           ///< The playing engines' searches, by name.
+    std::unique_ptr<AnalysisSession>          analysis_;           ///< The engines analysing the position shown.
     std::unique_ptr<DialogFrame>              dialog_;             ///< The dialog over the window.
     std::vector<std::unique_ptr<DialogFrame>> closed_dialogs_;     ///< Closed, to be destroyed next frame.
     std::string                               error_;              ///< The last thing that went wrong.

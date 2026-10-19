@@ -69,7 +69,9 @@ GUI will save with the toolkit's JSON.
   board's move (or the deadline, or the stop - `GameRunner` abandons a cancelled game whose side answers with no move),
   its progress and the engines' lines polled by the controller once a frame; a stopped session finishes its thread in
   the background (`retiring_`) so the window never waits on an engine's move. `SearchTracker` follows an engine's
-  search from the lines it exchanges. `EngineCatalogue` is the engine list (`reckless-technology/uci-host/engines.json`
+  search from the lines it exchanges. `AnalysisSession` owns the analysing engines: started on worker threads
+  (`std::async`), handed to the window's thread, polled with `PollEvent` once a frame, quit by `EngineReaper` on worker
+  threads; a new position is a "stop" and, once "bestmove" comes, "position" and "go infinite". `EngineCatalogue` is the engine list (`reckless-technology/uci-host/engines.json`
   in the user's settings folder). `Theme.h` holds the
   mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
   the render tool and the suite draw. Files here never take a toolkit header's name (`View.h`, `Menu.h`, `Window.h`):
