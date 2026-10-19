@@ -16,9 +16,31 @@ reckless_module_assets(uci_host_assets
     ${uci_host_pieces}
     "RecklessAppIcon256.png=${RECKLESS_TOOLKIT_DIR}/assets/logos/RecklessAppIcon256.png")
 
+# The window's views and controllers, which the app, the render tool and the window's suite link.
+add_library(uci_host_gui STATIC
+    AnalysisPanel.cpp
+    BoardView.cpp
+    EngineLog.cpp
+    EvalGraph.cpp
+    MainController.cpp
+    MainView.cpp
+    MenuBar.cpp
+    Menus.cpp
+    MovesList.cpp
+    Panels.cpp
+    PieceSet.cpp
+    Showcase.cpp)
+target_include_directories(uci_host_gui PUBLIC "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(uci_host_gui
+    PUBLIC  uci_host_match uci_host_version uci_host_assets reckless_app_shell reckless_common_panel reckless_gfx_skia
+    PRIVATE uci_host_warnings)
+
 add_executable(RecklessUciHost Main.cpp)
-target_link_libraries(RecklessUciHost PRIVATE reckless_app_platform reckless_gfx_skia uci_host_assets uci_host_version
-                                              uci_host_warnings)
+target_link_libraries(RecklessUciHost PRIVATE uci_host_gui reckless_app_platform uci_host_warnings)
+
+# The render tool: the main window drawn to a PNG with sample state, for the review images in docs/design/.
+add_executable(uci_host_render_main RenderMain.cpp)
+target_link_libraries(uci_host_render_main PRIVATE uci_host_gui uci_host_warnings)
 
 # The identity the bundle carries, as the toolkit's bundle helpers read it.
 set(UCI_HOST_COMPANY "Reckless Technology")

@@ -59,8 +59,15 @@ GUI will save with the toolkit's JSON.
   its next `RequestMove` sends "ponderhit" (its clock from then) or "stop" (the answer thrown away, the wait charged).
   Nothing waits on the pondering engine, so it ponders through a person's move as through an engine's; `EndGame` stops
   a ponder search left running, and an engine that will not stop is written off (`is_healthy_`) and started afresh.
-- `src/cli/`: `RunCli` (in a library the tests call in-process), `main.cpp`, `Version.cpp` (the one file that reads
-  the generated version header).
+- `src/cli/`: `RunCli` (in a library the tests call in-process), `main.cpp`. `src/version/Version.cpp` is the one file
+  that reads the generated version header; the command line and the window both link it.
+- `src/app/` (`uci_host_gui`, `RecklessUciHost`, `uci_host_render_main`): the window on the toolkit's app shell. Views
+  (`MainView` lays them out as the mockup does; `BoardView`, `PlayerStrip`, `MovesList`, `GameCard`, `AnalysisPanel`,
+  `EvalGraph`, `EngineLog`, `MenuBar`, `StatusBar`) show what they are given and tell what a person does; the
+  controllers (`MainController`) hold the game and the engines and set the views each frame. `Theme.h` holds the
+  mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
+  the render tool and the suite draw. Files here never take a toolkit header's name (`View.h`, `Menu.h`, `Window.h`):
+  they are included as `"app/BoardView.h"` from outside the directory.
 - `tests/`: one GoogleTest binary per library, the fake engine (`tests/fake_engine/FakeEngine.cpp`, its behaviours
   scripted by arguments), `tests/data/` (pawnstar's perft EPD, assorted PGN), the integration suite (a real engine via
   `UCI_HOST_TEST_ENGINE`, skipped otherwise).

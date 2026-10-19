@@ -17,6 +17,7 @@ fetch GoogleTest, which no product ships.
 | `uci_host_uci` | `src/uci/` | A child process with pipes and reader threads (Windows and POSIX), the UCI protocol parsed and formatted, and the engine session |
 | `uci_host_match` | `src/match/` | Players, the game runner (clocks, legality, adjudication, books, pondering, PGN with per-move comments), openings, the round-robin schedule, statistics, and tournaments played in parallel |
 | `uci_host_cli_core`, `uci-host-cli` | `src/cli/` | The command line: `match`, `tournament`, `perft`, `analyse` |
+| `uci_host_gui`, `RecklessUciHost` | `src/app/` | The window on the toolkit: the board, the moves, the game's card, the analysis, the evaluation graph, the engine log, the menus, and the controllers behind them |
 
 The suites are in `tests/` (GoogleTest), with a scriptable fake engine (`tests/fake_engine/`) that the UCI, match and
 command-line suites play against: normal, slow, crashing, hanging, garbage-writing, illegal-moving.
@@ -109,11 +110,31 @@ runtime.
 | `cli` | `uci_host_cli_test` | the command line in-process: every subcommand and the arguments it refuses |
 | `cli_perft`, `cli_match` | `uci-host-cli` | the executable end to end |
 | `integration` | `uci_host_integration_test` | a real engine, named by `UCI_HOST_TEST_ENGINE`; skipped when unset |
+| `gui` | `uci_host_window_test` | the window with no window: the pieces, the board's geometry and a person's moves on it, the lists, the graph, the controller, the window drawn through Skia |
+| `app_smoke` | `RecklessUciHost --smoke` | the app opens its window and draws thirty frames (label `window`: a display is needed) |
 
 ```
 UCI_HOST_TEST_ENGINE=/path/to/engine ctest --preset release -R integration --output-on-failure
 UCI_HOST_PERFT_BUDGET=200000000 build/release/tests/uci_host_chess_test --gtest_filter='Perft.*'
 ```
+
+## The window
+
+`RecklessUciHost` is the GUI, on the toolkit's app shell (`AppRun`, `AppRoot`: the window, its loop, the zoom below the
+layout's least and the tooltips), its child window on Skia and its views. The layout is the approved mockup's
+(`docs/design/main-window-mockup.html`, viewable through `docs/design/build-mockup.py`): the menu bar; the board
+column - a player's strip above and below the board, with the running clock lit amber, and the plates |< < > >| Flip
+Analyse - beside the moves and the game's card; across the foot the analysis, the evaluation graph and the engine log in
+Monaspace Xenon; the status bar. The board grows with the window; under 1240 x 1000 design pixels the whole layout is
+zoomed down rather than squeezed.
+
+The pieces are the Staunton SVGs, carried inside the binary and drawn by the toolkit's SVG reader at whatever size the
+squares are. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
+promotion; the keys step through the game (Left, Right, Home, End) and F flips the board.
+
+`uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]` draws the window to a PNG with the mockup's
+state, with no window and no display: the review images in `docs/design/` (`main-window.png`, `main-window-flipped.png`)
+are made with it.
 
 ## The command line
 

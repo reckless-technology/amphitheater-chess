@@ -54,3 +54,14 @@ uci_host_suite(uci_host_integration_test
     SOURCES integration/RealEngineTest.cpp
     LIBRARIES uci_host_match)
 add_test(NAME integration COMMAND uci_host_integration_test)
+
+# The window's views and controller, with no window: the board, the lists, the graph, the controller and the window
+# drawn through Skia (its review image written where RECKLESS_SCREENSHOT_DIR names).
+if(UCI_HOST_GUI)
+    uci_host_suite(uci_host_window_test
+        SOURCES app/WindowTest.cpp
+        LIBRARIES uci_host_gui)
+    target_compile_definitions(uci_host_window_test PRIVATE UCI_HOST_FAKE_ENGINE="$<TARGET_FILE:uci_host_fake_engine>")
+    add_dependencies(uci_host_window_test uci_host_fake_engine)
+    add_test(NAME gui COMMAND uci_host_window_test)
+endif()
