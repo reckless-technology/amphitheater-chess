@@ -36,6 +36,25 @@ struct SideSpec
     }
 };
 
+/** Both sides' clocks at one position of a game: as they stood once the move that led to it was charged. */
+struct ClockReading
+{
+    chess::Milliseconds white_remaining{};     ///< White's time left.
+    chess::Milliseconds black_remaining{};     ///< Black's.
+    int                 white_moves_to_go = 0; ///< White's moves to the next session; 0 for none.
+    int                 black_moves_to_go = 0; ///< Black's, likewise.
+    chess::Milliseconds white_increment{};     ///< White's increment.
+    chess::Milliseconds black_increment{};     ///< Black's.
+
+    /**
+     * Both clocks read.
+     * @param white White's clock.
+     * @param black Black's clock.
+     * @return The reading.
+     */
+    static ClockReading Of(const chess::Clock &white, const chess::Clock &black);
+};
+
 /** How a game on the board is to be played. */
 struct PlaySettings
 {
@@ -47,6 +66,11 @@ struct PlaySettings
     std::string                       event = "Game"; ///< PGN's Event.
     std::optional<chess::TimeControl> white_resumed;  ///< White's control when a game resumes (a take-back), else none.
     std::optional<chess::TimeControl> black_resumed;  ///< Black's, likewise.
+    /// A resumed game's clocks at every position up to the one it resumes from, so a later take-back finds them.
+    std::vector<ClockReading> resumed_clocks;
+    /// A resumed game's opening: how many of `start_moves` were given before play began, the rest played and so open
+    /// to a take-back; none for all of them.
+    std::optional<std::size_t> opening_length;
 };
 
 /** A line an engine exchanged during the game. */
@@ -61,8 +85,9 @@ struct PlayLogLine
 /** The game as it stands, for the window. */
 struct PlaySnapshot
 {
-    chess::Game                           game;                     ///< The game so far.
-    std::vector<match::MoveNote>          notes;                    ///< One per move: score, depth, time, book.
+    chess::Game                           game;   ///< The game so far.
+    std::vector<match::MoveNote>          notes;  ///< One per move: score, depth, time, book.
+    std::vector<ClockReading>             clocks; ///< One per position, from the start: [n] with n moves played.
     chess::Milliseconds                   white_remaining{};        ///< White's clock after the last move.
     chess::Milliseconds                   black_remaining{};        ///< Black's clock after the last move.
     int                                   white_moves_to_go = 0;    ///< White's moves to the next session; 0 for none.

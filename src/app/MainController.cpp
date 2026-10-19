@@ -430,19 +430,28 @@ void MainController::TakeBack()
     // The person's last move goes, and the engine's reply to it when it has made one.
     const int undo = is_both ? 1 : (mover == person ? 2 : 1);
     const int keep = snapshot.game.PlyCount() - undo;
-    if (keep < static_cast<int>(settings.start_moves.size()) || keep < 0)
+    // The opening given before play began stays; the moves played, a take-back before this one's among them, may go.
+    const std::size_t opening = settings.opening_length.value_or(settings.start_moves.size());
+    if (keep < static_cast<int>(opening) || keep < 0)
     {
         return;
     }
-    PlaySettings resumed = settings;
-    const auto   moves   = snapshot.game.UciMoves();
+    PlaySettings resumed   = settings;
+    resumed.opening_length = opening;
+    const auto moves       = snapshot.game.UciMoves();
     resumed.start_moves.assign(moves.begin(), moves.begin() + keep);
-    if (!settings.time_control.sessions.empty())
+    // Both clocks as they were recorded at the position the game goes back to, and every reading before it kept for
+    // the take-back after this one.
+    const auto kept_clocks = static_cast<std::size_t>(keep) + 1;
+    if (!settings.time_control.sessions.empty() && snapshot.clocks.size() >= kept_clocks)
     {
-        resumed.white_resumed = ResumedTimeControl(settings.time_control, snapshot.white_remaining,
-                                                   snapshot.white_moves_to_go, snapshot.white_increment);
-        resumed.black_resumed = ResumedTimeControl(settings.time_control, snapshot.black_remaining,
-                                                   snapshot.black_moves_to_go, snapshot.black_increment);
+        const ClockReading &at = snapshot.clocks[static_cast<std::size_t>(keep)];
+        resumed.white_resumed =
+            ResumedTimeControl(settings.time_control, at.white_remaining, at.white_moves_to_go, at.white_increment);
+        resumed.black_resumed =
+            ResumedTimeControl(settings.time_control, at.black_remaining, at.black_moves_to_go, at.black_increment);
+        resumed.resumed_clocks.assign(snapshot.clocks.begin(),
+                                      snapshot.clocks.begin() + static_cast<std::ptrdiff_t>(kept_clocks));
     }
     const GameInfo info = info_;
     const bool     flip = is_flipped_;
@@ -1036,8 +1045,9 @@ MenuState MainController::Menus() const
     if (IsPlaying())
     {
         const PlaySettings &settings = play_->settings();
-        state.can_take_back          = (settings.white.is_human || settings.black.is_human) &&
-                                       game_.PlyCount() > static_cast<int>(settings.start_moves.size());
+        state.can_take_back =
+            (settings.white.is_human || settings.black.is_human) &&
+            game_.PlyCount() > static_cast<int>(settings.opening_length.value_or(settings.start_moves.size()));
     }
     else
     {

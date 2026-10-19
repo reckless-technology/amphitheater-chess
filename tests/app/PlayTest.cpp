@@ -127,6 +127,49 @@ TEST(Play, APersonPlaysAnEngineOnTheBoardAndTakesAMoveBack)
     EXPECT_EQ(rig.controller.view_ply(), 1);
 }
 
+TEST(Play, ATakeBackResumesBothClocksFromTheTimesRecordedAtThatMove)
+{
+    Rig          rig;
+    PlaySettings settings;
+    settings.white.is_human = true;
+    settings.black.is_human = false;
+    settings.black.engine   = Fake({"--name", "Fake"});
+    settings.time_control   = *chess::TimeControl::Parse("60+1");
+    rig.controller.StartGame(settings);
+    ASSERT_TRUE(rig.FramesUntil([&] { return rig.PersonToMove(); }));
+    std::this_thread::sleep_for(300ms);
+    rig.view.board().on_move(MoveOf(rig, "e2e4"));
+    ASSERT_TRUE(rig.FramesUntil([&] { return rig.controller.game().PlyCount() == 2 && rig.PersonToMove(); }));
+    std::this_thread::sleep_for(300ms);
+    rig.view.board().on_move(MoveOf(rig, "d2d4"));
+    ASSERT_TRUE(rig.FramesUntil([&] { return rig.controller.game().PlyCount() == 4 && rig.PersonToMove(); }));
+
+    const PlaySnapshot played = rig.controller.play()->Snapshot();
+    ASSERT_EQ(played.clocks.size(), 5u) << "a reading at the start and after every move";
+    EXPECT_EQ(played.clocks[0].white_remaining, 60000ms);
+    EXPECT_EQ(played.clocks[0].black_remaining, 60000ms);
+    EXPECT_NE(played.clocks[2].white_remaining, 60000ms) << "White's thinking and increment are on it";
+    const ClockReading at_two = played.clocks[2];
+
+    std::this_thread::sleep_for(300ms); // White's clock runs on: none of this comes back
+    rig.controller.Command(kTakeBack);
+    ASSERT_TRUE(rig.FramesUntil([&] { return rig.controller.game().PlyCount() == 2 && rig.PersonToMove(); }));
+    const PlaySettings &once = rig.controller.play()->settings();
+    ASSERT_TRUE(once.white_resumed && once.black_resumed);
+    EXPECT_EQ(once.white_resumed->sessions[0].time, at_two.white_remaining);
+    EXPECT_EQ(once.black_resumed->sessions[0].time, at_two.black_remaining);
+    EXPECT_EQ(once.resumed_clocks.size(), 3u);
+    EXPECT_EQ(rig.controller.play()->Snapshot().clocks.size(), 3u);
+
+    rig.controller.Command(kTakeBack);
+    ASSERT_TRUE(rig.FramesUntil([&] { return rig.controller.game().PlyCount() == 0 && rig.PersonToMove(); }));
+    const PlaySettings &twice = rig.controller.play()->settings();
+    ASSERT_TRUE(twice.white_resumed && twice.black_resumed);
+    EXPECT_EQ(twice.white_resumed->sessions[0].time, 60000ms) << "back to the start: the clocks as they began";
+    EXPECT_EQ(twice.black_resumed->sessions[0].time, 60000ms);
+    rig.controller.Command(kStopGame);
+}
+
 TEST(Play, AnEngineGameEndsAndTheResultIsShown)
 {
     Rig          rig;

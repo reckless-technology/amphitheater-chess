@@ -55,6 +55,18 @@ chess::TimeControl ControlOf(const chess::TimeControl &control, const EngineEntr
 
 } // namespace
 
+ClockReading ClockReading::Of(const chess::Clock &white, const chess::Clock &black)
+{
+    ClockReading reading;
+    reading.white_remaining   = white.Remaining();
+    reading.black_remaining   = black.Remaining();
+    reading.white_moves_to_go = white.MovesToGo();
+    reading.black_moves_to_go = black.MovesToGo();
+    reading.white_increment   = white.Increment();
+    reading.black_increment   = black.Increment();
+    return reading;
+}
+
 chess::TimeControl ResumedTimeControl(const chess::TimeControl &control, chess::Milliseconds remaining, int moves_to_go,
                                       chess::Milliseconds increment)
 {
@@ -100,10 +112,15 @@ PlaySession::PlaySession(PlaySettings settings) : settings_(std::move(settings))
     snapshot_.black_moves_to_go = black_clock.MovesToGo();
     snapshot_.white_increment   = white_clock.Increment();
     snapshot_.black_increment   = black_clock.Increment();
-    snapshot_.turn_started      = Clock::now();
-    snapshot_.white_name        = settings_.white.Name();
-    snapshot_.black_name        = settings_.black.Name();
-    thread_                     = std::thread([this] { Run(); });
+    // The clocks at every position so far: a resumed game's as they were recorded, the rest (the unclocked opening
+    // moves) as the clocks start.
+    snapshot_.clocks = settings_.resumed_clocks;
+    snapshot_.clocks.resize(static_cast<std::size_t>(start.PlyCount()) + 1, ClockReading::Of(white_clock, black_clock));
+    snapshot_.clocks.back() = ClockReading::Of(white_clock, black_clock);
+    snapshot_.turn_started  = Clock::now();
+    snapshot_.white_name    = settings_.white.Name();
+    snapshot_.black_name    = settings_.black.Name();
+    thread_                 = std::thread([this] { Run(); });
 }
 
 PlaySession::~PlaySession()
@@ -176,7 +193,10 @@ void PlaySession::Run()
             snapshot_.black_moves_to_go = progress.black_clock.MovesToGo();
             snapshot_.white_increment   = progress.white_clock.Increment();
             snapshot_.black_increment   = progress.black_clock.Increment();
-            snapshot_.turn_started      = Clock::now();
+            snapshot_.clocks.resize(static_cast<std::size_t>(progress.game.PlyCount()),
+                                    snapshot_.clocks.empty() ? ClockReading{} : snapshot_.clocks.back());
+            snapshot_.clocks.push_back(ClockReading::Of(progress.white_clock, progress.black_clock));
+            snapshot_.turn_started = Clock::now();
             ++snapshot_.version;
         },
         &cancel_);

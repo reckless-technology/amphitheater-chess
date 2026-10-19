@@ -143,7 +143,9 @@ the core's `GameRunner` on a thread of its own (`PlaySession`): an engine is an 
 `CallbackPlayer` whose chooser waits for the board's move, the deadline or a stop. Once a frame the window takes in
 the game's progress and the engines' lines - into the log, and into each engine's block in the analysis panel
 (`SearchTracker`: thinking or pondering and since when, its lines in SAN, its figures) - and runs the clocks. Take
-back removes the person's last move and the engine's reply and resumes the game from what was left on the clocks;
+back removes the person's last move and the engine's reply and resumes the game with both clocks as they were recorded
+at the move it goes back to (`PlaySnapshot::clocks`, a reading after every move, carried into the resumed game so a
+second take-back finds its own);
 Stop the game abandons it and keeps it on the board; a finished game's result and reason show over the board. With
 no game being played, a move on the board takes the game shown on from the position shown.
 
