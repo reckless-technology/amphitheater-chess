@@ -43,13 +43,28 @@ GameSettings Settings(const char *time_control, int max_moves)
     return settings;
 }
 
-// The commands a player sent its engine, in order.
+// The commands a player sent its engine, in order. Declared after the player it watches, it takes its logger back as
+// it goes, so the engine's quit, sent as the player goes, is never logged into it.
 struct SentLines
 {
     std::vector<std::string> lines;
+    EnginePlayer            *watched = nullptr;
+
+    SentLines()                             = default;
+    SentLines(const SentLines &)            = delete;
+    SentLines &operator=(const SentLines &) = delete;
+
+    ~SentLines()
+    {
+        if (watched)
+        {
+            watched->SetLogger({});
+        }
+    }
 
     void Attach(EnginePlayer &player)
     {
+        watched = &player;
         player.SetLogger([this](uci::LineDirection direction, std::string_view line) {
             if (direction == uci::LineDirection::kToEngine)
             {
