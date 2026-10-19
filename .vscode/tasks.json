@@ -1,0 +1,111 @@
+{
+    // Terminal > Run Task..., or Ctrl+Shift+B for the default build task. Each runs a CMake preset from
+    // CMakePresets.json (the first configures its tree under build/<preset>); on Windows run VS Code from a
+    // developer prompt, so cmake, ninja and cl are on the PATH. "setup environment" installs what building, testing
+    // and coverage need on this machine (tools/setup-dev.ps1 on Windows, tools/setup-dev.sh on Linux and macOS);
+    // "check environment" only reports.
+    "version": "2.0.0",
+    "options": {
+        "cwd": "${workspaceFolder}"
+    },
+    "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+    },
+    "tasks": [
+        {
+            "label": "setup environment",
+            "detail": "Install what this machine lacks to build, test and cover the host",
+            "type": "shell",
+            "command": "${workspaceFolder}/tools/setup-dev.sh",
+            "windows": {
+                "command": "powershell",
+                "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tools/setup-dev.ps1"]
+            },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "focus": true }
+        },
+        {
+            "label": "check environment",
+            "detail": "Report what this machine lacks, installing nothing",
+            "type": "shell",
+            "command": "${workspaceFolder}/tools/setup-dev.sh",
+            "args": ["--check"],
+            "windows": {
+                "command": "powershell",
+                "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tools/setup-dev.ps1", "-Check"]
+            },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always" }
+        },
+        {
+            "label": "Build: debug",
+            "detail": "Configure (once) and build the debug tree, build/debug",
+            "type": "shell",
+            "command": "cmake --preset debug && cmake --build --preset debug",
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": ["$gcc", "$msCompile"]
+        },
+        {
+            "label": "Build: release",
+            "detail": "Configure (once) and build the release tree, build/release",
+            "type": "shell",
+            "command": "cmake --preset release && cmake --build --preset release",
+            "group": "build",
+            "problemMatcher": ["$gcc", "$msCompile"]
+        },
+        {
+            "label": "Test: every suite",
+            "detail": "ctest on the debug tree",
+            "type": "shell",
+            "command": "ctest --preset debug",
+            "dependsOn": "Build: debug",
+            "group": { "kind": "test", "isDefault": true },
+            "problemMatcher": []
+        },
+        {
+            "label": "Test: every suite (release)",
+            "detail": "ctest on the release tree, perft to depth 6 among it",
+            "type": "shell",
+            "command": "ctest --preset release",
+            "dependsOn": "Build: release",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run: perft",
+            "detail": "The command line's perft of the start position to depth 6 (release)",
+            "type": "shell",
+            "command": "build/release/src/cli/uci-host-cli perft startpos 6",
+            "windows": { "command": "build/release/src/cli/uci-host-cli.exe perft startpos 6" },
+            "dependsOn": "Build: release",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run: a match of fake engines",
+            "detail": "Four games between two copies of the tests' fake engine (debug)",
+            "type": "shell",
+            "command": "build/debug/src/cli/uci-host-cli match -engine cmd=build/debug/tests/uci_host_fake_engine name=A -engine cmd=build/debug/tests/uci_host_fake_engine name=B -each tc=10+0.1 -games 4 -maxmoves 40",
+            "windows": {
+                "command": "build/debug/src/cli/uci-host-cli.exe match -engine cmd=build/debug/tests/uci_host_fake_engine.exe name=A -engine cmd=build/debug/tests/uci_host_fake_engine.exe name=B -each tc=10+0.1 -games 4 -maxmoves 40"
+            },
+            "dependsOn": "Build: debug",
+            "problemMatcher": []
+        },
+        {
+            "label": "Coverage (Windows)",
+            "detail": "clang-cl's source-based coverage of src/, red under 90 %",
+            "type": "shell",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/coverage-windows.ps1",
+            "problemMatcher": []
+        },
+        {
+            "label": "Format: the changed C++",
+            "detail": "clang-format 22.1.8 over every C++ file that differs from main",
+            "type": "shell",
+            "command": "git diff --name-only main -- '*.h' '*.cpp' | xargs clang-format -i",
+            "problemMatcher": []
+        }
+    ]
+}

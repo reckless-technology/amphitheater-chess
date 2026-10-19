@@ -1,0 +1,212 @@
+#pragma once
+/// @file CastlingRights.h Castling-rights flags and their effect on hashing and move making.
+///
+/// Adapted from pawnstar's src/castling_rights.h (commit c41099798db594ae2c379cba94d917c9c28d9c04).
+#include <array>
+#include <cstdint>
+#include <string>
+#include <string_view>
+
+#include "AttackTables.h"
+#include "Move.h"
+
+namespace uci_host::chess
+{
+
+/// @brief Encapsulates the four castling-rights flags (white/black × kingside/queenside).
+/// The value is kept as a 4-bit field in a uint8_t so it can be used directly as an index
+/// into the Zobrist castling-rights hash table (entries 0–15).
+class CastlingRights
+{
+  public:
+    constexpr CastlingRights();
+    constexpr CastlingRights(uint8_t rights);
+    constexpr bool                  MayWhiteCastleKingside() const;
+    constexpr bool                  MayWhiteCastleQueenside() const;
+    constexpr bool                  MayBlackCastleKingside() const;
+    constexpr bool                  MayBlackCastleQueenside() const;
+    constexpr zobrist_t             Hash() const;
+    constexpr CastlingRights       &AfterMove(const Move &move);
+    constexpr std::uint8_t          Value() const;
+    constexpr bool                  May(Color color, bool is_kingside) const;
+    constexpr void                  Revoke(Color color, bool is_kingside);
+    static constexpr CastlingRights FromFen(std::string_view fen);
+    constexpr std::string           ToFenString() const;
+
+  private:
+    uint8_t value_; ///< The actual flag value.
+
+    /// @brief Castling-rights bit flags, and the AND masks applied when a key square is vacated/entered.
+    enum Flags : uint8_t
+    {
+        kWhiteKingside  = 0x01,                                           ///< White may castle kingside.
+        kWhiteQueenside = 0x02,                                           ///< White may castle queenside.
+        kBlackKingside  = 0x04,                                           ///< Black may castle kingside.
+        kBlackQueenside = 0x08,                                           ///< Black may castle queenside.
+        kOK             = (uint8_t)(~0),                                  ///< Mask that preserves all rights.
+        kA1             = (uint8_t)(~kWhiteQueenside),                    ///< Mask applied for the a1 square.
+        kE1             = (uint8_t)(~(kWhiteKingside | kWhiteQueenside)), ///< Mask applied for the e1 square.
+        kH1             = (uint8_t)(~kWhiteKingside),                     ///< Mask applied for the h1 square.
+        kA8             = (uint8_t)(~kBlackQueenside),                    ///< Mask applied for the a8 square.
+        kE8             = (uint8_t)(~(kBlackKingside | kBlackQueenside)), ///< Mask applied for the e8 square.
+        kH8             = (uint8_t)(~kBlackKingside),                     ///< Mask applied for the h8 square.
+    };
+
+    /// @brief Mask values ANDed with move from and to squares to determine new castling rights after a move.
+    /// Only squares A1, E1, H1, A8, E8, H8 affect castling rights.
+    // clang-format off
+    static constexpr std::array<uint8_t, 64> kMoveMasks
+    {
+        kA1, kOK, kOK, kOK, kE1, kOK, kOK, kH1,
+        kOK, kOK, kOK, kOK, kOK, kOK, kOK, kOK,
+        kOK, kOK, kOK, kOK, kOK, kOK, kOK, kOK,
+        kOK, kOK, kOK, kOK, kOK, kOK, kOK, kOK,
+        kOK, kOK, kOK, kOK, kOK, kOK, kOK, kOK,
+        kOK, kOK, kOK, kOK, kOK, kOK, kOK, kOK,
+        kOK, kOK, kOK, kOK, kOK, kOK, kOK, kOK,
+        kA8, kOK, kOK, kOK, kE8, kOK, kOK, kH8,
+    };
+    // clang-format on
+};
+
+/// @brief Default constructor; no castling rights.
+constexpr CastlingRights::CastlingRights() : value_{0}
+{
+}
+
+/// @brief Construct from a raw 4-bit flag value.
+/// @param rights Bitwise OR of the Flags enumerators.
+constexpr CastlingRights::CastlingRights(uint8_t rights) : value_{rights}
+{
+}
+
+/// @brief Whether white may still castle kingside.
+/// @return true if the white kingside right is set.
+constexpr bool CastlingRights::MayWhiteCastleKingside() const
+{
+    return !!(value_ & kWhiteKingside);
+}
+
+/// @brief Whether white may still castle queenside.
+/// @return true if the white queenside right is set.
+constexpr bool CastlingRights::MayWhiteCastleQueenside() const
+{
+    return !!(value_ & kWhiteQueenside);
+}
+
+/// @brief Whether black may still castle kingside.
+/// @return true if the black kingside right is set.
+constexpr bool CastlingRights::MayBlackCastleKingside() const
+{
+    return !!(value_ & kBlackKingside);
+}
+
+/// @brief Whether black may still castle queenside.
+/// @return true if the black queenside right is set.
+constexpr bool CastlingRights::MayBlackCastleQueenside() const
+{
+    return !!(value_ & kBlackQueenside);
+}
+
+/// @brief Zobrist hash associated with these castling rights.
+constexpr zobrist_t CastlingRights::Hash() const
+{
+    return kCastlingRightsHashes[value_];
+}
+
+/// @brief Return the castling rights that result after making a move.
+/// @param move Move being made (its from/to squares may revoke rights).
+/// @return Reference to this updated castling-rights object.
+constexpr CastlingRights &CastlingRights::AfterMove(const Move &move)
+{
+    value_ &= kMoveMasks[move.From()] & kMoveMasks[move.To()];
+    return *this;
+}
+
+/// @brief The raw 4-bit flag value.
+/// @return Bitwise OR of the Flags enumerators.
+constexpr std::uint8_t CastlingRights::Value() const
+{
+    return value_;
+}
+
+/// @brief Whether a side may still castle on a wing.
+/// @param color The side.
+/// @param is_kingside The kingside (true) or the queenside (false).
+/// @return true if the right is set.
+constexpr bool CastlingRights::May(Color color, bool is_kingside) const
+{
+    return !!(value_ & (is_kingside ? kWhiteKingside : kWhiteQueenside) << (color == kBlack ? 2 : 0));
+}
+
+/// @brief Take a castling right away (a FEN's right that the pieces do not allow).
+/// @param color The side.
+/// @param is_kingside The kingside (true) or the queenside (false).
+constexpr void CastlingRights::Revoke(Color color, bool is_kingside)
+{
+    value_ &=
+        static_cast<std::uint8_t>(~((is_kingside ? kWhiteKingside : kWhiteQueenside) << (color == kBlack ? 2 : 0)));
+}
+
+/// @brief Parse the castling field from a FEN string (e.g. "KQkq" or "-").
+/// @param fen FEN castling field.
+/// @return The parsed castling rights.
+constexpr CastlingRights CastlingRights::FromFen(std::string_view fen)
+{
+    uint8_t result = 0;
+    if (fen == "-")
+    {
+        return CastlingRights{result};
+    }
+    for (char c : fen)
+    {
+        switch (c)
+        {
+        case 'K':
+            result |= kWhiteKingside;
+            break;
+        case 'Q':
+            result |= kWhiteQueenside;
+            break;
+        case 'k':
+            result |= kBlackKingside;
+            break;
+        case 'q':
+            result |= kBlackQueenside;
+            break;
+        default:
+            break;
+        }
+    }
+    return CastlingRights{result};
+}
+
+/// @brief Serialize castling rights to FEN format.
+/// @return string containing FEN of castling rights (e.g. "KQkq" or "-").
+constexpr std::string CastlingRights::ToFenString() const
+{
+    if (value_ == 0)
+    {
+        return "-";
+    }
+    std::string s;
+    if (value_ & kWhiteKingside)
+    {
+        s += 'K';
+    }
+    if (value_ & kWhiteQueenside)
+    {
+        s += 'Q';
+    }
+    if (value_ & kBlackKingside)
+    {
+        s += 'k';
+    }
+    if (value_ & kBlackQueenside)
+    {
+        s += 'q';
+    }
+    return s;
+}
+
+} // namespace uci_host::chess

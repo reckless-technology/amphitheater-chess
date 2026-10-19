@@ -1,0 +1,89 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {"major": 3, "minor": 25, "patch": 0},
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "UCI_HOST_BUILD_TESTS": "ON"
+            }
+        },
+        {
+            "name": "debug",
+            "displayName": "Debug: the libraries, the command line and the suites, unoptimised",
+            "inherits": "base",
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"}
+        },
+        {
+            "name": "release",
+            "displayName": "Release: the host as it ships, and its suites",
+            "inherits": "base",
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}
+        },
+        {
+            "name": "release-universal",
+            "displayName": "Release, macOS: one binary for Apple silicon and Intel",
+            "inherits": "release",
+            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+            "cacheVariables": {"CMAKE_OSX_ARCHITECTURES": "arm64;x86_64"}
+        },
+        {
+            "name": "coverage",
+            "displayName": "Coverage: the host's own code instrumented (gcov on gcc, llvm-cov on clang)",
+            "inherits": "base",
+            "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "UCI_HOST_COVERAGE": "ON"}
+        },
+        {
+            "name": "asan",
+            "displayName": "Sanitizers: address and undefined behaviour, unoptimised (gcc or clang)",
+            "inherits": "base",
+            "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "UCI_HOST_ASAN": "ON"}
+        },
+        {
+            "name": "coverage-windows",
+            "displayName": "Coverage, Windows: the host's own code unoptimised under clang-cl, LLVM source-based",
+            "inherits": "base",
+            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "UCI_HOST_COVERAGE": "ON"
+            }
+        },
+        {
+            "name": "asan-windows",
+            "displayName": "AddressSanitizer, Windows: MSVC's, optimised with debug information",
+            "inherits": "base",
+            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo", "UCI_HOST_ASAN": "ON"}
+        }
+    ],
+    "buildPresets": [
+        {"name": "debug", "configurePreset": "debug"},
+        {"name": "release", "configurePreset": "release"},
+        {"name": "release-universal", "configurePreset": "release-universal"},
+        {"name": "coverage", "configurePreset": "coverage"},
+        {"name": "asan", "configurePreset": "asan"},
+        {"name": "coverage-windows", "configurePreset": "coverage-windows"},
+        {"name": "asan-windows", "configurePreset": "asan-windows"}
+    ],
+    "testPresets": [
+        {"name": "debug", "configurePreset": "debug", "output": {"outputOnFailure": true}},
+        {"name": "release", "configurePreset": "release", "output": {"outputOnFailure": true}},
+        {"name": "coverage", "configurePreset": "coverage", "output": {"outputOnFailure": true}},
+        {"name": "asan", "configurePreset": "asan", "output": {"outputOnFailure": true}},
+        {
+            "name": "coverage-windows",
+            "configurePreset": "coverage-windows",
+            "output": {"outputOnFailure": true},
+            "environment": {"LLVM_PROFILE_FILE": "${sourceDir}/build/coverage-windows/profiles/%p-%m.profraw"}
+        },
+        {"name": "asan-windows", "configurePreset": "asan-windows", "output": {"outputOnFailure": true}}
+    ]
+}

@@ -1,0 +1,262 @@
+name: build
+
+# The check on every push to main, every pull request and on demand, sized to the change: documentation alone
+# (Markdown, the licences, the ignore file, the editor settings, the hooks) builds nothing; anything else builds the
+# host and runs every suite on the three platforms - Linux with gcc (and again under AddressSanitizer and
+# UndefinedBehaviorSanitizer), Windows with MSVC, macOS universal - and measures coverage; the formatting is checked
+# whatever changed. The last job, "CI", is the one check to require: green when every job the run needed passed or was
+# not needed, red when any failed or was cancelled.
+#
+# Every job runs on the organisation's own machines, never on GitHub's hosted images (a hosted macOS minute bills as
+# ten, and the account's Actions spending limit was exhausted that way once): [self-hosted, Linux, X64],
+# [self-hosted, Windows, X64] (PowerShell 7 and Git's bash) and [self-hosted, macOS, ARM64]. .github/actions/cpp
+# provides the toolchain.
+#
+# The version every binary reports is MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag (cmake/UciHostVersion.cmake),
+# which a shallow clone cuts off: every checkout is fetch-depth 0.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# The token reads the repository and nothing else: every job runs on the organisation's own machines, where an action
+# is code run with the runner's credentials on a kept workspace.
+permissions:
+  contents: read
+
+# One run per branch or pull request at a time: a new push supersedes the run its predecessor started.
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: What changed
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    outputs:
+      cpp: ${{ steps.pick.outputs.cpp }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Decide what this run needs
+        id: pick
+        shell: bash
+        run: |
+          cpp=true
+          base=""
+          case "${{ github.event_name }}" in
+            pull_request) base="${{ github.event.pull_request.base.sha }}" ;;
+            push) base="${{ github.event.before }}" ;;
+          esac
+          if [ -n "$base" ] && [ "$base" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$base" 2>/dev/null; then
+            changed=$(git diff --name-only "$base" "$GITHUB_SHA")
+            echo "changed files:"; echo "$changed"
+            # Documentation never reaches a compiler: Markdown, the licences, the ignore file, the editor settings,
+            # the hooks.
+            if ! echo "$changed" | grep -qvE '[.]md$|^LICENSE$|^THIRD-PARTY-NOTICES[.]txt$|^[.]gitignore$|^[.]vscode/|^[.]githooks/'; then
+              cpp=false
+            fi
+          fi
+          echo "cpp=$cpp" >> "$GITHUB_OUTPUT"
+          echo "code changed: $cpp"
+
+  # ---- The host ---------------------------------------------------------------------------------------------------
+  # Each runner keeps its trees under build/ci-* between runs (clean: false), and FetchContent's downloads under its
+  # tool cache (.github/actions/cpp), so a run that changed little builds little.
+
+  linux:
+    name: Linux (gcc)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Toolchain
+        id: cpp
+        uses: ./.github/actions/cpp
+      - name: Configure
+        run: >
+          cmake -S . -B build/ci-linux -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+      - name: Build
+        run: cmake --build build/ci-linux -j ${{ steps.cpp.outputs.jobs }}
+      - name: Test
+        run: ctest --test-dir build/ci-linux --output-on-failure -j "$(nproc)"
+
+  sanitizers:
+    name: Linux sanitizers (address, undefined)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Toolchain
+        id: cpp
+        uses: ./.github/actions/cpp
+      - name: Configure
+        run: >
+          cmake -S . -B build/ci-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DUCI_HOST_ASAN=ON
+          -DFETCHCONTENT_UPDATES_DISCONNECTED=ON "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+      - name: Build
+        run: cmake --build build/ci-asan -j ${{ steps.cpp.outputs.jobs }}
+      - name: Test
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: ctest --test-dir build/ci-asan --output-on-failure -j "$(nproc)"
+
+  # Coverage of the host's own code (src/), gcc's, read by gcovr: a debug build instrumented, every suite run, and the
+  # run red under 90 % of lines. The report is kept with the run.
+  coverage:
+    name: Coverage (Linux)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Toolchain
+        id: cpp
+        uses: ./.github/actions/cpp
+      - name: gcovr 8.3
+        run: |
+          python3 -m venv "$RUNNER_TEMP/gcovr"
+          "$RUNNER_TEMP/gcovr/bin/pip" install --quiet gcovr==8.3
+      - name: Configure
+        run: >
+          cmake -S . -B build/ci-coverage -G Ninja -DCMAKE_BUILD_TYPE=Debug -DUCI_HOST_COVERAGE=ON
+          -DFETCHCONTENT_UPDATES_DISCONNECTED=ON "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+      - name: Build
+        run: |
+          find build/ci-coverage -name '*.gcda' -delete
+          cmake --build build/ci-coverage -j ${{ steps.cpp.outputs.jobs }}
+      - name: Test
+        run: ctest --test-dir build/ci-coverage --output-on-failure -j "$(nproc)"
+      - name: Coverage, 90 % of lines or red
+        run: >
+          mkdir -p build/ci-coverage/coverage &&
+          "$RUNNER_TEMP/gcovr/bin/gcovr" --root . --filter 'src/' build/ci-coverage
+          --gcov-ignore-parse-errors=negative_hits.warn_once_per_file
+          --print-summary --txt build/ci-coverage/coverage.txt --html-details build/ci-coverage/coverage/index.html
+          --fail-under-line 90
+      - name: The report
+        if: always()
+        run: cat build/ci-coverage/coverage.txt || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage
+          path: build/ci-coverage/coverage
+          if-no-files-found: ignore
+          retention-days: 1
+
+  windows:
+    name: Windows (MSVC)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Toolchain
+        id: cpp
+        uses: ./.github/actions/cpp
+      - name: Configure
+        run: >
+          cmake -S . -B build/ci-windows -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+      - name: Build
+        run: cmake --build build/ci-windows -j ${{ steps.cpp.outputs.jobs }}
+      - name: Test
+        run: ctest --test-dir build/ci-windows --output-on-failure -j $env:NUMBER_OF_PROCESSORS
+
+  macos:
+    name: macOS (universal)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          clean: false
+      - name: Toolchain
+        id: cpp
+        uses: ./.github/actions/cpp
+      - name: Configure
+        run: >
+          cmake -S . -B build/ci-macos -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+      - name: Build
+        run: cmake --build build/ci-macos -j ${{ steps.cpp.outputs.jobs }}
+      - name: Every binary holds arm64 and x86_64, for macOS 13.3 on
+        run: |
+          for binary in build/ci-macos/src/cli/uci-host-cli build/ci-macos/tests/uci_host_*; do
+            lipo -info "$binary"
+            for arch in arm64 x86_64; do lipo "$binary" -verify_arch "$arch"; done
+            [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}' | sort -u)" = 13.3 ] || { echo "::error::$binary is not for macOS 13.3"; exit 1; }
+          done
+      - name: Test
+        run: ctest --test-dir build/ci-macos --output-on-failure -j "$(sysctl -n hw.ncpu)"
+
+  # Every C++ file clang-format clean under the repository's .clang-format, with 22.1.8 from the PyPI wheel (the one
+  # version every Reckless repository formats with), kept in a venv under the tool cache.
+  format:
+    name: clang-format
+    needs: changes
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          clean: false
+      - name: clang-format 22.1.8
+        run: |
+          venv="$RUNNER_TOOL_CACHE/clang-format-22.1.8"
+          if [ ! -x "$venv/bin/clang-format" ]; then
+            python3 -m venv "$venv"
+            "$venv/bin/pip" install --quiet 'clang-format==22.1.8'
+          fi
+          "$venv/bin/clang-format" --version
+          files=$(git ls-files -- '*.h' '*.cpp' || true)
+          echo "$(echo "$files" | grep -c . || true) files"
+          if [ -n "$files" ]; then "$venv/bin/clang-format" --dry-run -Werror $files; fi
+
+  # The one check to require: always runs, after everything, and reads the others' results.
+  ci:
+    name: CI
+    needs: [changes, linux, sanitizers, coverage, windows, macos, format]
+    if: always()
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    steps:
+      - name: Every job this run needed passed
+        shell: bash
+        env:
+          RESULTS: ${{ toJson(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$RESULTS" | jq -e '[.[] | .result] | any(. == "failure" or . == "cancelled")' > /dev/null; then
+            echo "A job failed or was cancelled." >&2
+            exit 1
+          fi
+          echo "Green."

@@ -1,0 +1,6 @@
+# Every build tree
+build*/
+
+# A local Python for the tools
+.venv/
+__pycache__/
