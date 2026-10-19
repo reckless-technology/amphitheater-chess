@@ -20,6 +20,8 @@ reckless_module_assets(uci_host_assets
 add_library(uci_host_gui STATIC
     AnalysisPanel.cpp
     BoardView.cpp
+    Controls.cpp
+    EngineCatalogue.cpp
     EngineLog.cpp
     EvalGraph.cpp
     MainController.cpp
@@ -27,8 +29,11 @@ add_library(uci_host_gui STATIC
     MenuBar.cpp
     Menus.cpp
     MovesList.cpp
+    NewGameDialog.cpp
     Panels.cpp
     PieceSet.cpp
+    PlaySession.cpp
+    SearchTracker.cpp
     Showcase.cpp)
 target_include_directories(uci_host_gui PUBLIC "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(uci_host_gui

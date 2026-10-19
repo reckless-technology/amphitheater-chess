@@ -117,6 +117,18 @@ class MainView final : public reckless::view::View
     /** @param entries The menu bar's menus. */
     void SetMenus(std::vector<MenuBarEntry> entries);
 
+    /**
+     * A view over the whole window - a dialog - sized with it and in front of everything; null takes it away.
+     * @param overlay The view, owned by the caller, which takes it away before it goes; or null.
+     */
+    void SetOverlay(reckless::view::View *overlay);
+
+    /** @return The view over the window, or null. */
+    reckless::view::View *overlay() const
+    {
+        return overlay_;
+    }
+
     // ---- Its parts, for the controllers and the suites ------------------------------------------------------------
 
     /** @return The board. */
@@ -225,23 +237,24 @@ class MainView final : public reckless::view::View
      */
     void Tell(int command);
 
-    MenuBar               menu_bar_;       ///< The menus.
-    PlayerStrip           top_strip_;      ///< The strip above the board.
-    BoardView             board_;          ///< The board.
-    PlayerStrip           bottom_strip_;   ///< The strip below the board.
-    std::vector<NavPlate> nav_;            ///< The navigation plates.
-    SectionLabel          moves_label_;    ///< "MOVES".
-    MovesList             moves_;          ///< The moves.
-    SectionLabel          card_label_;     ///< "GAME".
-    GameCard              card_;           ///< The game's card.
-    SectionLabel          analysis_label_; ///< "ANALYSIS".
-    AnalysisPanel         analysis_;       ///< The engines' lines.
-    SectionLabel          graph_label_;    ///< "EVALUATION".
-    EvalGraph             graph_;          ///< The evaluation by move.
-    EngineLog             log_;            ///< The engine log.
-    StatusBar             status_;         ///< The status bar.
-    PlayerStripState      white_;          ///< White's strip.
-    PlayerStripState      black_;          ///< Black's strip.
+    MenuBar               menu_bar_;          ///< The menus.
+    PlayerStrip           top_strip_;         ///< The strip above the board.
+    BoardView             board_;             ///< The board.
+    PlayerStrip           bottom_strip_;      ///< The strip below the board.
+    std::vector<NavPlate> nav_;               ///< The navigation plates.
+    SectionLabel          moves_label_;       ///< "MOVES".
+    MovesList             moves_;             ///< The moves.
+    SectionLabel          card_label_;        ///< "GAME".
+    GameCard              card_;              ///< The game's card.
+    SectionLabel          analysis_label_;    ///< "ANALYSIS".
+    AnalysisPanel         analysis_;          ///< The engines' lines.
+    SectionLabel          graph_label_;       ///< "EVALUATION".
+    EvalGraph             graph_;             ///< The evaluation by move.
+    EngineLog             log_;               ///< The engine log.
+    StatusBar             status_;            ///< The status bar.
+    PlayerStripState      white_;             ///< White's strip.
+    reckless::view::View *overlay_ = nullptr; ///< The view over the window, if any.
+    PlayerStripState      black_;             ///< Black's strip.
 };
 
 } // namespace uci_host::app

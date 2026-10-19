@@ -1,12 +1,15 @@
 // uci_host_render_main: the main window drawn to a PNG with no window and no display, through Skia, as the app draws
 // it - the review images in docs/design/ are made with it.
 //
-//   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]
+//   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame]
 //
 // The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the
-// board. The scale is the device pixels per design pixel, 1 by default; the size is the window's, in design pixels.
+// board; "newgame" opens Game > New game over it, offering two engines. The scale is the device pixels per design
+// pixel, 1 by default; the size is the window's, in design pixels.
 
+#include "Commands.h"
 #include "Faces.h"
+#include "MainController.h"
 #include "MainView.h"
 #include "Menus.h"
 #include "PieceSet.h"
@@ -37,6 +40,7 @@ int main(int argc, char **argv)
     std::vector<std::string> numbers;
     bool                     is_flipped = false;
     bool                     is_empty   = false;
+    bool                     is_newgame = false;
     for (int index = 2; index < argc; ++index)
     {
         const std::string argument = argv[index];
@@ -47,6 +51,10 @@ int main(int argc, char **argv)
         else if (argument == "empty")
         {
             is_empty = true;
+        }
+        else if (argument == "newgame")
+        {
+            is_newgame = true;
         }
         else
         {
@@ -70,14 +78,25 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "uci_host_render_main: the pieces: %s\n", error.c_str());
         return 1;
     }
-    uci_host::app::MainView view(pieces);
-    view.SetMenus(uci_host::app::BuildMenus([] { return uci_host::app::MenuState{}; }));
+    uci_host::app::MainView       view(pieces);
+    uci_host::app::MainController controller(view, uci_host::app::ControllerFiles{{}});
     if (!is_empty)
     {
         uci_host::app::ShowSample(view);
     }
     view.SetFlipped(is_flipped);
     view.SetBounds({width, height});
+    if (is_newgame)
+    {
+        for (const char *name : {"Pawnstar 2.1", "Zenith 0.9"})
+        {
+            uci_host::app::EngineEntry engine;
+            engine.config.name       = name;
+            engine.config.executable = name;
+            controller.catalogue().engines.push_back(engine);
+        }
+        controller.Command(uci_host::app::kNewGame);
+    }
 
     reckless::gfx::Image image = reckless::gfx::MakeImage(static_cast<int>(static_cast<float>(width) * scale + 0.5f),
                                                           static_cast<int>(static_cast<float>(height) * scale + 0.5f));

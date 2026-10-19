@@ -39,6 +39,16 @@ void BoardView::SetPosition(const chess::Position &position, std::optional<chess
     Repaint();
 }
 
+void BoardView::SetBanner(std::string title, std::string detail)
+{
+    if (title != banner_title_ || detail != banner_detail_)
+    {
+        banner_title_  = std::move(title);
+        banner_detail_ = std::move(detail);
+        Repaint();
+    }
+}
+
 void BoardView::SetFlipped(bool is_flipped)
 {
     if (is_flipped != is_flipped_)
@@ -229,6 +239,25 @@ void BoardView::Paint(reckless::gfx::Canvas &c)
         pieces_.Draw(c, position_.ColorOn(*selected_), position_.PieceOn(*selected_), dragged.Reduced(size * 0.02f));
     }
 
+    // A game's result over the middle of the board.
+    if (!banner_title_.empty())
+    {
+        const float w = std::min(area.width() - 20.0f, std::max(260.0f, area.width() * 0.62f));
+        const RectF card{area.CentreX() - w / 2.0f, area.CentreY() - 54.0f, w, 108.0f};
+        c.SetColor(Color(0xe61b1a1du));
+        c.FillRoundedRect(card, 8.0f);
+        c.SetColor(theme::kAmber);
+        c.DrawRoundedRect(card.Reduced(0.5f), 8.0f, 1.5f);
+        c.SetFont(fonts::Body().WithHeight(34.0f).Bold());
+        c.SetColor(theme::kInk);
+        c.DrawText(banner_title_, RectF{card.x(), card.y() + 10.0f, card.width(), 48.0f},
+                   reckless::gfx::Justify::kCentred, false);
+        c.SetFont(fonts::Small().WithHeight(17.0f));
+        c.SetColor(theme::kMuted);
+        c.DrawText(banner_detail_, RectF{card.x() + 10.0f, card.y() + 60.0f, card.width() - 20.0f, 32.0f},
+                   reckless::gfx::Justify::kCentred, true);
+    }
+
     // The promotion picker: the board dimmed, the four pieces in discs on the promotion square's file.
     if (!promotion_choices_.empty())
     {
@@ -347,6 +376,10 @@ void BoardView::MoveOrPromote(chess::Square from, chess::Square to)
 
 void BoardView::MouseDown(const reckless::view::MouseEvent &e)
 {
+    if (!banner_title_.empty())
+    {
+        SetBanner({}, {}); // a press puts the result card away, and goes on as a press on the board
+    }
     if (!promotion_choices_.empty())
     {
         for (std::size_t index = 0; index < promotion_choices_.size(); ++index)

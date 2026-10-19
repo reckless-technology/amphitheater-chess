@@ -132,6 +132,16 @@ The pieces are the Staunton SVGs, carried inside the binary and drawn by the too
 squares are. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
 promotion; the keys step through the game (Left, Right, Home, End) and F flips the board.
 
+Game > New game plays a game on the board: either side the person at the window or any configured engine, under a
+time control (a preset or the command line's syntax), from the starting position or the position shown. The game is
+the core's `GameRunner` on a thread of its own (`PlaySession`): an engine is an `EnginePlayer`, the person a
+`CallbackPlayer` whose chooser waits for the board's move, the deadline or a stop. Once a frame the window takes in
+the game's progress and the engines' lines - into the log, and into each engine's block in the analysis panel
+(`SearchTracker`: thinking or pondering and since when, its lines in SAN, its figures) - and runs the clocks. Take
+back removes the person's last move and the engine's reply and resumes the game from what was left on the clocks;
+Stop the game abandons it and keeps it on the board; a finished game's result and reason show over the board. With
+no game being played, a move on the board takes the game shown on from the position shown.
+
 `uci_host_render_main <out.png> [scale] [width height] [flipped] [empty]` draws the window to a PNG with the mockup's
 state, with no window and no display: the review images in `docs/design/` (`main-window.png`, `main-window-flipped.png`)
 are made with it.

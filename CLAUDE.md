@@ -64,7 +64,13 @@ GUI will save with the toolkit's JSON.
 - `src/app/` (`uci_host_gui`, `RecklessUciHost`, `uci_host_render_main`): the window on the toolkit's app shell. Views
   (`MainView` lays them out as the mockup does; `BoardView`, `PlayerStrip`, `MovesList`, `GameCard`, `AnalysisPanel`,
   `EvalGraph`, `EngineLog`, `MenuBar`, `StatusBar`) show what they are given and tell what a person does; the
-  controllers (`MainController`) hold the game and the engines and set the views each frame. `Theme.h` holds the
+  controllers (`MainController`) hold the game and the engines and set the views each frame. A game on the board is a
+  `PlaySession`: `GameRunner` on its own thread, the person a `CallbackPlayer` waiting on a condition variable for the
+  board's move (or the deadline, or the stop - `GameRunner` abandons a cancelled game whose side answers with no move),
+  its progress and the engines' lines polled by the controller once a frame; a stopped session finishes its thread in
+  the background (`retiring_`) so the window never waits on an engine's move. `SearchTracker` follows an engine's
+  search from the lines it exchanges. `EngineCatalogue` is the engine list (`reckless-technology/uci-host/engines.json`
+  in the user's settings folder). `Theme.h` holds the
   mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
   the render tool and the suite draw. Files here never take a toolkit header's name (`View.h`, `Menu.h`, `Window.h`):
   they are included as `"app/BoardView.h"` from outside the directory.

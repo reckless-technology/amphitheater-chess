@@ -117,7 +117,8 @@ class GameRunner
     /**
      * Play the game to its end.
      * @param on_move Called after every move, may be empty.
-     * @param cancel When set, the game is abandoned before the next move, may be null.
+     * @param cancel When set, the game is abandoned before the next move - or at once, when the side asked answers
+     *        with no move after it was set (a person's wait given up) - may be null.
      * @return The finished game.
      */
     GameRecord Play(const std::function<void(const GameProgress &)> &on_move = {},

@@ -13,6 +13,7 @@
 
 #include <functional>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace uci_host::app
@@ -77,6 +78,19 @@ class BoardView final : public reckless::view::View
 
     /** @param arrows The arrows to draw over the pieces. */
     void SetArrows(std::vector<BoardArrow> arrows);
+
+    /**
+     * A card over the middle of the board: a game's result and how it ended. A press anywhere on the board hides it.
+     * @param title The large line, "1-0"; empty for no card.
+     * @param detail The line under it, "White mates".
+     */
+    void SetBanner(std::string title, std::string detail);
+
+    /** @return The card's large line; empty while none shows. */
+    const std::string &banner() const
+    {
+        return banner_title_;
+    }
 
     /** @return The arrows drawn. */
     const std::vector<BoardArrow> &arrows() const
@@ -191,6 +205,8 @@ class BoardView final : public reckless::view::View
     bool                         is_dragging_ = false;    ///< The selected piece follows the pointer.
     reckless::gfx::PointF        drag_point_{};           ///< Where the pointer is during a drag.
     std::vector<chess::Move>     promotion_choices_;      ///< The picker's moves, while it is open.
+    std::string                  banner_title_;           ///< The result card's large line.
+    std::string                  banner_detail_;          ///< The line under it.
 };
 
 } // namespace uci_host::app

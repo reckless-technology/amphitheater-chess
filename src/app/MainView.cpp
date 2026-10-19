@@ -172,8 +172,26 @@ void MainView::SetMenus(std::vector<MenuBarEntry> entries)
     menu_bar_.SetEntries(std::move(entries));
 }
 
+void MainView::SetOverlay(reckless::view::View *overlay)
+{
+    if (overlay_ != nullptr && overlay_ != overlay)
+    {
+        RemoveChild(*overlay_);
+    }
+    overlay_ = overlay;
+    if (overlay_ != nullptr)
+    {
+        AddChild(*overlay_);
+        overlay_->SetBounds(LocalBounds());
+    }
+}
+
 void MainView::Resized()
 {
+    if (overlay_ != nullptr)
+    {
+        overlay_->SetBounds(LocalBounds());
+    }
     const int w = width();
     const int h = height();
     menu_bar_.SetBounds({0, 0, w, kMenuHeight});

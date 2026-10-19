@@ -322,6 +322,29 @@ TEST(GameRunner, CallbackPlayersAndCancellation)
     EXPECT_EQ(chess::WritePgn(record.ToPgn()).find("[Result \"*\"]") != std::string::npos, true);
 }
 
+TEST(GameRunner, AWaitGivenUpWhenTheGameIsCancelledAbandonsItRatherThanLosingIt)
+{
+    // A person at the GUI stops the game while it is their move: the chooser gives up its wait and answers with no
+    // move. The game is abandoned, not lost on time.
+    std::atomic<bool> cancel = false;
+    CallbackPlayer    white("Mover", [](const MoveRequest &request) {
+        MoveReply reply;
+        reply.move = request.game.CurrentPosition().GenerateLegalMoves()[0].ToUci();
+        return reply;
+    });
+    CallbackPlayer    person("Person", [&](const MoveRequest &) {
+        cancel = true;
+        MoveReply reply;
+        reply.status  = MoveReply::Status::kTimeout;
+        reply.elapsed = 1ms;
+        return reply;
+    });
+    const auto        record = GameRunner(white, person, Settings("60")).Play({}, &cancel);
+    EXPECT_EQ(record.game.GetOutcome().termination, chess::Termination::kAbandoned);
+    EXPECT_EQ(record.game.GetOutcome().result, chess::GameResult::kNone);
+    EXPECT_EQ(record.game.PlyCount(), 1);
+}
+
 TEST(GameRunner, CallbackTimeoutsAndDisconnections)
 {
     CallbackPlayer timeout("Slow", [](const MoveRequest &) {
