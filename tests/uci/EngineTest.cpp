@@ -396,13 +396,16 @@ TEST(Engine, ErrorOutputArrivesAsEventsAndInTheLog)
         error_lines += direction == LineDirection::kFromEngineError ? 1 : 0;
     });
     ASSERT_TRUE(engine.Start());
-    EXPECT_GE(error_lines, 2);
+    // The engine writes a line on standard error for each command; the two streams reach the queue independently,
+    // so the lines are counted once everything has been drained.
+    ASSERT_TRUE(engine.SetOption("Hash", "32"));
     bool has_error_event = false;
-    while (auto event = engine.NextEvent(200ms))
+    while (auto event = engine.NextEvent(300ms))
     {
         has_error_event |= event->kind == EngineEventKind::kErrorOutput;
     }
     EXPECT_TRUE(has_error_event);
+    EXPECT_GE(error_lines, 3) << "uci, isready and setoption";
 }
 
 TEST(Engine, QuitKillsAnEngineThatIgnoresIt)
