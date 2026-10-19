@@ -171,6 +171,24 @@ Result<std::vector<Opening>> LoadOpenings(const std::string &path, OpeningFormat
     return openings;
 }
 
+Opening PolyglotOpening(const chess::PolyglotBook &book, int plies, std::uint64_t seed)
+{
+    Opening         opening;
+    std::mt19937_64 generator(seed);
+    chess::Position position = chess::Position::Start();
+    while (static_cast<int>(opening.moves.size()) < plies)
+    {
+        const auto move = book.Choose(position, chess::BookSelection::kWeightedRandom, generator);
+        if (!move)
+        {
+            break;
+        }
+        opening.moves.push_back(move->ToUci());
+        position = position.MakeMove(*move);
+    }
+    return opening;
+}
+
 void OrderOpenings(std::vector<Opening> &openings, OpeningOrder order, std::uint64_t seed, int start)
 {
     if (openings.empty())

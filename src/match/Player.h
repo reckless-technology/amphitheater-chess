@@ -3,7 +3,9 @@
 ///
 /// The game runner asks each player for its move in turn, on the game's own thread, and blocks until it answers or
 /// its deadline passes. An engine answers through UCI (EnginePlayer); a person at the GUI will answer through a
-/// CallbackPlayer whose callback waits for the GUI to hand it a move.
+/// CallbackPlayer whose callback waits for the GUI to hand it a move. After every move both players are told
+/// (MoveMade), with the clocks as they then stand: an engine that has just moved starts pondering there, and goes on
+/// pondering for as long as its opponent - engine or person - takes, since nothing of the opponent's waits on it.
 
 #include "chess/Game.h"
 #include "chess/Result.h"
@@ -43,6 +45,7 @@ struct MoveReply
     uci::SearchInfo     info;                   ///< What the engine said of its search: score, depth, nodes, pv.
     chess::Milliseconds elapsed{0};             ///< How long the answer took.
     std::string         detail;                 ///< For kDisconnected: what is known (an exit code).
+    std::string         ponder_move;            ///< The reply the engine expects, in UCI notation, if it named one.
 };
 
 /** A side in a game. */
@@ -67,6 +70,15 @@ class Player
      * @return The answer.
      */
     virtual MoveReply RequestMove(const MoveRequest &request) = 0;
+
+    /**
+     * A move has been made, by either side, and the clocks charged; the game goes on.
+     * @param state The game after the move (the other side to move), the clocks, and no deadline.
+     */
+    virtual void MoveMade(const MoveRequest &state)
+    {
+        static_cast<void>(state);
+    }
 
     /**
      * The game is over.

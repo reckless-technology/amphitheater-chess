@@ -12,7 +12,7 @@ endfunction()
 
 uci_host_suite(uci_host_chess_test
     SOURCES chess/PerftTest.cpp chess/FenTest.cpp chess/NotationTest.cpp chess/GameTest.cpp chess/PgnTest.cpp
-            chess/TimeControlTest.cpp
+            chess/TimeControlTest.cpp chess/PolyglotTest.cpp
     LIBRARIES uci_host_chess)
 add_test(NAME chess COMMAND uci_host_chess_test)
 
@@ -28,7 +28,7 @@ add_dependencies(uci_host_uci_test uci_host_fake_engine)
 add_test(NAME uci COMMAND uci_host_uci_test)
 
 uci_host_suite(uci_host_match_test
-    SOURCES match/GameRunnerTest.cpp match/TournamentTest.cpp
+    SOURCES match/GameRunnerTest.cpp match/TournamentTest.cpp match/PonderAndBookTest.cpp
     LIBRARIES uci_host_match)
 target_compile_definitions(uci_host_match_test PRIVATE UCI_HOST_FAKE_ENGINE="$<TARGET_FILE:uci_host_fake_engine>")
 add_dependencies(uci_host_match_test uci_host_fake_engine)

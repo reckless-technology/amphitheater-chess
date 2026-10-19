@@ -4,6 +4,8 @@ add_library(uci_host_chess STATIC
     Game.cpp
     Notation.cpp
     Pgn.cpp
+    PolyglotBook.cpp
+    PolyglotRandom.cpp
     Position.cpp
     TimeControl.cpp)
 target_include_directories(uci_host_chess PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")

@@ -190,6 +190,17 @@ class Engine
                         const std::function<void(const SearchInfo &)> &on_info = {});
 
     /**
+     * Wait for a search already under way to answer: after "ponderhit", or after "stop" to collect the answer.
+     * @param start When the engine's time began, from which the elapsed time is measured.
+     * @param deadline When to stop waiting.
+     * @param on_info Called with each "info" line's fields, may be empty.
+     * @return How it ended.
+     */
+    SearchResult AwaitBestMove(std::chrono::steady_clock::time_point          start,
+                               std::chrono::steady_clock::time_point          deadline,
+                               const std::function<void(const SearchInfo &)> &on_info = {});
+
+    /**
      * The next event, waiting for one up to a timeout.
      * @param timeout How long to wait.
      * @return The event, or nothing when the time ran out (or the engine's exit was reported already).

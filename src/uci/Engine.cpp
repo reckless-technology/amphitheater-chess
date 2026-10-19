@@ -189,6 +189,11 @@ Status Engine::Start()
         name_ = !engine_name.empty() ? engine_name : Utf8FromPath(executable.stem());
     }
 
+    // Pondering on: an engine that has the Ponder option is told so (UCI's convention for a host that will ponder).
+    if (config_.does_ponder && FindOption("Ponder") != nullptr && FindOption("Ponder")->type == OptionType::kCheck)
+    {
+        SetOption("Ponder", "true");
+    }
     for (const auto &[option_name, value] : config_.options)
     {
         const auto status = SetOption(option_name, value);
@@ -308,13 +313,24 @@ SearchResult Engine::Search(const GoParameters &parameters, Clock::time_point de
         result.elapsed = chess::Milliseconds{0};
         return result;
     }
+    return AwaitBestMove(start, deadline, on_info);
+}
+
+SearchResult Engine::AwaitBestMove(Clock::time_point start, Clock::time_point deadline,
+                                   const std::function<void(const SearchInfo &)> &on_info)
+{
+    SearchResult result;
+    // A "bestmove" read before the clock started (one sent early while pondering) took no time of the engine's.
+    const auto since_start = [&](Clock::time_point when) {
+        return std::max(chess::Milliseconds{0}, std::chrono::duration_cast<chess::Milliseconds>(when - start));
+    };
     while (true)
     {
         auto event = NextEventUntil(deadline);
         if (!event)
         {
             result.ending  = IsRunning() ? SearchResult::Ending::kTimeout : SearchResult::Ending::kExited;
-            result.elapsed = std::chrono::duration_cast<chess::Milliseconds>(Clock::now() - start);
+            result.elapsed = since_start(Clock::now());
             return result;
         }
         if (event->kind == EngineEventKind::kInfo)
@@ -329,13 +345,13 @@ SearchResult Engine::Search(const GoParameters &parameters, Clock::time_point de
         {
             result.ending    = SearchResult::Ending::kBestMove;
             result.best_move = event->best_move;
-            result.elapsed   = std::chrono::duration_cast<chess::Milliseconds>(event->received - start);
+            result.elapsed   = since_start(event->received);
             return result;
         }
         else if (event->kind == EngineEventKind::kExited)
         {
             result.ending  = SearchResult::Ending::kExited;
-            result.elapsed = std::chrono::duration_cast<chess::Milliseconds>(Clock::now() - start);
+            result.elapsed = since_start(Clock::now());
             return result;
         }
     }

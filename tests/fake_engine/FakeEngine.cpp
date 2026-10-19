@@ -17,6 +17,8 @@
 //   --print-arguments      print every argument, one per line, then exit (code 7)
 //   --print-directory      print the working directory, then exit (code 0)
 //   --seed N               vary the moves it chooses (default 1)
+//   --ponder-move          answer "bestmove X ponder Y", Y the reply it would itself choose after X
+//   --ignore-stop          ignore "stop" during a ponder search (only "ponderhit" or the end of input ends it)
 //
 // It plays the capture of the most valuable piece, else a move chosen by the position's hash and the seed, so a game
 // is deterministic. Every setoption is answered with "info string option NAME = VALUE".
@@ -66,6 +68,8 @@ struct Script
     int                slow_start_ms            = 0;
     bool               does_hang_on_quit        = false;
     bool               does_send_empty_bestmove = false;
+    bool               does_send_ponder_move    = false;
+    bool               does_ignore_stop         = false;
     unsigned           seed                     = 1;
 };
 
@@ -312,6 +316,14 @@ int main(int argc, char **argv)
         {
             script.does_send_empty_bestmove = true;
         }
+        else if (argument == "--ponder-move")
+        {
+            script.does_send_ponder_move = true;
+        }
+        else if (argument == "--ignore-stop")
+        {
+            script.does_ignore_stop = true;
+        }
         else if (argument == "--seed")
         {
             script.seed = static_cast<unsigned>(std::atoi(value().c_str()));
@@ -483,10 +495,12 @@ int main(int argc, char **argv)
                 think = *move_time;
             }
             bool is_waiting_for_stop = is_infinite || is_ponder;
+            bool is_pondering        = is_ponder;
+            auto search_start        = start;
             while (true)
             {
-                const auto waited =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+                const auto waited = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - search_start);
                 if (!is_waiting_for_stop && waited.count() >= think)
                 {
                     break;
@@ -495,11 +509,20 @@ int main(int argc, char **argv)
                                                                  : std::chrono::milliseconds(think) - waited);
                 if (next && *next == "stop")
                 {
+                    if (is_pondering && script.does_ignore_stop)
+                    {
+                        continue;
+                    }
+                    Say(is_pondering ? "info string stopped pondering" : "info string stopped");
                     break;
                 }
                 if (next && *next == "ponderhit")
                 {
+                    // The search becomes a real one, its thinking time counted from now.
+                    Say("info string ponderhit");
                     is_waiting_for_stop = false;
+                    is_pondering        = false;
+                    search_start        = std::chrono::steady_clock::now();
                 }
                 if (next && *next == "quit" && !script.does_hang_on_quit)
                 {
@@ -525,7 +548,16 @@ int main(int argc, char **argv)
             }
             else
             {
-                Say("bestmove " + move.ToUci());
+                std::string answer = "bestmove " + move.ToUci();
+                if (script.does_send_ponder_move)
+                {
+                    const Move reply = ChooseMove(position.MakeMove(move), {}, script.seed);
+                    if (!reply.IsNone())
+                    {
+                        answer += " ponder " + reply.ToUci();
+                    }
+                }
+                Say(answer);
             }
         }
         else if (command == "quit")

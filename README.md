@@ -13,9 +13,9 @@ fetch GoogleTest, which no product ships.
 
 | Library | Directory | What it does |
 |---|---|---|
-| `uci_host_chess` | `src/chess/` | The board and its legal move generator (adapted from pawnstar), FEN (strict and tolerant), SAN and UCI notation, games and the rules that end them, PGN reading and writing, time controls and clocks |
+| `uci_host_chess` | `src/chess/` | The board and its legal move generator (adapted from pawnstar), FEN (strict and tolerant), SAN and UCI notation, games and the rules that end them, PGN reading and writing, Polyglot opening books, time controls and clocks |
 | `uci_host_uci` | `src/uci/` | A child process with pipes and reader threads (Windows and POSIX), the UCI protocol parsed and formatted, and the engine session |
-| `uci_host_match` | `src/match/` | Players, the game runner (clocks, legality, adjudication, PGN with per-move comments), openings, the round-robin schedule, statistics, and tournaments played in parallel |
+| `uci_host_match` | `src/match/` | Players, the game runner (clocks, legality, adjudication, books, pondering, PGN with per-move comments), openings, the round-robin schedule, statistics, and tournaments played in parallel |
 | `uci_host_cli_core`, `uci-host-cli` | `src/cli/` | The command line: `match`, `tournament`, `perft`, `analyse` |
 
 The suites are in `tests/` (GoogleTest), with a scriptable fake engine (`tests/fake_engine/`) that the UCI, match and
@@ -33,6 +33,29 @@ Its proof is pawnstar's perft suite, `tests/data/standard-perft.epd` (the Ethere
 positions, every one to the deepest depth within a node budget (a million nodes a position in a debug build, twenty
 million optimised), and the start position to depth 6 (119,060,324) in an optimised build. Every legal move of
 those positions and their children round-trips through SAN and UCI notation.
+
+### Opening books
+
+Polyglot books (`.bin`) are read whole and searched by binary search on the position's key, the format's own Zobrist
+hash of 781 constants (`chess/PolyglotBook.h`; the reference is the format's description, "PolyGlot book format",
+whose test keys the suite checks). As the format specifies, the en passant file counts when a pawn of the side to move
+stands beside the pawn that made the double step, legal capture or not; castling is stored as the king taking its own
+rook. A book chooses at random by weight (seeded with `std::mt19937_64`, so a match plays the same again) or the
+heaviest move. A book serves two ways: as an engine's own book, whose moves the host plays for it while the book has
+one and the game is shorter than its depth (`book=`, `bookdepth=`), and as a match's opening source, walked from the
+starting position to a number of plies, one line for each pair of colour-swapped games. Book moves are unclocked and
+carry a `{book}` comment in the PGN.
+
+### Pondering
+
+An engine set to ponder (`ponder`, or `EngineConfig::does_ponder`) has its Ponder option set. After it answers
+"bestmove X ponder Y" and X is played, the host sends the game with Y after it and "go ponder" with the clocks as they
+then stand, and the engine thinks while its opponent does - an engine, or a person at the GUI, since the opponent's
+side never waits on it. If the reply is Y the host sends "ponderhit" and the engine's clock starts then; otherwise
+"stop", the ponder search's answer thrown away, then the usual search, the wait for the stop charged to the engine
+(which loses on time if it never answers). Pondering is never charged to the pondering engine's clock. An engine that
+names no ponder move does not ponder, and a game that ends while an engine ponders stops its search; one that will not
+stop is started afresh for the next game.
 
 ### Threads
 
@@ -72,9 +95,9 @@ runtime.
 
 | CTest | Binary | What it holds |
 |---|---|---|
-| `chess` | `uci_host_chess_test` | perft, FEN, SAN and UCI notation, games and draw rules, PGN, time controls and clocks |
+| `chess` | `uci_host_chess_test` | perft, FEN, SAN and UCI notation, games and draw rules, PGN, Polyglot keys and books, time controls and clocks |
 | `uci` | `uci_host_uci_test` | the protocol's parsers and formatters; the child process and the engine session against the fake engine |
-| `match` | `uci_host_match_test` | games between fake engines (every way one ends), the schedule, statistics, openings, tournaments |
+| `match` | `uci_host_match_test` | games between fake engines (every way one ends, pondering, books), the schedule, statistics, openings, tournaments |
 | `cli` | `uci_host_cli_test` | the command line in-process: every subcommand and the arguments it refuses |
 | `cli_perft`, `cli_match` | `uci-host-cli` | the executable end to end |
 | `integration` | `uci_host_integration_test` | a real engine, named by `UCI_HOST_TEST_ENGINE`; skipped when unset |
@@ -94,13 +117,16 @@ uci-host-cli match -engine cmd=./engine-a name=A -engine cmd=./engine-b name=B -
                    -games 2 -rounds 50 -repeat -concurrency 4 -openings file=book.epd order=random
                    -resign movecount=3 score=600 -draw movenumber=40 movecount=8 score=10 -pgnout games.pgn
 uci-host-cli tournament -engine cmd=./a -engine cmd=./b -engine cmd=./c -each st=0.5 -double -concurrency 3
+uci-host-cli match -engine cmd=./a book=book.bin bookdepth=16 ponder -engine cmd=./b ponder -each tc=60+0.5
+                   -games 2 -rounds 20 -repeat -openings file=book.bin format=polyglot plies=8
 uci-host-cli perft startpos 6
 uci-host-cli perft "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1" 4 -divide
 uci-host-cli analyse -engine cmd=./engine -fen startpos -moves e2e4 e7e5 -time 10
 ```
 
-Engines take `cmd=`, `name=`, `dir=`, `arg=` (repeatable), `option.<name>=<value>`, and their own `tc=`, `st=`,
-`depth=` and `nodes=`; `-each` gives keys to every engine, an engine's own keys winning. A time control is
+Engines take `cmd=`, `name=`, `dir=`, `arg=` (repeatable), `option.<name>=<value>`, their own `tc=`, `st=`,
+`depth=` and `nodes=`, a Polyglot `book=` with its `bookdepth=`, and `ponder`; `-each` gives keys to every engine, an
+engine's own keys winning. A time control is
 `[moves/]time[+increment]`, times in seconds or minutes:seconds, sessions separated by commas (`40/120,20/60,15+30`).
 A match prints each game as it ends and the score after it - wins, losses, draws, the score fraction, the Elo
 difference with its 95 % margin, the likelihood of superiority and the draw ratio; a tournament ends with its standings

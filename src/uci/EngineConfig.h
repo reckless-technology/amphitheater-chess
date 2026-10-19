@@ -29,8 +29,9 @@ struct EngineConfig
     std::string              working_directory; ///< Where it runs; empty for the host's own directory.
     std::vector<std::string> arguments;         ///< Arguments to start it with.
     std::vector<std::pair<std::string, std::string>> options; ///< UCI options to set after the handshake, in order.
-    std::string    notes;    ///< Free text for the operator: how the engine behaves, what it needs.
-    EngineTimeouts timeouts; ///< How long to wait for it.
+    std::string notes;        ///< Free text for the operator: how the engine behaves, what it needs.
+    bool does_ponder = false; ///< Whether the engine may think on the opponent's time (its Ponder option set true).
+    EngineTimeouts timeouts;  ///< How long to wait for it.
 };
 
 } // namespace uci_host::uci

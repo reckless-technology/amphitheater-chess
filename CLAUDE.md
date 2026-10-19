@@ -37,16 +37,24 @@ GUI will save with the toolkit's JSON.
   halfmove clock, `RepetitionKey` (en passant only when the capture is legal), no null move. Classical chess only. On
   top, the host's own: `Notation` (SAN and UCI), `Game` (rules outcomes: mate, stalemate, insufficient material,
   threefold, fifty), `Pgn` (reader with variations, NAGs, comments, error recovery per game; writer with the Seven Tag
-  Roster and 80 columns), `TimeControl` and `Clock`, `Perft`, `Result`/`Status`.
+  Roster and 80 columns), `PolyglotBook` (Polyglot .bin books: the format's 781-key table in `PolyglotRandom.cpp`,
+  generated from its description; keys checked against its published test keys), `TimeControl` and `Clock`, `Perft`,
+  `Result`/`Status`.
 - `src/uci/` (`uci_host_uci`): `ChildProcess` (`ProcessWindows.cpp`: CreateProcessW, a handle list, a kill-on-close
   job object; `ProcessPosix.cpp`: posix_spawn, a process group, SIGPIPE ignored), `ThreadSafeQueue`, `UciProtocol`
   (every info field, every option type, `go`/`position`/`setoption` formatting), `Engine` (the session: handshake,
   options, isready, searches, ponder, quit-then-kill), `EngineConfig`, `Utf8Arguments`.
 - `src/match/` (`uci_host_match`): `Player`/`CallbackPlayer`/`EnginePlayer`, `GameRunner` (clocks with a margin,
-  flag falls - a draw when the opponent cannot mate - illegal moves, crashes, stalls, `Adjudicator`, `GameRecord` with
-  its PGN and per-move comments `{+0.35/18 1.2s}`), `Openings` (EPD, PGN), `Schedule` (circle method), `Statistics`
-  (Elo with a 95 % margin from the trinomial variance, LOS, standings with Sonneborn-Berger, crosstable), `Tournament`
-  (worker threads, each with its own engines; events in a queue).
+  flag falls - a draw when the opponent cannot mate - illegal moves, crashes, stalls, `Adjudicator`, each side's own
+  Polyglot book (`BookSettings`), `GameRecord` with its PGN and per-move comments `{+0.35/18 1.2s}`, `{book}`),
+  `Openings` (EPD, PGN, a Polyglot book walked to a depth), `Schedule` (circle method), `Statistics` (Elo with a 95 %
+  margin from the trinomial variance, LOS, standings with Sonneborn-Berger, crosstable), `Tournament` (worker threads,
+  each with its own engines; events in a queue).
+- **Pondering** lives in `EnginePlayer`, driven by `Player::MoveMade`, which the runner calls on both players after
+  every move with the clocks charged: the engine that has just moved starts "go ponder" on its own ponder move, and
+  its next `RequestMove` sends "ponderhit" (its clock from then) or "stop" (the answer thrown away, the wait charged).
+  Nothing waits on the pondering engine, so it ponders through a person's move as through an engine's; `EndGame` stops
+  a ponder search left running, and an engine that will not stop is written off (`is_healthy_`) and started afresh.
 - `src/cli/`: `RunCli` (in a library the tests call in-process), `main.cpp`, `Version.cpp` (the one file that reads
   the generated version header).
 - `tests/`: one GoogleTest binary per library, the fake engine (`tests/fake_engine/FakeEngine.cpp`, its behaviours

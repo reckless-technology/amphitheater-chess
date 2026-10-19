@@ -1,21 +1,24 @@
 #pragma once
 /// @file GameRunner.h One game between two players, refereed: the clocks, the rules, the adjudication, the record.
 ///
-/// The runner owns the game. It asks the side to move for its move with a deadline - the flag's fall plus the
-/// margin under a clock, the stall timeout without one - charges the time to the side's clock, and ends the game for
-/// any of: the rules (mate, stalemate, insufficient material, threefold repetition, fifty moves), a flag (a draw when
-/// the opponent could never mate, as the rules have it), an illegal or unreadable move, a crash or a stall, an
-/// adjudication, or a cancellation. Every move's score, depth and time is kept for the PGN's comments.
+/// The runner owns the game. A side with its own book has the book's move played for it, unclocked and marked "book",
+/// until the book has none or its depth is reached; after that it asks the side to move for its move with a deadline -
+/// the flag's fall plus the margin under a clock, the stall timeout without one - charges the time to the side's clock,
+/// and ends the game for any of: the rules (mate, stalemate, insufficient material, threefold repetition, fifty moves),
+/// a flag (a draw when the opponent could never mate, as the rules have it), an illegal or unreadable move, a crash or
+/// a stall, an adjudication, or a cancellation. Every move's score, depth and time is kept for the PGN's comments.
 
 #include "Adjudicator.h"
 #include "Player.h"
 #include "chess/Game.h"
 #include "chess/Pgn.h"
+#include "chess/PolyglotBook.h"
 #include "chess/TimeControl.h"
 
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -31,6 +34,15 @@ struct Opening
     std::string              name;  ///< What to call it, if anything (an EPD's id, a PGN's Opening tag).
 };
 
+/** A side's own opening book: the host plays its moves for the side while the book has one. */
+struct BookSettings
+{
+    std::shared_ptr<const chess::PolyglotBook> book;      ///< The book; none for no book.
+    int                                        depth = 0; ///< Book moves only before this game ply; 0 for no limit.
+    chess::BookSelection selection                   = chess::BookSelection::kWeightedRandom; ///< How a move is chosen.
+    std::uint64_t        seed                        = 1; ///< The random choice's seed, so a game can be played again.
+};
+
 /** How a game is to be played. */
 struct GameSettings
 {
@@ -40,6 +52,8 @@ struct GameSettings
     chess::Milliseconds  time_margin{0};       ///< How far past its time a side may go before its flag falls.
     chess::Milliseconds  stall_timeout{60000}; ///< How long to wait for a move with no clock to say when.
     AdjudicationSettings adjudication;         ///< When to end it early.
+    BookSettings         white_book;           ///< White's own book.
+    BookSettings         black_book;           ///< Black's own book.
     std::string          event = "?";          ///< PGN's Event.
     std::string          site  = "?";          ///< PGN's Site.
     std::string          round = "?";          ///< PGN's Round.

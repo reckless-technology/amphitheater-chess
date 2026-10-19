@@ -1,6 +1,7 @@
 #include "Tournament.h"
 
 #include "EnginePlayer.h"
+#include "Openings.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -110,9 +111,24 @@ void Tournament::Work()
         EnginePlayer        &black     = *player_for(scheduled.black, scheduled.number);
 
         GameSettings game;
-        if (!settings_.openings.empty())
+        if (settings_.opening_book)
+        {
+            // One line per opening number, so the two games of a repeated opening play the same one.
+            game.opening =
+                PolyglotOpening(*settings_.opening_book, settings_.opening_book_plies,
+                                settings_.seed * 0x9E3779B97F4A7C15ULL + static_cast<std::uint64_t>(scheduled.opening));
+        }
+        else if (!settings_.openings.empty())
         {
             game.opening = settings_.openings[static_cast<std::size_t>(scheduled.opening) % settings_.openings.size()];
+        }
+        for (const auto &[engine, book] :
+             {std::pair{scheduled.white, &game.white_book}, std::pair{scheduled.black, &game.black_book}})
+        {
+            book->book  = settings_.engines[engine].book;
+            book->depth = settings_.engines[engine].book_depth;
+            book->seed  = settings_.seed * 0x9E3779B97F4A7C15ULL + static_cast<std::uint64_t>(scheduled.number) * 2 +
+                          (book == &game.white_book ? 0 : 1);
         }
         game.white_time_control = settings_.engines[scheduled.white].time_control.value_or(settings_.time_control);
         game.black_time_control = settings_.engines[scheduled.black].time_control.value_or(settings_.time_control);

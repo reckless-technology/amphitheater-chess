@@ -2,6 +2,8 @@
 // argument it refuses.
 
 #include "cli/Cli.h"
+#include "chess/Notation.h"
+#include "chess/PolyglotBook.h"
 #include "match/Openings.h"
 
 #include <gtest/gtest.h>
@@ -277,6 +279,92 @@ TEST(Cli, AnalyseReportsWhatGoesWrong)
     const auto hung = RunWith({"analyse", "-engine", kFake, "arg=--hang-at", "arg=1", "-time", "0.1"});
     EXPECT_EQ(hung.code, 1);
     EXPECT_NE(hung.err.find("did not answer"), std::string::npos);
+}
+
+// A Polyglot book of one line, 1. e4 c5 2. Nf3, written to a temporary file.
+std::string WriteLineBook(const char *name)
+{
+    std::vector<chess::PolyglotEntry> entries;
+    chess::Position                   position = chess::Position::Start();
+    for (const char *text : {"e2e4", "c7c5", "g1f3"})
+    {
+        const auto move = *chess::ParseUciMove(position, text);
+        entries.push_back({chess::PolyglotKey(position), chess::PolyglotBook::EncodeMove(move), 1, 0});
+        position = position.MakeMove(move);
+    }
+    const auto    bytes = chess::PolyglotBook::Encode(entries);
+    const auto    path  = TempFile(name);
+    std::ofstream file(path, std::ios::binary);
+    file.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    return path.string();
+}
+
+TEST(Cli, ReadsBooksAndPonderingForEachEngine)
+{
+    const auto book = WriteLineBook("uci_host_cli_book.bin");
+    const auto options =
+        ParseTournamentArguments({"-engine", kFake, "book=" + book, "bookdepth=4", "ponder", "-engine", kFake,
+                                  "ponder=false", "-each", "book=" + book, "-st", "1", "-srand", "9"},
+                                 true);
+    ASSERT_TRUE(options) << options.ErrorMessage();
+    const auto &engines = options->settings.engines;
+    ASSERT_EQ(engines.size(), 2u);
+    EXPECT_TRUE(engines[0].config.does_ponder);
+    EXPECT_FALSE(engines[1].config.does_ponder);
+    ASSERT_TRUE(engines[0].book);
+    EXPECT_EQ(engines[0].book, engines[1].book) << "one copy of a book both name";
+    EXPECT_EQ(engines[0].book_depth, 4);
+    EXPECT_EQ(engines[1].book_depth, 0);
+    EXPECT_EQ(options->settings.seed, 9u);
+    std::filesystem::remove(book);
+}
+
+TEST(Cli, ReadsAPolyglotBookAsAnOpeningSource)
+{
+    const auto book = WriteLineBook("uci_host_cli_openings.bin");
+    auto       options =
+        ParseTournamentArguments({"-engine", kFake, "-engine", kFake, "-st", "1", "-openings", "file=" + book}, true);
+    ASSERT_TRUE(options) << options.ErrorMessage();
+    EXPECT_TRUE(options->settings.opening_book) << "a .bin file is a Polyglot book";
+    EXPECT_EQ(options->settings.opening_book_plies, 8);
+    EXPECT_TRUE(options->settings.openings.empty());
+    options = ParseTournamentArguments(
+        {"-engine", kFake, "-engine", kFake, "-st", "1", "-openings", "file=" + book, "format=polyglot", "plies=2"},
+        true);
+    ASSERT_TRUE(options);
+    EXPECT_EQ(options->settings.opening_book_plies, 2);
+
+    const auto run =
+        RunWith({"match", "-engine", kFake, "arg=--ponder-move", "ponder", "-engine", kFake, "-each", "tc=10", "-games",
+                 "2", "-repeat", "-maxmoves", "4", "-openings", "file=" + book, "format=polyglot", "plies=2"});
+    EXPECT_EQ(run.code, 0) << run.err;
+    EXPECT_NE(run.out.find("Finished match"), std::string::npos);
+    std::filesystem::remove(book);
+}
+
+TEST(Cli, RefusesBadBookAndPonderKeys)
+{
+    const struct
+    {
+        std::vector<std::string> arguments;
+        const char              *reason;
+    } cases[] = {
+        {{"-engine", kFake, "bookdepth=0", "-engine", kFake, "-st", "1"}, "at least 1"},
+        {{"-engine", kFake, "book=/no/such/book.bin", "-engine", kFake, "-st", "1"}, "cannot open"},
+        {{"-engine", kFake, "ponder=maybe", "-engine", kFake, "-st", "1"}, "ponder is a flag"},
+        {{"-engine", kFake, "-engine", kFake, "-st", "1", "-openings", "file=/no/such/book.bin", "format=polyglot"},
+         "cannot open"},
+    };
+
+    for (const auto &entry : cases)
+    {
+        std::vector<std::string> arguments{"match"};
+        arguments.insert(arguments.end(), entry.arguments.begin(), entry.arguments.end());
+        const auto run = RunWith(arguments);
+        EXPECT_EQ(run.code, 2) << entry.reason;
+        EXPECT_NE(run.err.find(entry.reason), std::string::npos) << "wanted '" << entry.reason << "', got " << run.err;
+    }
+    EXPECT_NE(RunWith({"--help"}).out.find("bookdepth=<n>"), std::string::npos);
 }
 
 } // namespace

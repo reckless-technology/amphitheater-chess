@@ -33,8 +33,10 @@ namespace uci_host::match
 /** An engine in a tournament. */
 struct TournamentEngine
 {
-    uci::EngineConfig                 config;       ///< How to start it.
-    std::optional<chess::TimeControl> time_control; ///< Its own time control; the tournament's when not set.
+    uci::EngineConfig                          config;         ///< How to start it (its does_ponder among it).
+    std::optional<chess::TimeControl>          time_control;   ///< Its own time control; the tournament's when not set.
+    std::shared_ptr<const chess::PolyglotBook> book;           ///< Its own opening book, if any.
+    int                                        book_depth = 0; ///< Book moves only before this game ply; 0 no limit.
 };
 
 /** Receives an engine's lines during a tournament, on the worker thread playing the game. */
@@ -49,13 +51,16 @@ struct TournamentSettings
     ScheduleSettings              schedule;        ///< Rounds, games per encounter, double, repeat (engines is set).
     int                           concurrency = 1; ///< Games played at once.
     std::vector<Opening>          openings;        ///< The openings, in the order to use them; none for the start.
-    AdjudicationSettings          adjudication;    ///< When to end games early.
-    chess::Milliseconds           time_margin{0};  ///< How far past its time a side may go.
-    chess::Milliseconds           stall_timeout{60000}; ///< How long to wait for a move with no clock.
-    std::string                   event = "?";          ///< PGN's Event.
-    std::string                   site  = "?";          ///< PGN's Site.
-    std::string                   pgn_path;             ///< A file to append every finished game to; empty for none.
-    TournamentEngineLogger        engine_logger;        ///< Receives every engine line, may be empty.
+    std::shared_ptr<const chess::PolyglotBook> opening_book;           ///< Openings walked from a book instead, if set.
+    int                                        opening_book_plies = 8; ///< How long the book's openings are, in plies.
+    std::uint64_t          seed = 1;             ///< The seed of every random choice: book walks and book moves.
+    AdjudicationSettings   adjudication;         ///< When to end games early.
+    chess::Milliseconds    time_margin{0};       ///< How far past its time a side may go.
+    chess::Milliseconds    stall_timeout{60000}; ///< How long to wait for a move with no clock.
+    std::string            event = "?";          ///< PGN's Event.
+    std::string            site  = "?";          ///< PGN's Site.
+    std::string            pgn_path;             ///< A file to append every finished game to; empty for none.
+    TournamentEngineLogger engine_logger;        ///< Receives every engine line, may be empty.
 };
 
 /** Something that happened in a tournament. */

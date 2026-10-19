@@ -2,6 +2,7 @@
 
 #include "chess/Notation.h"
 
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 
@@ -216,7 +217,15 @@ GameRecord GameRunner::Play(const std::function<void(const GameProgress &)> &on_
         record.black_name = black_.Name();
     }
 
-    Adjudicator adjudicator(settings_.adjudication);
+    Adjudicator                    adjudicator(settings_.adjudication);
+    std::array<std::mt19937_64, 2> book_generators{std::mt19937_64(settings_.white_book.seed),
+                                                   std::mt19937_64(settings_.black_book.seed)};
+    std::array<bool, 2>            is_out_of_book{false, false};
+    const auto                     tell_players = [&]() {
+        const MoveRequest state{game, white_clock, black_clock, Clock::now()};
+        white_.MoveMade(state);
+        black_.MoveMade(state);
+    };
     while (!game.IsOver())
     {
         if (cancel != nullptr && cancel->load())
@@ -224,10 +233,32 @@ GameRecord GameRunner::Play(const std::function<void(const GameProgress &)> &on_
             game.SetOutcome({chess::GameResult::kNone, chess::Termination::kAbandoned, "Game abandoned"});
             break;
         }
-        const chess::Color side      = game.CurrentPosition().SideToMove();
-        Player            &player    = side == chess::kWhite ? white_ : black_;
-        chess::Clock      &clock     = side == chess::kWhite ? white_clock : black_clock;
-        const auto         available = clock.TimeAvailable();
+        const chess::Color side   = game.CurrentPosition().SideToMove();
+        Player            &player = side == chess::kWhite ? white_ : black_;
+        chess::Clock      &clock  = side == chess::kWhite ? white_clock : black_clock;
+        // The side's own book, while it has a move and the game is shorter than its depth: no clock, no engine.
+        const BookSettings &book = side == chess::kWhite ? settings_.white_book : settings_.black_book;
+        if (book.book && !is_out_of_book[side] && (book.depth <= 0 || game.PlyCount() < book.depth))
+        {
+            if (const auto book_move = book.book->Choose(game.CurrentPosition(), book.selection, book_generators[side]))
+            {
+                game.Play(*book_move);
+                MoveNote note;
+                note.is_book = true;
+                record.notes.push_back(note);
+                if (on_move)
+                {
+                    on_move({game, record.notes.back(), white_clock, black_clock});
+                }
+                if (!game.IsOver())
+                {
+                    tell_players();
+                }
+                continue;
+            }
+            is_out_of_book[side] = true;
+        }
+        const auto available = clock.TimeAvailable();
         const auto deadline = Clock::now() + (available ? *available + settings_.time_margin : settings_.stall_timeout);
         const MoveReply reply = player.RequestMove({game, white_clock, black_clock, deadline});
 
@@ -280,6 +311,10 @@ GameRecord GameRunner::Play(const std::function<void(const GameProgress &)> &on_
             {
                 game.SetOutcome(*outcome);
             }
+        }
+        if (!game.IsOver())
+        {
+            tell_players();
         }
     }
     white_.EndGame(game);

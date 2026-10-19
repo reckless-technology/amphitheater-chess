@@ -7,6 +7,7 @@
 /// ECO tag, else its Event tag.
 
 #include "GameRunner.h"
+#include "chess/PolyglotBook.h"
 #include "chess/Result.h"
 
 #include <cstdint>
@@ -20,8 +21,9 @@ namespace uci_host::match
 /** The opening file formats. */
 enum class OpeningFormat
 {
-    kEpd, ///< One position a line.
-    kPgn, ///< Games, their main lines played.
+    kEpd,      ///< One position a line.
+    kPgn,      ///< Games, their main lines played.
+    kPolyglot, ///< A Polyglot book (.bin), walked from the starting position.
 };
 
 /** The order openings are used in. */
@@ -57,6 +59,16 @@ std::vector<Opening> ParseOpenings(std::string_view text, OpeningFormat format, 
  * @return The openings (at least one), or why there are none.
  */
 Result<std::vector<Opening>> LoadOpenings(const std::string &path, OpeningFormat format, int plies);
+
+/**
+ * An opening walked out of a Polyglot book: from the starting position, a weighted-random book move a ply until the
+ * book has none or the line is long enough.
+ * @param book The book.
+ * @param plies The longest line, 1 or more.
+ * @param seed The random walk's seed: one seed, one line, on every platform.
+ * @return The opening (the starting position and the line's moves).
+ */
+Opening PolyglotOpening(const chess::PolyglotBook &book, int plies, std::uint64_t seed);
 
 /**
  * Put openings in the order to use them.

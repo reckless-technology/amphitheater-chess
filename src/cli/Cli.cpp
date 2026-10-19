@@ -2,6 +2,7 @@
 
 #include "chess/Notation.h"
 #include "chess/Perft.h"
+#include "chess/PolyglotBook.h"
 #include "chess/Position.h"
 #include "match/Openings.h"
 #include "uci/Engine.h"
@@ -135,6 +136,11 @@ class ArgumentReader
         for (const auto &value : Values())
         {
             const auto equals = value.find('=');
+            if (equals == std::string::npos && value == "ponder")
+            {
+                pairs.emplace_back(value, "true"); // The one key that may stand alone.
+                continue;
+            }
             if (equals == std::string::npos || equals == 0)
             {
                 return Error{"-" + option + " takes key=value pairs, not '" + value + "'"};
@@ -152,8 +158,10 @@ class ArgumentReader
 /** What one engine's key=value pairs said. */
 struct EngineSpec
 {
-    uci::EngineConfig                 config;       ///< The engine.
-    std::optional<chess::TimeControl> time_control; ///< Its own time control, if it set any limit.
+    uci::EngineConfig                 config;         ///< The engine.
+    std::optional<chess::TimeControl> time_control;   ///< Its own time control, if it set any limit.
+    std::string                       book_path;      ///< Its own Polyglot book's file, if any.
+    int                               book_depth = 0; ///< Its book's depth in plies; 0 for no limit.
 };
 
 /**
@@ -229,6 +237,27 @@ Result<EngineSpec> BuildEngine(const KeyValues &pairs, const chess::TimeControl 
                 return Error{nodes.ErrorMessage()};
             }
             limits().nodes = *nodes;
+        }
+        else if (key == "book")
+        {
+            spec.book_path = value;
+        }
+        else if (key == "bookdepth")
+        {
+            const auto depth = ParseNumber(value, "bookdepth", 1);
+            if (!depth)
+            {
+                return Error{depth.ErrorMessage()};
+            }
+            spec.book_depth = static_cast<int>(*depth);
+        }
+        else if (key == "ponder")
+        {
+            if (value != "true" && value != "false")
+            {
+                return Error{"ponder is a flag ('ponder', or ponder=true or ponder=false), not ponder=" + value};
+            }
+            spec.config.does_ponder = value == "true";
         }
         else if (key == "proto")
         {
@@ -624,6 +653,9 @@ Engine keys (-engine for one engine, -each for every engine, the engine's own wi
   arg=<argument>        an argument to start it with (repeatable)
   option.<name>=<value> a UCI option to set
   tc=<control>          its own time control (as -tc); st=<s>, depth=<n>, nodes=<n> as below
+  book=<file.bin>       its own Polyglot book: the host plays the book's move for it while the book has one
+  bookdepth=<n>         book moves only in the game's first n plies
+  ponder                let it think on the opponent's time (its Ponder option set; ponderhit or stop on the reply)
   proto=uci             accepted; UCI is the only protocol
 
 Match and tournament options:
@@ -635,8 +667,10 @@ Match and tournament options:
   -double               play every cycle twice, colours reversed (a double round robin)
   -repeat               play each opening twice in a row, colours swapped
   -concurrency <n>      games played at once (default 1)
-  -openings file=<f> format=epd|pgn [order=sequential|random] [plies=<n>] [start=<n>]
-  -srand <n>            the seed for random opening order (default 1)
+  -openings file=<f> format=epd|pgn|polyglot [order=sequential|random] [plies=<n>] [start=<n>]
+                        a Polyglot book (.bin) is walked from the start, weighted at random, to plies (8),
+                        one line for each pair of colour-swapped games
+  -srand <n>            the seed for random opening order and book moves (default 1)
   -pgnout <file>        append every finished game to a PGN file
   -resign movecount=<n> score=<cp> [twosided=true]
   -draw movenumber=<n> movecount=<n> score=<cp>
@@ -859,6 +893,7 @@ Result<TournamentOptions> ParseTournamentArguments(const std::vector<std::string
     {
         return Error{"a tournament takes at least two engines, not " + std::to_string(engine_pairs.size())};
     }
+    std::map<std::string, std::shared_ptr<const chess::PolyglotBook>> books;
     for (const auto &pairs : engine_pairs)
     {
         KeyValues all = each_pairs;
@@ -874,9 +909,26 @@ Result<TournamentOptions> ParseTournamentArguments(const std::vector<std::string
             return Error{"engine '" + spec->config.executable +
                          "' has no time control or limit: give -tc, -st, -depth or -nodes"};
         }
-        settings.engines.push_back({spec->config, spec->time_control});
+        match::TournamentEngine engine{spec->config, spec->time_control, nullptr, spec->book_depth};
+        if (!spec->book_path.empty())
+        {
+            // One copy of a book however many engines name it.
+            auto &book = books[spec->book_path];
+            if (!book)
+            {
+                auto loaded = chess::PolyglotBook::Load(spec->book_path);
+                if (!loaded)
+                {
+                    return Error{loaded.ErrorMessage()};
+                }
+                book = std::make_shared<const chess::PolyglotBook>(std::move(*loaded));
+            }
+            engine.book = book;
+        }
+        settings.engines.push_back(std::move(engine));
     }
 
+    settings.seed = seed;
     if (!opening_pairs.empty())
     {
         std::string          file;
@@ -891,9 +943,11 @@ Result<TournamentOptions> ParseTournamentArguments(const std::vector<std::string
             {
                 file = value;
             }
-            else if (key == "format" && (value == "epd" || value == "pgn"))
+            else if (key == "format" && (value == "epd" || value == "pgn" || value == "polyglot"))
             {
-                format     = value == "epd" ? match::OpeningFormat::kEpd : match::OpeningFormat::kPgn;
+                format     = value == "epd"   ? match::OpeningFormat::kEpd
+                             : value == "pgn" ? match::OpeningFormat::kPgn
+                                              : match::OpeningFormat::kPolyglot;
                 has_format = true;
             }
             else if (key == "order" && (value == "sequential" || value == "random"))
@@ -920,10 +974,24 @@ Result<TournamentOptions> ParseTournamentArguments(const std::vector<std::string
         }
         if (!has_format)
         {
-            const auto dot = file.rfind('.');
-            format         = dot != std::string::npos && (file.substr(dot) == ".pgn" || file.substr(dot) == ".PGN")
-                                 ? match::OpeningFormat::kPgn
-                                 : match::OpeningFormat::kEpd;
+            const auto dot       = file.rfind('.');
+            const auto extension = dot == std::string::npos ? std::string{} : file.substr(dot);
+            format               = extension == ".pgn" || extension == ".PGN"   ? match::OpeningFormat::kPgn
+                                   : extension == ".bin" || extension == ".BIN" ? match::OpeningFormat::kPolyglot
+                                                                                : match::OpeningFormat::kEpd;
+        }
+        if (format == match::OpeningFormat::kPolyglot)
+        {
+            // A book is walked afresh for each opening number, to plies (8 unless given), not read as a list.
+            auto book = chess::PolyglotBook::Load(file);
+            if (!book)
+            {
+                return Error{book.ErrorMessage()};
+            }
+            settings.opening_book       = std::make_shared<const chess::PolyglotBook>(std::move(*book));
+            settings.opening_book_plies = plies > 0 ? plies : 8;
+            settings.seed               = seed;
+            return options;
         }
         auto openings = match::LoadOpenings(file, format, plies);
         if (!openings)
