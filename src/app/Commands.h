@@ -18,6 +18,7 @@ enum Command : int
     kCopyFen = 200, ///< Edit > Copy FEN.
     kCopyPgn,       ///< Edit > Copy PGN.
     kPasteFen,      ///< Edit > Paste FEN or PGN: a position, or a game, from the clipboard.
+    kSetUpPosition, ///< Edit > Set up position...: pieces put on a board, the position shown from there.
 
     kTakeBack = 300, ///< Game > Take back: the person's last move and the engine's reply.
     kStopGame,       ///< Game > Stop the game: abandoned, kept on the board.

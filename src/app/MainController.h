@@ -342,6 +342,9 @@ class MainController
     /** Help > About: the app's name, version and terms, and the engines the install carries. */
     void OpenAbout();
 
+    /** Edit > Set up position: the position shown on a board to edit, shown in its place when it is set up. */
+    void OpenPositionEditor();
+
     /** The engine log's layout as the view has it kept in the layout file, where there is one. */
     void SaveLayout();
 

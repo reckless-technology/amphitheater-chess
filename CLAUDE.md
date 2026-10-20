@@ -63,7 +63,7 @@ GUI will save with the toolkit's JSON.
   threefold, fifty), `Pgn` (reader with variations, NAGs, comments, error recovery per game; writer with the Seven Tag
   Roster and 80 columns), `PolyglotBook` (Polyglot .bin books: the format's 781-key table in `PolyglotRandom.cpp`,
   generated from its description; keys checked against its published test keys), `TimeControl` and `Clock`, `Perft`,
-  `Result`/`Status`.
+  `BoardSetup` (a position set up square by square, read back strictly), `Result`/`Status`.
 - `src/uci/` (`amphitheater_uci`): `ChildProcess` (`ProcessWindows.cpp`: CreateProcessW, a handle list, a kill-on-close
   job object; `ProcessPosix.cpp`: posix_spawn, a process group, SIGPIPE ignored), `ThreadSafeQueue`, `UciProtocol`
   (every info field, every option type, `go`/`position`/`setoption` formatting), `Engine` (the session: handshake,
@@ -101,10 +101,10 @@ GUI will save with the toolkit's JSON.
   tournament is a `CompetitionSession` over `match::Tournament` with `does_report_moves` on; its dialog
   (`CompetitionDialog`) writes amphitheater-cli's arguments and reads them with `cli::ParseTournamentArguments`, so the
   window and the command line never disagree on an option - add an option to the command line, and to the dialog as an
-  argument. `EngineCatalogue` is the engine list (`reckless-technology/amphitheater/engines.json`
-  in the user's settings folder); `WindowSizes` the View menu's window sizes, held by `AppRoot::SetFixedZoom` and kept
-  in `window.json` beside it; `LayoutSettings` the engine log's height and whether it shows (its header, `LogHeader`,
-  folds it and drags it), kept in `layout.json`. `Theme.h` holds the
+  argument. `PositionEditor` is Edit > Set up position over `chess::BoardSetup`. `EngineCatalogue` is the engine list
+  (`reckless-technology/amphitheater/engines.json` in the user's settings folder); `WindowSizes` the View menu's window
+  sizes, held by `AppRoot::SetFixedZoom` and kept in `window.json` beside it; `LayoutSettings` the engine log's height
+  and whether it shows (its header, `LogHeader`, folds it and drags it), kept in `layout.json`. `Theme.h` holds the
   mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
   the render tool and the suite draw. Files here never take a toolkit header's name (`View.h`, `Menu.h`, `Window.h`):
   they are included as `"app/BoardView.h"` from outside the directory.

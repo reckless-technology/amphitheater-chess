@@ -43,6 +43,7 @@ add_library(amphitheater_gui STATIC
     Panels.cpp
     PieceSet.cpp
     PlaySession.cpp
+    PositionEditor.cpp
     SearchTracker.cpp
     SettingsFolder.cpp
     Showcase.cpp

@@ -189,10 +189,11 @@ bar: the screen's menu bar on a Mac, the window's on Windows, drawn across the w
 tool's images). Every item's shortcut shows beside it, and the platform offers every key no view takes to the bar, so
 the keys work as soon as the window has the keyboard, with no click into it first: Left, Right, Home and End step
 through the game and F flips the board; with Command on a Mac and Control elsewhere, N starts a new game, O and S open
-and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, Z takes back, E manages the engines, L
-shows or folds the engine log, Q quits, 0 makes the window 100 %, = (or +) the next size up and - the next size down. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is open. The
-window's title follows the game - "White vs Black - Reckless Amphitheater", the file's name before the app's while the game
-shown was opened from a file or saved to one. The lists' scroll bars are in the accent.
+and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, P sets up a position, Z takes back, E
+manages the engines, L shows or folds the engine log, Q quits, 0 makes the window 100 %, = (or +) the next size up and -
+the next size down. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is
+open. The window's title follows the game - "White vs Black - Reckless Amphitheater", the file's name before the app's
+while the game shown was opened from a file or saved to one. The lists' scroll bars are in the accent.
 
 Help > Updates is the toolkit's update check (`update::Checker`, `app::MakeUpdateChecker`): at most once a day, while the
 window shows, a plain GET of `https://recklesstechnology.com/updates/amphitheater.json` (the website writes it as a release
@@ -260,6 +261,17 @@ comment; anything else with the Seven Tag Roster from what the card knows. Edit 
 position shown or the game on the clipboard; Paste FEN or PGN takes a position, a game, or a list of games to pick
 from. The window reads and writes the clipboard through the toolkit's app platform.
 
+Edit > Set up position (`PositionEditor.h`) opens a board of its own on the position shown, turned as the window's is.
+A click on a square puts the piece chosen from the palette - the twelve, White's over Black's - there, and a click
+where that piece already stands takes it off; a right-click empties a square; a piece dragged to another square moves
+there, and dragged off the board is taken off. Beside the board are the side to move, the four castling rights - each
+offered only while its king and rook stand on their squares - the en passant square, offered only behind a pawn of the
+side not to move that could just have made a double step, and the move number; Start position, Clear board and Flip
+board; and under it the position's FEN, which a FEN typed or pasted into and Return reads (an EPD's four fields will
+do). The setup is `chess::BoardSetup`, its FEN read back strictly as any FEN is, so the dialog says what keeps it from
+being a legal position - a king missing, the side not to move in check, a pawn on the last rank - and Set up waits
+until it is one, then shows it on the window's board as a pasted FEN does.
+
 Match > New match and Tournament > New tournament take the engines and amphitheater-cli's options - the time control,
 games and rounds, a double round robin, repeated openings, concurrency, an opening file, the adjudications, a PGN
 file, and any other the command line has, typed as it takes them - and write them as the command line's own
@@ -274,10 +286,10 @@ finish. Stop abandons the games in progress; the workers finish their moves in t
 `amphitheater_render_main <out.png> [scale] [width height] [view]` draws the window to a PNG with the mockup's state, with
 no window and no display; the view is `flipped`, `empty` (a fresh window), `newgame`, `engines` (the engine manager),
 `tournament` (a new tournament's setup), `standings` (the standings and crosstable), `about` (Help > About, for
-an install carrying the five pinned engines) or `logfolded` (the engine log folded away). The review images in
-`docs/design/` are made with it at 1380 x 1120: `main-window.png`, `main-window-flipped.png`,
-`main-window-log-folded.png`, `new-game.png`, `engine-manager.png`, `new-tournament.png`, `standings.png` and
-`about.png`.
+an install carrying the five pinned engines), `logfolded` (the engine log folded away) or `setup` (Edit > Set up
+position on the sample's position). The review images in `docs/design/` are made with it at 1380 x 1120:
+`main-window.png`, `main-window-flipped.png`, `main-window-log-folded.png`, `new-game.png`, `engine-manager.png`,
+`new-tournament.png`, `standings.png`, `about.png` and `position-editor.png`.
 
 ## The command line
 

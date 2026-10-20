@@ -10,6 +10,7 @@
 #include "GamePickerDialog.h"
 #include "LayoutSettings.h"
 #include "NewGameDialog.h"
+#include "PositionEditor.h"
 #include "StandingsDialog.h"
 #include "Theme.h"
 #include "match/Openings.h"
@@ -334,6 +335,9 @@ void MainController::Command(int command)
             error_ = "The clipboard holds no FEN and no PGN game";
             Refresh();
         }
+        break;
+    case kSetUpPosition:
+        OpenPositionEditor();
         break;
     case kQuit:
         if (services_.quit)
@@ -688,6 +692,19 @@ void MainController::OpenStandings()
                             : std::make_pair(std::vector<std::string>{}, std::vector<match::GameResultEntry>{});
     });
     dialog->on_close = [this] { CloseDialog(); };
+    OpenDialog(std::move(dialog));
+}
+
+void MainController::OpenPositionEditor()
+{
+    auto dialog =
+        std::make_unique<PositionEditorDialog>(view_.board().pieces(), game_.PositionAt(view_ply_), is_flipped_);
+    dialog->on_close  = [this] { CloseDialog(); };
+    dialog->on_set_up = [this](const chess::Position &position) {
+        CloseDialog();
+        error_.clear();
+        ShowGame(chess::Game(position), GameInfo{});
+    };
     OpenDialog(std::move(dialog));
 }
 

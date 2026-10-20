@@ -1,6 +1,7 @@
 # The rules of chess: the board and its move generator (adapted from pawnstar), FEN, SAN and UCI notation, games and
 # their endings, PGN, time controls and clocks. No threads, no I/O but what a caller hands in as text.
 add_library(amphitheater_chess STATIC
+    BoardSetup.cpp
     Game.cpp
     Notation.cpp
     Pgn.cpp
