@@ -52,6 +52,7 @@ add_library(amphitheater_gui STATIC
     SettingsFolder.cpp
     Showcase.cpp
     StandingsDialog.cpp
+    TestSuiteDialog.cpp
     WindowSizes.cpp)
 target_include_directories(amphitheater_gui PUBLIC "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(amphitheater_gui

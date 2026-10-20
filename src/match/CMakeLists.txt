@@ -8,6 +8,7 @@ add_library(amphitheater_match STATIC
     Openings.cpp
     Schedule.cpp
     Statistics.cpp
+    TestSuite.cpp
     Tournament.cpp)
 target_include_directories(amphitheater_match PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(amphitheater_match PUBLIC amphitheater_uci PRIVATE amphitheater_warnings)

@@ -380,5 +380,30 @@ TEST(Cli, RefusesBadBookAndPonderKeys)
     EXPECT_NE(RunWith({"--help"}).out.find("bookdepth=<n>"), std::string::npos);
 }
 
+TEST(Cli, AnEpdSuiteIsRunAgainstAnEngineAndScored)
+{
+    // The fake engine takes the most valuable piece it can: here White's queen takes Black's.
+    const auto suite = TempFile("amphitheater_cli_suite.epd");
+    {
+        std::ofstream file(suite);
+        file << "3q3k/8/8/8/8/8/8/3Q3K w - - bm Qxd8+; id \"trade\";\n"
+                "3q3k/8/8/8/8/8/8/3Q3K w - - am Qxd8+; id \"no trade\";\n"
+                "3q3k/8/8/8/8/8/8/3Q3K w - - bm Qd9;\n";
+    }
+    const auto run = RunWith({"epd", "-engine", kFake, "-file", suite.string(), "-time", "0.05"});
+    EXPECT_EQ(run.code, 0) << run.err;
+    EXPECT_NE(run.out.find("Suite: "), std::string::npos) << run.out;
+    EXPECT_NE(run.out.find("trade            solved  Qxd8+     bm Qxd8+"), std::string::npos) << run.out;
+    EXPECT_NE(run.out.find("no trade         failed  Qxd8+     am Qxd8+"), std::string::npos) << run.out;
+    EXPECT_NE(run.out.find("Solved 1 of 2 (50.0 %)"), std::string::npos) << run.out;
+    EXPECT_NE(run.err.find("Warning: skipped line 3"), std::string::npos) << run.err;
+
+    EXPECT_EQ(RunWith({"epd", "-file", suite.string()}).code, 2) << "no engine";
+    EXPECT_EQ(RunWith({"epd", "-engine", kFake}).code, 2) << "no file";
+    EXPECT_EQ(RunWith({"epd", "-engine", kFake, "-file", suite.string(), "-depth", "0"}).code, 2);
+    EXPECT_EQ(RunWith({"epd", "-engine", kFake, "-file", "no-such-suite.epd"}).code, 1);
+    EXPECT_NE(RunWith({"--help"}).out.find("amphitheater-cli epd"), std::string::npos);
+}
+
 } // namespace
 } // namespace amphitheater::cli

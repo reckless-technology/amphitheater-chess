@@ -261,6 +261,13 @@ plies at most, is added as a variation with its score. The status bar counts the
 analysis found; Game > Stop the game analysis ends it after the position under way. Analyse stops while it runs, and a
 game opened or played in its place sets it aside.
 
+Engines > Test suite opens an EPD test suite (`match::TestSuite`): each line a position with the move it asks for,
+`bm`, or the move it forbids, `am`, and its `id` as its name; a line with neither, or one that cannot be read, is
+skipped and counted. Its dialog (`TestSuiteDialog`) lists the positions with what each asks for, and runs them against
+a configured engine for the seconds or the depth chosen on each, from a new game: the list fills in the engine's move
+and whether it solved the position, in green or red, and the score under it counts the positions solved. A position
+pressed twice is shown on the board.
+
 The evaluation graph (`EvalGraph`, its data in `Evaluations.h`) draws each engine's scores as a series of its own, all
 from White's side on one scale with the zero line: in a game between engines White's engine's score at each of its
 moves and Black's at each of its, so the two interleave ply by ply, the first in amber and the second in blue, a legend
@@ -337,6 +344,7 @@ amphitheater-cli match -engine cmd=./a book=book.bin bookdepth=16 ponder -engine
 amphitheater-cli perft startpos 6
 amphitheater-cli perft "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1" 4 -divide
 amphitheater-cli analyse -engine cmd=./engine -fen startpos -moves e2e4 e7e5 -time 10
+amphitheater-cli epd -engine cmd=./engine -file suite.epd -time 0.5
 ```
 
 Engines take `cmd=`, `name=`, `dir=`, `arg=` (repeatable), `option.<name>=<value>`, their own `tc=`, `st=`,
@@ -346,7 +354,9 @@ engine's own keys winning. A time control is
 A match prints each game as it ends and the score after it - wins, losses, draws, the score fraction, the Elo
 difference with its 95 % margin, the likelihood of superiority and the draw ratio; a tournament ends with its standings
 (points, then Sonneborn-Berger) and a crosstable. `amphitheater-cli --help` has the whole syntax. Ctrl+C stops a match,
-abandoning the games in progress.
+abandoning the games in progress. `epd` runs an EPD test suite as Engines > Test suite does, for `-time` seconds (one
+by default) or to `-depth` on each position, printing a line a position - its number, name, the engine's move and
+whether it solved it - and the score at the end, `Solved 12 of 20 (60.0 %)`.
 
 Every score the command line writes is from White's side: each PGN move's comment, `{+0.35/18 1.2s}` (White better,
 by the score its mover's engine reported, depth 18, 1.2 seconds), `{-0.35/18 1.2s}` (Black better), `{+M5/20 0.4s}`

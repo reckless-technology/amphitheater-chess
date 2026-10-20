@@ -65,6 +65,22 @@ struct AnalyseOptions
  */
 Result<AnalyseOptions> ParseAnalyseArguments(const std::vector<std::string> &arguments);
 
+/** What "epd" was asked for: a test suite run against an engine. */
+struct EpdOptions
+{
+    uci::EngineConfig   engine;     ///< The engine.
+    std::string         file;       ///< The suite's EPD file.
+    chess::Milliseconds time{1000}; ///< How long it thinks on each position.
+    std::optional<int>  depth;      ///< A depth to search each position to instead.
+};
+
+/**
+ * Read the arguments of "epd".
+ * @param arguments The arguments after the subcommand.
+ * @return The options, or what is wrong with them.
+ */
+Result<EpdOptions> ParseEpdArguments(const std::vector<std::string> &arguments);
+
 /**
  * Run the command line.
  * @param arguments The arguments, the program's name first.

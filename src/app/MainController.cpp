@@ -13,6 +13,7 @@
 #include "NewGameDialog.h"
 #include "PositionEditor.h"
 #include "StandingsDialog.h"
+#include "TestSuiteDialog.h"
 #include "Theme.h"
 #include "chess/Notation.h"
 #include "match/Openings.h"
@@ -240,6 +241,9 @@ void MainController::Command(int command)
         break;
     case kAnalyseGame:
         OpenGameAnalysis();
+        break;
+    case kTestSuite:
+        ChooseTestSuite();
         break;
     case kStopGameAnalysis:
         if (review_)
@@ -881,6 +885,53 @@ void MainController::OpenStandings()
     });
     dialog->on_close = [this] { CloseDialog(); };
     OpenDialog(std::move(dialog));
+}
+
+void MainController::ChooseTestSuite()
+{
+    if (catalogue_.engines.empty())
+    {
+        return;
+    }
+    reckless::view::FileRequest request;
+    request.title    = "Open an EPD test suite";
+    request.patterns = {"*.epd"};
+    services_.choose_file(request, [this](const std::string &path) {
+        if (!path.empty())
+        {
+            OpenTestSuite(path);
+        }
+    });
+}
+
+bool MainController::OpenTestSuite(const std::string &path)
+{
+    const auto text = match::ReadTextFile(path);
+    if (!text)
+    {
+        error_ = "The test suite could not be read: " + text.ErrorMessage();
+        Refresh();
+        return false;
+    }
+    std::vector<std::string>         errors;
+    std::vector<match::TestPosition> positions = match::ParseTestSuite(*text, &errors);
+    if (positions.empty())
+    {
+        error_ = "The file holds no test position" + (errors.empty() ? "" : ": " + errors.front());
+        Refresh();
+        return false;
+    }
+    error_.clear();
+    auto dialog = std::make_unique<TestSuiteDialog>(catalogue_.engines, std::filesystem::path(path).filename().string(),
+                                                    std::move(positions), errors.size());
+    dialog->on_close = [this] { CloseDialog(); };
+    dialog->on_show  = [this](const chess::Position &position) {
+        const chess::Position shown = position; // the dialog goes with the close
+        CloseDialog();
+        ShowGame(chess::Game(shown), GameInfo{});
+    };
+    OpenDialog(std::move(dialog));
+    return true;
 }
 
 void MainController::OpenGameAnalysis()

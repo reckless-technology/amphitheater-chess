@@ -6,6 +6,9 @@
 #include "Path.h"
 
 #include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <cstdlib>
 
 namespace amphitheater::app
 {
@@ -191,6 +194,22 @@ void Caption::Paint(reckless::gfx::Canvas &c)
     {
         c.DrawFittedText(text_, LocalBounds(), Justify::kTopLeft, lines, 1.0f);
     }
+}
+
+std::optional<double> ParseDecimal(const std::string &text)
+{
+    // strtod rather than from_chars, whose floating-point form macOS has only from 26.
+    if (text.empty() || std::isspace(static_cast<unsigned char>(text.front())) != 0)
+    {
+        return std::nullopt;
+    }
+    char        *end   = nullptr;
+    const double value = std::strtod(text.c_str(), &end);
+    if (end != text.c_str() + text.size() || !std::isfinite(value))
+    {
+        return std::nullopt;
+    }
+    return value;
 }
 
 reckless::view::TextField::Style FieldStyle()

@@ -34,6 +34,7 @@ enum Command : int
     kStopGameAnalysis, ///< Game > Stop the game analysis.
 
     kEngineManager = 400, ///< Engines > Manage engines...: add, remove and configure engines.
+    kTestSuite,           ///< Engines > Test suite...: an EPD suite's positions against an engine.
 
     kNewMatch = 500, ///< Match > New match...: two engines, many games.
     kStopMatch,      ///< Match > Stop the match.

@@ -1,36 +1,9 @@
 #include "GameAnalysisDialog.h"
 
-#include <cctype>
 #include <cmath>
-#include <cstdlib>
 
 namespace amphitheater::app
 {
-
-namespace
-{
-
-/**
- * @param text A line's text.
- * @return The number it holds, whole or decimal; none for anything else.
- */
-std::optional<double> NumberOf(const std::string &text)
-{
-    // strtod rather than from_chars, whose floating-point form macOS has only from 26.
-    if (text.empty() || std::isspace(static_cast<unsigned char>(text.front())) != 0)
-    {
-        return std::nullopt;
-    }
-    char        *end   = nullptr;
-    const double value = std::strtod(text.c_str(), &end);
-    if (end != text.c_str() + text.size() || !std::isfinite(value))
-    {
-        return std::nullopt;
-    }
-    return value;
-}
-
-} // namespace
 
 GameAnalysisDialog::GameAnalysisDialog(const std::vector<EngineEntry> &engines)
     : DialogFrame("Analyse the game", 560, 400), engines_(engines), engine_label_("Engine"),
@@ -119,7 +92,7 @@ std::optional<GameAnalysisChoice> GameAnalysisDialog::Choice(std::string *error)
     choice.does_add_lines  = lines_.checked();
     if (const std::string depth = depth_.text(); !depth.empty())
     {
-        const auto value = NumberOf(depth);
+        const auto value = ParseDecimal(depth);
         if (!value || *value < 1.0 || *value > 99.0 || std::floor(*value) != *value)
         {
             return refuse("The depth is a whole number from 1 to 99, not '" + depth + "'.");
@@ -127,7 +100,7 @@ std::optional<GameAnalysisChoice> GameAnalysisDialog::Choice(std::string *error)
         choice.settings.depth = static_cast<int>(*value);
         return choice;
     }
-    const auto seconds = NumberOf(seconds_.text());
+    const auto seconds = ParseDecimal(seconds_.text());
     if (!seconds || *seconds < 0.05 || *seconds > 3600.0)
     {
         return refuse("The seconds a move are a number from 0.05 to 3600, not '" + seconds_.text() + "'.");

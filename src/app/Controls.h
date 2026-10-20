@@ -10,6 +10,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -141,6 +142,13 @@ class Caption final : public reckless::view::View
     bool        is_muted_ = false; ///< In the muted ink.
     bool        is_error_ = false; ///< In the error colour.
 };
+
+/**
+ * A number typed into a line: "1", "0.5", "-2.25".
+ * @param text The line's text.
+ * @return The number; none for anything else, a space before or after it included.
+ */
+std::optional<double> ParseDecimal(const std::string &text);
 
 /** @return A line of text's look in the window: the panel's colour, the ink, the accent round it while typed into. */
 reckless::view::TextField::Style FieldStyle();

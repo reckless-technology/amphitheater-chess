@@ -5,6 +5,7 @@
 #include "chess/PolyglotBook.h"
 #include "chess/Position.h"
 #include "match/Openings.h"
+#include "match/TestSuite.h"
 #include "uci/Engine.h"
 
 #include <cctype>
@@ -14,6 +15,7 @@
 #include <map>
 #include <mutex>
 #include <ostream>
+#include <thread>
 
 namespace amphitheater::cli
 {
@@ -501,6 +503,103 @@ int RunTournament(const std::vector<std::string> &arguments, bool is_match, std:
  * @param err Where errors go.
  * @return The exit code.
  */
+/**
+ * Run "epd": a test suite against an engine, each position's outcome printed as it comes and the score at the end.
+ * @param arguments The arguments after the subcommand.
+ * @param out Where the outcomes go.
+ * @param err Where errors and warnings go.
+ * @param stop When set, the run stops after the position under way; may be null.
+ * @return 0 when it ran, 1 when it failed, 2 for wrong arguments.
+ */
+int RunEpd(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err,
+           const std::atomic<bool> *stop)
+{
+    const auto options = ParseEpdArguments(arguments);
+    if (!options)
+    {
+        err << "amphitheater-cli: " << options.ErrorMessage() << '\n';
+        return 2;
+    }
+    const auto text = match::ReadTextFile(options->file);
+    if (!text)
+    {
+        err << "amphitheater-cli: " << text.ErrorMessage() << '\n';
+        return 1;
+    }
+    std::vector<std::string>         errors;
+    std::vector<match::TestPosition> suite = match::ParseTestSuite(*text, &errors);
+    for (const std::string &error : errors)
+    {
+        err << "Warning: skipped " << error << '\n';
+    }
+    if (suite.empty())
+    {
+        err << "amphitheater-cli: " << options->file << " holds no position to test\n";
+        return 1;
+    }
+    out << "Suite: " << options->file << ", " << suite.size() << " positions\n";
+    match::TestSuiteSettings settings;
+    settings.engine = options->engine;
+    if (options->depth)
+    {
+        settings.depth = options->depth;
+    }
+    else
+    {
+        settings.move_time = options->time;
+    }
+    match::TestSuiteRunner runner(settings, suite);
+    runner.Start();
+    int        done     = 0;
+    int        solved   = 0;
+    const auto expected = [](const match::TestPosition &test) {
+        std::string text = test.best_moves.empty() ? "am" : "bm";
+        for (const chess::Move move : test.best_moves.empty() ? test.avoid_moves : test.best_moves)
+        {
+            text += " " + chess::MoveToSan(test.position, move);
+        }
+        return text;
+    };
+    const auto print = [&](const match::TestOutcome &outcome) {
+        const match::TestPosition &test = suite[static_cast<std::size_t>(outcome.index)];
+        char                       line[256];
+        std::snprintf(line, sizeof line, "%4d  %-16s %-7s %-9s %s\n", outcome.index + 1, test.id.c_str(),
+                      outcome.is_solved ? "solved" : "failed", outcome.move.empty() ? "-" : outcome.move.c_str(),
+                      expected(test).c_str());
+        out << line << std::flush;
+        ++done;
+        solved += outcome.is_solved ? 1 : 0;
+    };
+    bool has_stopped = false;
+    while (!runner.IsFinished())
+    {
+        if (stop != nullptr && *stop && !has_stopped)
+        {
+            runner.Stop();
+            has_stopped = true;
+        }
+        while (const auto outcome = runner.Next())
+        {
+            print(*outcome);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    while (const auto outcome = runner.Next())
+    {
+        print(*outcome);
+    }
+    if (const std::string failure = runner.Failure(); !failure.empty())
+    {
+        err << "amphitheater-cli: " << failure << '\n';
+        return 1;
+    }
+    char total[128];
+    std::snprintf(total, sizeof total, "Solved %d of %d (%.1f %%)%s\n", solved, done,
+                  done == 0 ? 0.0 : 100.0 * solved / done, has_stopped ? ", stopped" : "");
+    out << total;
+    return 0;
+}
+
 int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err)
 {
     const auto options = ParseAnalyseArguments(arguments);
@@ -645,6 +744,8 @@ Usage:
   amphitheater-cli perft      <startpos|FEN> <depth> [-divide]
   amphitheater-cli analyse    -engine <keys> [-fen <startpos|FEN>] [-moves <uci>...] [-time <s>] [-depth <n>]
                           [-multipv <n>]
+  amphitheater-cli epd        -engine <keys> -file <suite.epd> [-time <s>] [-depth <n>]
+                          a test suite: each position's bm or am against the engine's move (1 s each by default)
   amphitheater-cli --version | --help
 
 Engine keys (-engine for one engine, -each for every engine, the engine's own winning):
@@ -1096,6 +1197,87 @@ Result<AnalyseOptions> ParseAnalyseArguments(const std::vector<std::string> &arg
     return options;
 }
 
+Result<EpdOptions> ParseEpdArguments(const std::vector<std::string> &arguments)
+{
+    EpdOptions     options;
+    bool           has_engine = false;
+    ArgumentReader reader(arguments);
+    while (!reader.AtEnd())
+    {
+        const std::string &argument = reader.Next();
+        if (!IsOptionName(argument))
+        {
+            return Error{"unexpected '" + argument + "'"};
+        }
+        const std::string name = OptionName(argument);
+        if (name == "engine")
+        {
+            const auto pairs = reader.Pairs(name);
+            if (!pairs)
+            {
+                return Error{pairs.ErrorMessage()};
+            }
+            const auto spec = BuildEngine(*pairs, {});
+            if (!spec)
+            {
+                return Error{spec.ErrorMessage()};
+            }
+            options.engine = spec->config;
+            has_engine     = true;
+        }
+        else if (name == "file")
+        {
+            const auto value = reader.Value(name);
+            if (!value)
+            {
+                return Error{value.ErrorMessage()};
+            }
+            options.file = *value;
+        }
+        else if (name == "time")
+        {
+            const auto value = reader.Value(name);
+            if (!value)
+            {
+                return Error{value.ErrorMessage()};
+            }
+            const auto time = ParseSecondsArgument(*value, "-time");
+            if (!time)
+            {
+                return Error{time.ErrorMessage()};
+            }
+            options.time = *time;
+        }
+        else if (name == "depth")
+        {
+            const auto value = reader.Value(name);
+            if (!value)
+            {
+                return Error{value.ErrorMessage()};
+            }
+            const auto parsed = ParseNumber(*value, "-depth", 1);
+            if (!parsed)
+            {
+                return Error{parsed.ErrorMessage()};
+            }
+            options.depth = static_cast<int>(*parsed);
+        }
+        else
+        {
+            return Error{"unknown option '" + argument + "'"};
+        }
+    }
+    if (!has_engine)
+    {
+        return Error{"epd needs -engine cmd=<program>"};
+    }
+    if (options.file.empty())
+    {
+        return Error{"epd needs -file <suite.epd>"};
+    }
+    return options;
+}
+
 int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err,
            const std::atomic<bool> *stop)
 {
@@ -1127,6 +1309,10 @@ int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::os
     if (command == "analyse" || command == "analyze")
     {
         return RunAnalyse(rest, out, err);
+    }
+    if (command == "epd")
+    {
+        return RunEpd(rest, out, err, stop);
     }
     err << "amphitheater-cli: unknown command '" << command << "'\n\n" << UsageText();
     return 2;

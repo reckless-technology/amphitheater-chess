@@ -28,7 +28,7 @@ add_dependencies(amphitheater_uci_test amphitheater_fake_engine)
 add_test(NAME uci COMMAND amphitheater_uci_test)
 
 amphitheater_suite(amphitheater_match_test
-    SOURCES match/GameRunnerTest.cpp match/TournamentTest.cpp match/PonderAndBookTest.cpp match/GameAnalysisTest.cpp
+    SOURCES match/GameRunnerTest.cpp match/TournamentTest.cpp match/PonderAndBookTest.cpp match/GameAnalysisTest.cpp match/TestSuiteTest.cpp
     LIBRARIES amphitheater_match)
 target_compile_definitions(amphitheater_match_test PRIVATE AMPHITHEATER_FAKE_ENGINE="$<TARGET_FILE:amphitheater_fake_engine>")
 add_dependencies(amphitheater_match_test amphitheater_fake_engine)
@@ -79,7 +79,7 @@ if(AMPHITHEATER_GUI)
             app/AnalysisLinesTest.cpp
             app/VariationsTest.cpp
             app/PiecesTest.cpp
-            app/GameAnalysisWindowTest.cpp
+            app/GameAnalysisWindowTest.cpp app/TestSuiteWindowTest.cpp
         LIBRARIES amphitheater_gui reckless_toolkit_test_support)
     target_compile_definitions(amphitheater_window_test PRIVATE AMPHITHEATER_FAKE_ENGINE="$<TARGET_FILE:amphitheater_fake_engine>")
     add_dependencies(amphitheater_window_test amphitheater_fake_engine)

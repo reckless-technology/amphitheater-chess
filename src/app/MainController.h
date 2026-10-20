@@ -407,6 +407,18 @@ class MainController
     /** Game > Analyse the game: its dialog. */
     void OpenGameAnalysis();
 
+    /** Engines > Test suite: an EPD file chosen, then the suite's dialog over it. */
+    void ChooseTestSuite();
+
+  public:
+    /**
+     * Open a test suite's dialog over a file: its positions listed, ready to run.
+     * @param path The EPD file.
+     * @return Whether the file was read and held a position.
+     */
+    bool OpenTestSuite(const std::string &path);
+
+  private:
     /** The game analysis's positions taken in, and its end, once a frame. */
     void PollGameAnalysis();
 
