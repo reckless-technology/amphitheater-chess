@@ -140,7 +140,8 @@ int main(int argc, char **argv)
 
     amphitheater::app::InstallFaces();
     std::string                       error;
-    const amphitheater::app::PieceSet pieces = amphitheater::app::PieceSet::FromEmbedded(&error);
+    const amphitheater::app::PieceSet pieces =
+        amphitheater::app::PieceSet::FromEmbedded(amphitheater::app::kDefaultPieceSet, &error);
     if (!pieces.IsComplete())
     {
         std::fprintf(stderr, "amphitheater_render_main: the pieces: %s\n", error.c_str());

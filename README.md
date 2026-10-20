@@ -169,8 +169,12 @@ graph, the PGN comments and the command line's analysis; the engine log is the e
 words untouched. Adjudication alone judges each engine by its own score, as its settings are written: a side resigns
 when its engine has said at most -score of its own position.
 
-The pieces are the Staunton SVGs, carried inside the binary and drawn by the toolkit's SVG reader at whatever size the
-squares are. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
+The board draws its pieces from SVGs carried inside the binary, with the toolkit's SVG reader, at whatever size the
+squares are. Two sets are carried (`PieceSet.h`): Colin M.L. Burnett's, the default - the drawings Wikimedia Commons
+offers under the BSD licence, among others, written in the reader's SVG by
+`assets/pieces/cburnett/convert_pieces.py` from the originals beside it and credited in `THIRD-PARTY-NOTICES.txt` - and
+Jonny's own Staunton set. View > Pieces chooses between them, and the choice is kept in `layout.json` beside the
+engine log's. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
 promotion.
 
 The app's icon is Jonny's pencil sketch of the Colosseum with its red Rt roundel

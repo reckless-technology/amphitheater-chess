@@ -1,6 +1,7 @@
 #include "Menus.h"
 
 #include "Commands.h"
+#include "PieceSet.h"
 
 #include <cstddef>
 #include <string>
@@ -54,6 +55,22 @@ MenuEntry WatchItems(const MenuState &state)
 }
 
 /**
+ * View > Pieces: each set the binary carries, the one the board is drawn with ticked.
+ * @param state What is possible now.
+ * @return The submenu.
+ */
+MenuEntry PiecesItems(const MenuState &state)
+{
+    std::vector<MenuEntry> sets;
+    for (std::size_t index = 0; index < kPieceSets.size(); ++index)
+    {
+        sets.push_back(Item(kPieceSets[index].label, kPiecesBase + static_cast<int>(index), {}, true,
+                            state.piece_set == kPieceSets[index].id));
+    }
+    return MenuEntry::Menu("Pieces", std::move(sets));
+}
+
+/**
  * The View menu: the board and the log, then the window's sizes - each ticked while it is the size drawn and dim where
  * the window's screen does not take it - and a step up and down through them.
  * @param state What is possible now.
@@ -64,7 +81,7 @@ std::vector<MenuEntry> ViewItems(const MenuState &state)
     const WindowSizeMenu  &sizes = state.window_sizes;
     std::vector<MenuEntry> items{Item("Flip the board", kFlip, Shortcut::Plain(U'f')),
                                  Item("Engine log", kShowLog, Shortcut::Primary('l'), true, state.is_log_open),
-                                 Item("Clear the engine log", kClearLog), MenuEntry::Separator()};
+                                 Item("Clear the engine log", kClearLog), PiecesItems(state), MenuEntry::Separator()};
     for (std::size_t index = 0; index < kWindowSizes.size(); ++index)
     {
         const int percent = kWindowSizes[index];

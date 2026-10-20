@@ -53,11 +53,14 @@ class BoardView final : public reckless::view::View
 
     std::function<void(chess::Move move)> on_move; ///< A person's move, legal in the position shown.
 
-    /** @return The pieces it draws with, which the About window draws its queen with too. */
+    /** @return The pieces it draws with. */
     const PieceSet &pieces() const
     {
-        return pieces_;
+        return *pieces_;
     }
+
+    /** @param pieces The pieces to draw with from now on; outlive the view, or the next call. */
+    void SetPieces(const PieceSet &pieces);
 
     /**
      * The position shown, and the move that led to it, which is marked. A selection or a picker is closed.
@@ -208,7 +211,7 @@ class BoardView final : public reckless::view::View
      */
     void DrawArrow(reckless::gfx::Canvas &c, const BoardArrow &arrow) const;
 
-    const PieceSet              &pieces_;                 ///< The pieces.
+    const PieceSet              *pieces_;                 ///< The pieces.
     chess::Position              position_;               ///< The position shown.
     std::optional<chess::Move>   last_move_;              ///< The move that led to it.
     bool                         is_flipped_     = false; ///< Black at the bottom.

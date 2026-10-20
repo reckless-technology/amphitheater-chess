@@ -141,6 +141,11 @@ void MainView::SetFlipped(bool is_flipped)
     SetPlayers(white_, black_);
 }
 
+void MainView::SetPieces(const PieceSet &pieces)
+{
+    board_.SetPieces(pieces);
+}
+
 void MainView::SetArrows(std::vector<BoardArrow> arrows)
 {
     board_.SetArrows(std::move(arrows));

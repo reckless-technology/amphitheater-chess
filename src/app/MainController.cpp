@@ -136,6 +136,7 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
     }
     const LayoutSettings layout = LayoutSettings::Load(files_.layout);
     view_.SetLogLayout(layout.log_height, layout.is_log_open);
+    UsePieces(layout.pieces);
     view_.on_log_layout = [this] {
         SaveLayout();
         RefreshMenuBar();
@@ -256,6 +257,12 @@ void MainController::Command(int command)
         break;
     case kShowLog:
         view_.ToggleLog();
+        break;
+    case kPiecesBase:
+    case kPiecesBase + 1:
+        UsePieces(kPieceSets[static_cast<std::size_t>(command - kPiecesBase)].id);
+        SaveLayout();
+        RefreshMenuBar();
         break;
     case kWindowSize50:
     case kWindowSize75:
@@ -896,6 +903,18 @@ void MainController::OpenAbout()
     OpenDialog(std::move(dialog));
 }
 
+void MainController::UsePieces(const std::string &id)
+{
+    const std::string set = IsPieceSet(id) ? id : std::string(kDefaultPieceSet);
+    auto              at  = piece_sets_.find(set);
+    if (at == piece_sets_.end())
+    {
+        at = piece_sets_.emplace(set, PieceSet::FromEmbedded(set)).first;
+    }
+    piece_set_ = set;
+    view_.SetPieces(at->second);
+}
+
 void MainController::SaveLayout()
 {
     if (files_.layout.empty())
@@ -905,6 +924,7 @@ void MainController::SaveLayout()
     LayoutSettings layout;
     layout.log_height  = view_.log_height();
     layout.is_log_open = view_.is_log_open();
+    layout.pieces      = piece_set_;
     if (!layout.Save(files_.layout))
     {
         error_ = "The window's layout could not be written to " + files_.layout.string();
@@ -1426,6 +1446,7 @@ MenuState MainController::Menus() const
     MenuState state;
     state.is_dialog_open   = dialog_ != nullptr;
     state.is_log_open      = view_.is_log_open();
+    state.piece_set        = piece_set_;
     state.is_in_variation  = !IsPlaying() && ShownVariation() != chess::GameTree::kNone;
     state.updates_revision = updates_ ? updates_->revision() : 0;
     if (services_.window_sizes)

@@ -37,9 +37,18 @@ reckless::gfx::Color SquareFill(chess::Square square, bool is_last_move)
     return is_dark ? theme::kDarkSquare : theme::kLightSquare;
 }
 
-BoardView::BoardView(const PieceSet &pieces) : pieces_(pieces), position_(chess::Position::Start())
+BoardView::BoardView(const PieceSet &pieces) : pieces_(&pieces), position_(chess::Position::Start())
 {
     SetOpaque(false);
+}
+
+void BoardView::SetPieces(const PieceSet &pieces)
+{
+    if (&pieces != pieces_)
+    {
+        pieces_ = &pieces;
+        Repaint();
+    }
 }
 
 void BoardView::SetPosition(const chess::Position &position, std::optional<chess::Move> last_move)
@@ -216,7 +225,7 @@ void BoardView::Paint(reckless::gfx::Canvas &c)
         {
             continue;
         }
-        pieces_.Draw(c, position_.ColorOn(square), piece, SquareBounds(square).Reduced(size * 0.04f));
+        pieces_->Draw(c, position_.ColorOn(square), piece, SquareBounds(square).Reduced(size * 0.04f));
     }
 
     // Where the selected piece may go: a dot on an empty square, a ring round a capture.
@@ -243,7 +252,7 @@ void BoardView::Paint(reckless::gfx::Canvas &c)
     if (is_dragging_ && selected_)
     {
         const RectF dragged{drag_point_.x - size / 2.0f, drag_point_.y - size / 2.0f, size, size};
-        pieces_.Draw(c, position_.ColorOn(*selected_), position_.PieceOn(*selected_), dragged.Reduced(size * 0.02f));
+        pieces_->Draw(c, position_.ColorOn(*selected_), position_.PieceOn(*selected_), dragged.Reduced(size * 0.02f));
     }
 
     // A game's result over the middle of the board.
@@ -278,7 +287,7 @@ void BoardView::Paint(reckless::gfx::Canvas &c)
             c.FillEllipse(bounds.Reduced(size * 0.03f));
             c.SetColor(theme::kAmber);
             c.DrawEllipse(bounds.Reduced(size * 0.03f), 2.0f);
-            pieces_.Draw(c, mover, promotion_choices_[index].PromotedPiece(), bounds.Reduced(size * 0.12f));
+            pieces_->Draw(c, mover, promotion_choices_[index].PromotedPiece(), bounds.Reduced(size * 0.12f));
         }
     }
 }

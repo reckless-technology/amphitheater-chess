@@ -212,12 +212,19 @@ def build(build_dir):
     # The sections in their order, each numbered by its place.
     companions = [(engine, platform_name, companion) for engine in engines
                   for platform_name, listed in engine.get("companions", {}).items() for companion in listed]
-    keys = ["noto", "monaspace", "skia", "png_skia", "zlib_skia", "freetype"] + \
+    keys = ["noto", "monaspace", "cburnett", "skia", "png_skia", "zlib_skia", "freetype"] + \
         [f"engine:{e['id']}" for e in engines] + [f"companion:{c['file']}" for _, _, c in companions] + ["gpl"]
     n = {key: i + 1 for i, key in enumerate(keys)}
     sections = {
         "noto": (f"Noto Serif {noto_version}", APP, ofl_noto),
         "monaspace": (f"Monaspace Xenon {monaspace_version}", APP, ofl_monaspace),
+        "cburnett": ("Chess pieces by Colin M.L. Burnett", APP, prose(
+            "The board's default pieces are Colin M.L. Burnett's (User:Cburnett on Wikimedia Commons), offered there "
+            "under the GFDL, the BSD licence or the GPL at the user's choice and used here under the BSD licence. "
+            "They are his drawings written in the subset of SVG the window draws "
+            "(assets/pieces/cburnett/convert_pieces.py): resolved, scaled and made absolute, not redrawn. The "
+            "originals, their names on Commons and the licence:"),
+            read(ROOT / "assets" / "pieces" / "cburnett" / "source" / "LICENSE.txt").strip("\n")),
         "skia": (f"Skia m{skia_milestone}, skia-pack {p['RECKLESS_SKIA_TAG']}", APP, prose(
             f"Reckless Amphitheater draws its window through Skia m{skia_milestone}, linked from the prebuilt static "
             f"libraries of the skia-pack release {p['RECKLESS_SKIA_TAG']}, built from Skia's commit "

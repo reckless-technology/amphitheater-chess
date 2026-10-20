@@ -390,9 +390,23 @@ class MainController
     /** Edit > Set up position: the position shown on a board to edit, shown in its place when it is set up. */
     void OpenPositionEditor();
 
-    /** The engine log's layout as the view has it kept in the layout file, where there is one. */
+    /** The engine log's layout as the view has it, and the pieces' set, kept in the layout file, where there is one. */
     void SaveLayout();
 
+    /**
+     * The board drawn with a set of pieces: View > Pieces.
+     * @param id The set's id, one of kPieceSets.
+     */
+    void UsePieces(const std::string &id);
+
+  public:
+    /** @return The pieces' set the board is drawn with: its id. */
+    const std::string &piece_set() const
+    {
+        return piece_set_;
+    }
+
+  private:
     /** The competition's progress taken in, and the game the board follows shown. */
     void PollCompetition();
 
@@ -424,10 +438,12 @@ class MainController
     std::string                   file_name_;  ///< The file the game shown was opened from or saved to; empty for none.
     EngineReaper                  reaper_; ///< Engines being quit off the window's thread; outlives the sessions below.
     ControllerFiles               files_;  ///< Where it keeps things.
-    EngineCatalogue               catalogue_;   ///< The configured engines.
-    chess::Game                   game_;        ///< The line shown, as a game.
-    chess::GameTree               tree_;        ///< The game shown with its variations.
-    std::vector<chess::GameTree::NodeId> line_; ///< The line shown, as the tree's nodes.
+    EngineCatalogue               catalogue_;         ///< The configured engines.
+    std::map<std::string, PieceSet>      piece_sets_; ///< The sets loaded, by id: the board draws with one.
+    std::string                          piece_set_{kDefaultPieceSet}; ///< The set the board is drawn with.
+    chess::Game                          game_;                        ///< The line shown, as a game.
+    chess::GameTree                      tree_;                        ///< The game shown with its variations.
+    std::vector<chess::GameTree::NodeId> line_;                        ///< The line shown, as the tree's nodes.
     chess::Outcome main_outcome_; ///< How the main line ended, by its record or its play where the rules do not say.
     GameInfo       info_;         ///< What the card says of it.
     std::vector<EvalSeries> game_series_;        ///< The game's engines' scores, from White's side, as known.

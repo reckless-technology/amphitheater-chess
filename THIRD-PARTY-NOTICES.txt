@@ -7,7 +7,7 @@ these licences give you.
 
 The installers also carry five chess engines - Pawnstar 1.2.0, Zenith 2.1.0, Pawnstar-Go 1.2.0,
 Pawnstar-RS 1.2.0, Stoopid Chess 3.0.0 - each a separate program, licensed under the GNU General
-Public License version 3 (section 12). Reckless Amphitheater only starts them and talks to them over
+Public License version 3 (section 13). Reckless Amphitheater only starts them and talks to them over
 the UCI protocol; it contains none of their code, and EULA.txt does not cover them. Each engine's
 section says where its corresponding source is.
 
@@ -15,16 +15,17 @@ Where each part is used
 
    1. Noto Serif 2.015                             Reckless Amphitheater (the window)
    2. Monaspace Xenon 1.400                        Reckless Amphitheater (the window)
-   3. Skia m144                                    Reckless Amphitheater (the window)
-   4. libpng 1.6.51                                Reckless Amphitheater (the window)
-   5. zlib 1.3.0.1-motley                          Reckless Amphitheater (the window)
-   6. FreeType 2.13.3                              Reckless Amphitheater (the window) on Linux
-   7. Pawnstar 1.2.0                               the installers
-   8. Zenith 2.1.0                                 the installers
-   9. Pawnstar-Go 1.2.0                            the installers
-  10. Pawnstar-RS 1.2.0                            the installers
-  11. Stoopid Chess 3.0.0                          the installers
-  12. The GNU General Public License               every engine above
+   3. Chess pieces by Colin M.L. Burnett           Reckless Amphitheater (the window)
+   4. Skia m144                                    Reckless Amphitheater (the window)
+   5. libpng 1.6.51                                Reckless Amphitheater (the window)
+   6. zlib 1.3.0.1-motley                          Reckless Amphitheater (the window)
+   7. FreeType 2.13.3                              Reckless Amphitheater (the window) on Linux
+   8. Pawnstar 1.2.0                               the installers
+   9. Zenith 2.1.0                                 the installers
+  10. Pawnstar-Go 1.2.0                            the installers
+  11. Pawnstar-RS 1.2.0                            the installers
+  12. Stoopid Chess 3.0.0                          the installers
+  13. The GNU General Public License               every engine above
 
 ====================================================================================================
 1. Noto Serif 2.015
@@ -225,7 +226,53 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ====================================================================================================
-3. Skia m144, skia-pack m144-e2e6623374-4
+3. Chess pieces by Colin M.L. Burnett
+Used in: Reckless Amphitheater (the window)
+====================================================================================================
+
+The board's default pieces are Colin M.L. Burnett's (User:Cburnett on Wikimedia Commons), offered
+there under the GFDL, the BSD licence or the GPL at the user's choice and used here under the BSD
+licence. They are his drawings written in the subset of SVG the window draws
+(assets/pieces/cburnett/convert_pieces.py): resolved, scaled and made absolute, not redrawn. The
+originals, their names on Commons and the licence:
+
+The chess pieces in this folder are Colin M.L. Burnett's (User:Cburnett on Wikimedia Commons), taken unchanged from
+Wikimedia Commons, where each is offered under the GFDL, the BSD licence or the GPL at the user's choice ("You may
+select the license of your choice"). They are used here under the BSD licence below. The files, by their names on
+Commons:
+
+    wK.svg  File:Chess_klt45.svg    bK.svg  File:Chess_kdt45.svg
+    wQ.svg  File:Chess_qlt45.svg    bQ.svg  File:Chess_qdt45.svg
+    wR.svg  File:Chess_rlt45.svg    bR.svg  File:Chess_rdt45.svg
+    wB.svg  File:Chess_blt45.svg    bB.svg  File:Chess_bdt45.svg
+    wN.svg  File:Chess_nlt45.svg    bN.svg  File:Chess_ndt45.svg
+    wP.svg  File:Chess_plt45.svg    bP.svg  File:Chess_pdt45.svg
+
+https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces
+
+Copyright (c) The author (Colin M.L. Burnett)
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
+   disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
+   disclaimer in the documentation and/or other materials provided with the distribution.
+3. Neither the name of The author nor the names of its contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+====================================================================================================
+4. Skia m144, skia-pack m144-e2e6623374-4
 Used in: Reckless Amphitheater (the window)
 ====================================================================================================
 
@@ -233,7 +280,7 @@ Reckless Amphitheater draws its window through Skia m144, linked from the prebui
 of the skia-pack release m144-e2e6623374-4, built from Skia's commit
 e2e66233743d048dc880203b6598fd34d94d9765. It holds Skia's own code - its raster renderer, its colour
 management (skcms), its PNG codec and its PNG encoder - and, of the libraries the release bundles,
-libpng and zlib (sections 4 and 5), and on Linux FreeType (section 6), which draws the text there;
+libpng and zlib (sections 5 and 6), and on Linux FreeType (section 7), which draws the text there;
 it declines every other image decoder, so no other bundled library is linked.
 
 Skia's licence, the LICENSE file of its source tree at that commit, which skcms, a part of the same
@@ -270,7 +317,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ====================================================================================================
-4. libpng 1.6.51, in Skia
+5. libpng 1.6.51, in Skia
 Used in: Reckless Amphitheater (the window)
 ====================================================================================================
 
@@ -410,7 +457,7 @@ this source code in a product, acknowledgment is not required but would
 be appreciated.
 
 ====================================================================================================
-5. zlib 1.3.0.1-motley, in Skia
+6. zlib 1.3.0.1-motley, in Skia
 Used in: Reckless Amphitheater (the window)
 ====================================================================================================
 
@@ -468,7 +515,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ====================================================================================================
-6. FreeType 2.13.3, in Skia
+7. FreeType 2.13.3, in Skia
 Used in: Reckless Amphitheater (the window) on Linux
 ====================================================================================================
 
@@ -649,7 +696,7 @@ Legal Terms
 --- end of FTL.TXT ---
 
 ====================================================================================================
-7. Pawnstar 1.2.0, a chess engine
+8. Pawnstar 1.2.0, a chess engine
 Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
@@ -657,7 +704,7 @@ Pawnstar 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can red
 modify it under the terms of the GNU General Public License as published by the Free Software
 Foundation, version 3 of the License. It is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more details.
+PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
 
 The installers carry the executable of its release v1.2.0 unmodified, as published at
 https://github.com/reckless-technology/pawnstar/releases/tag/v1.2.0. It is a separate program:
@@ -675,7 +722,7 @@ That source stays available there, without charge, for as long as this version o
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-8. Zenith 2.1.0, a chess engine
+9. Zenith 2.1.0, a chess engine
 Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
@@ -684,7 +731,7 @@ modify it under the terms of the GNU General Public License as published by the 
 Foundation, either version 3 of the License, or (at your option) any later version. It is
 distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License,
-section 12, for more details.
+section 13, for more details.
 
 The installers carry the executable of its release v2.1.0 unmodified, as published at
 https://github.com/reckless-technology/zenith/releases/tag/v2.1.0. It is a separate program:
@@ -702,7 +749,7 @@ That source stays available there, without charge, for as long as this version o
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-9. Pawnstar-Go 1.2.0, a chess engine
+10. Pawnstar-Go 1.2.0, a chess engine
 Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
@@ -710,7 +757,7 @@ Pawnstar-Go 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can 
 and/or modify it under the terms of the GNU General Public License as published by the Free Software
 Foundation, version 3 of the License. It is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more details.
+PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
 
 The installers carry the executable of its release v1.2.0 unmodified, as published at
 https://github.com/reckless-technology/pawnstar-go/releases/tag/v1.2.0. It is a separate program:
@@ -728,7 +775,7 @@ That source stays available there, without charge, for as long as this version o
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-10. Pawnstar-RS 1.2.0, a chess engine
+11. Pawnstar-RS 1.2.0, a chess engine
 Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
@@ -736,7 +783,7 @@ Pawnstar-RS 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can 
 and/or modify it under the terms of the GNU General Public License as published by the Free Software
 Foundation, version 3 of the License. It is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more details.
+PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
 
 The installers carry the executable of its release v1.2.0 unmodified, as published at
 https://github.com/reckless-technology/pawnstar-rs/releases/tag/v1.2.0. It is a separate program:
@@ -754,7 +801,7 @@ That source stays available there, without charge, for as long as this version o
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-11. Stoopid Chess 3.0.0, a chess engine
+12. Stoopid Chess 3.0.0, a chess engine
 Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
@@ -762,7 +809,7 @@ Stoopid Chess 3.0.0, Copyright (C) 2009-2026 Jonny Reckless, is free software: y
 it and/or modify it under the terms of the GNU General Public License as published by the Free
 Software Foundation, version 3 of the License. It is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more details.
+PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
 
 The installers carry the executable of its release v3.0.0 unmodified, as published at
 https://github.com/reckless-technology/stoopid-chess/releases/tag/v3.0.0. It is a separate program:
@@ -780,7 +827,7 @@ That source stays available there, without charge, for as long as this version o
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-12. The GNU General Public License, version 3
+13. The GNU General Public License, version 3
 Used in: every engine above
 ====================================================================================================
 

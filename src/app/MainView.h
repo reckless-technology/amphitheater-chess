@@ -84,6 +84,9 @@ class MainView final : public reckless::view::View
     /** @param is_flipped Whether Black is at the bottom: the strips change places with the board. */
     void SetFlipped(bool is_flipped);
 
+    /** @param pieces The pieces the board is drawn with; outlive the view, or the next call. */
+    void SetPieces(const PieceSet &pieces);
+
     /** @param arrows The arrows over the board. */
     void SetArrows(std::vector<BoardArrow> arrows);
 

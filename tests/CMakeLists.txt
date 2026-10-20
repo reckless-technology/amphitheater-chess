@@ -78,6 +78,7 @@ if(AMPHITHEATER_GUI)
             app/PositionEditorTest.cpp
             app/AnalysisLinesTest.cpp
             app/VariationsTest.cpp
+            app/PiecesTest.cpp
         LIBRARIES amphitheater_gui reckless_toolkit_test_support)
     target_compile_definitions(amphitheater_window_test PRIVATE AMPHITHEATER_FAKE_ENGINE="$<TARGET_FILE:amphitheater_fake_engine>")
     add_dependencies(amphitheater_window_test amphitheater_fake_engine)
@@ -109,6 +110,10 @@ endif()
 if(Python3_Interpreter_FOUND)
     add_test(NAME icon COMMAND Python3::Interpreter -I "${PROJECT_SOURCE_DIR}/tools/make_icon.py" --check)
     set_tests_properties(icon PROPERTIES SKIP_RETURN_CODE 77)
+    # The cburnett pieces as assets/pieces/cburnett/convert_pieces.py writes them from the Commons originals.
+    add_test(NAME pieces_cburnett
+             COMMAND Python3::Interpreter -I "${PROJECT_SOURCE_DIR}/assets/pieces/cburnett/convert_pieces.py" --check)
+    set_tests_properties(pieces_cburnett PROPERTIES SKIP_RETURN_CODE 77)
 endif()
 
 # THIRD-PARTY-NOTICES.txt as tools/third_party_notices.py writes it from this tree's fetches and the engines' pins.

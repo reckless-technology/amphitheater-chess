@@ -7,7 +7,19 @@
 namespace amphitheater::app
 {
 
-PieceSet PieceSet::FromEmbedded(std::string *error)
+bool IsPieceSet(std::string_view id)
+{
+    for (const PieceSetName &set : kPieceSets)
+    {
+        if (id == set.id)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+PieceSet PieceSet::FromEmbedded(std::string_view set_id, std::string *error)
 {
     PieceSet set;
     for (const chess::Color color : {chess::kWhite, chess::kBlack})
@@ -15,7 +27,7 @@ PieceSet PieceSet::FromEmbedded(std::string *error)
         for (const chess::Piece piece :
              {chess::kPawn, chess::kKnight, chess::kBishop, chess::kRook, chess::kQueen, chess::kKing})
         {
-            const std::string name  = FileName(color, piece);
+            const std::string name  = FileName(set_id, color, piece);
             const auto        bytes = reckless::embedded::Find(name);
             std::string       why;
             if (bytes.empty())
@@ -62,9 +74,10 @@ void PieceSet::Draw(reckless::gfx::Canvas &canvas, chess::Color color, chess::Pi
     }
 }
 
-std::string PieceSet::FileName(chess::Color color, chess::Piece piece)
+std::string PieceSet::FileName(std::string_view set, chess::Color color, chess::Piece piece)
 {
-    return std::string("pieces/") + (color == chess::kWhite ? 'w' : 'b') + chess::PieceLetter(piece) + ".svg";
+    return "pieces/" + std::string(set) + "/" + (color == chess::kWhite ? 'w' : 'b') + chess::PieceLetter(piece) +
+           ".svg";
 }
 
 int PieceSet::IndexOf(chess::Color color, chess::Piece piece)

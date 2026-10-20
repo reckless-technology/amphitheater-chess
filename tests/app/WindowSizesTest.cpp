@@ -123,8 +123,8 @@ TEST(WindowSizes, TheViewMenuOffersFiveSizesUnderARuleTicksTheOneInForceAndDimsT
     {
         titles.push_back(entry.separator ? "-" : entry.title);
     }
-    EXPECT_EQ(titles, (std::vector<std::string>{"Flip the board", "Engine log", "Clear the engine log", "-", "50%",
-                                                "75%", "100%", "125%", "150%", "-", "Larger", "Smaller"}));
+    EXPECT_EQ(titles, (std::vector<std::string>{"Flip the board", "Engine log", "Clear the engine log", "Pieces", "-",
+                                                "50%", "75%", "100%", "125%", "150%", "-", "Larger", "Smaller"}));
     for (const int command : {kWindowSize50, kWindowSize100, kWindowSize150, kWindowLarger, kWindowSmaller})
     {
         EXPECT_FALSE(Find(ViewMenu(BuildMenuBar(state)), command)->enabled) << "no window to size: " << command;

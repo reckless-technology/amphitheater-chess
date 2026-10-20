@@ -95,8 +95,15 @@ struct BoardRig
 TEST(Pieces, EveryPieceIsReadFromTheBinary)
 {
     EXPECT_TRUE(Pieces().IsComplete());
-    EXPECT_EQ(PieceSet::FileName(chess::kWhite, chess::kKing), "pieces/wK.svg");
-    EXPECT_EQ(PieceSet::FileName(chess::kBlack, chess::kKnight), "pieces/bN.svg");
+    EXPECT_EQ(PieceSet::FileName("cburnett", chess::kWhite, chess::kKing), "pieces/cburnett/wK.svg");
+    EXPECT_EQ(PieceSet::FileName("staunton", chess::kBlack, chess::kKnight), "pieces/staunton/bN.svg");
+    for (const PieceSetName &set : kPieceSets)
+    {
+        EXPECT_TRUE(PieceSet::FromEmbedded(set.id).IsComplete()) << set.id << ": every piece carried and read";
+        EXPECT_TRUE(IsPieceSet(set.id));
+    }
+    EXPECT_FALSE(IsPieceSet("merida"));
+    EXPECT_EQ(kDefaultPieceSet, "cburnett");
 }
 
 TEST(Board, SquaresMapBothWaysAndTurnWithTheBoard)

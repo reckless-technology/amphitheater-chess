@@ -30,8 +30,11 @@ own, and `-DAMPHITHEATER_GUI=OFF` builds them with no submodule. The toolkit's i
 the host's headers are included by their directory (`"chess/Position.h"`) and never take a toolkit header's name. A
 bump of the submodule points at a commit on the toolkit's `main` (the changes job checks).
 
-**The pieces** are Jonny's own Staunton set, `assets/pieces/staunton/{w,b}{K,Q,R,B,N,P}.svg`, written by
-`gen_pieces.py` beside them (`preview.png` shows them); regenerate rather than edit by hand. Each is a 100 x 100
+**The pieces** come in two sets, each `assets/pieces/<set>/{w,b}{K,Q,R,B,N,P}.svg`, chosen under View > Pieces:
+Colin M.L. Burnett's (`cburnett`, the default), written by `convert_pieces.py` beside them from the Wikimedia Commons
+originals in `source/` (BSD, `source/LICENSE.txt`, credited in the notices; svgelements and skia-pathops in
+`tools/requirements.txt`; CTest `pieces_cburnett` checks them), and Jonny's own Staunton set (`staunton`), written by
+`gen_pieces.py` beside it (`preview.png` shows it). Regenerate rather than edit by hand. Each is a 100 x 100
 viewBox using only `<path>` with the commands M, L, Q, C and Z (absolute), `<circle>`, one `<linearGradient>` in
 `<defs>` (x1/y1/x2/y2 in the object's bounding box, two `<stop>`s with `stop-color`), and the presentation attributes
 `fill` (a colour, `none` or `url(#id)`), `stroke`, `stroke-width`, `stroke-linejoin`, `stroke-linecap` and
