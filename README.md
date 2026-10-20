@@ -217,8 +217,18 @@ the game's progress and the engines' lines - into the log, and into each engine'
 back removes the person's last move and the engine's reply and resumes the game with both clocks as they were recorded
 at the move it goes back to (`PlaySnapshot::clocks`, a reading after every move, carried into the resumed game so a
 second take-back finds its own);
-Stop the game abandons it and keeps it on the board; a finished game's result and reason show over the board. With
-no game being played, a move on the board takes the game shown on from the position shown.
+Stop the game abandons it and keeps it on the board; a finished game's result and reason show over the board.
+
+The game shown is kept with its variations (`chess::GameTree`): every line played from its start, each move with its
+comments and NAGs. The board, the moves list and the graph show one line of it at a time. With no game being played, a
+move on the board goes on from the position shown: the line's own next move steps on along it, and any other adds a
+variation there - or enters the one already there - and shows the line through it; the line it left is kept. Under
+each move's row the moves list shows a row for each variation leaving the line at that move, its first moves dimmed,
+"main line:" before the main line's while a variation is shown; a press on the row enters the variation at its first
+move. Game > Promote variation makes the variation shown its line's main continuation, the old one becoming its first
+variation; Game > Delete variation takes it off and shows the line it left, at the position where it left; Game > Take
+back takes the line's last move off. A game opened from a file shows its main line with its variations under it, and
+File > Save PGN writes every line, the comments and NAGs in their places.
 
 Analyse (the plate, or Engines > Analyse) runs the engines marked for analysis in the engine list - every configured
 engine where none is marked - in infinite mode on the position the board shows, with three lines each where an engine
@@ -261,10 +271,9 @@ folder is left as it is.
 
 File > Open PGN shows a file's game, or lists a file's many games - number, players, result, event, date, length - to
 pick one from (a game that cannot be read is skipped and counted); a `.pgn` named on the command line opens with the
-window. File > Save PGN writes the game shown: the game as it was read, its tags, comments and variations whole, while
-its moves are unchanged; a game played on the board as the core records it, each move's score (from White's side),
-depth and time as its
-comment; anything else with the Seven Tag Roster from what the card knows. Edit > Copy FEN and Copy PGN put the
+window. File > Save PGN writes the game shown with every variation: a game read from a file with its tags while its main
+line is unchanged, a game played on the board with the tags and comments the core records - each move's score (from
+White's side), depth and time - and anything else with the Seven Tag Roster from what the card knows. Edit > Copy FEN and Copy PGN put the
 position shown or the game on the clipboard; Paste FEN or PGN takes a position, a game, or a list of games to pick
 from. The window reads and writes the clipboard through the toolkit's app platform.
 

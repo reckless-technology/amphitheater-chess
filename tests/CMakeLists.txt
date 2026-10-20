@@ -12,7 +12,7 @@ endfunction()
 
 amphitheater_suite(amphitheater_chess_test
     SOURCES chess/PerftTest.cpp chess/FenTest.cpp chess/NotationTest.cpp chess/GameTest.cpp chess/PgnTest.cpp
-            chess/TimeControlTest.cpp chess/PolyglotTest.cpp chess/BoardSetupTest.cpp
+            chess/TimeControlTest.cpp chess/PolyglotTest.cpp chess/BoardSetupTest.cpp chess/GameTreeTest.cpp
     LIBRARIES amphitheater_chess)
 add_test(NAME chess COMMAND amphitheater_chess_test)
 
@@ -77,6 +77,7 @@ if(AMPHITHEATER_GUI)
             app/LogPanelTest.cpp
             app/PositionEditorTest.cpp
             app/AnalysisLinesTest.cpp
+            app/VariationsTest.cpp
         LIBRARIES amphitheater_gui reckless_toolkit_test_support)
     target_compile_definitions(amphitheater_window_test PRIVATE AMPHITHEATER_FAKE_ENGINE="$<TARGET_FILE:amphitheater_fake_engine>")
     add_dependencies(amphitheater_window_test amphitheater_fake_engine)

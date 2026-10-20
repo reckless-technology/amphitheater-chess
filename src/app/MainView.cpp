@@ -92,6 +92,12 @@ MainView::MainView(const PieceSet &pieces)
             on_select_ply(ply);
         }
     };
+    moves_.on_variation = [this](int id) {
+        if (on_variation)
+        {
+            on_variation(id);
+        }
+    };
     graph_.on_select = [this](int ply) {
         if (on_select_ply)
         {
@@ -148,9 +154,10 @@ void MainView::SetPlayers(PlayerStripState white, PlayerStripState black)
     bottom_strip_.SetState(board_.flipped() ? black_ : white_);
 }
 
-void MainView::SetMoves(std::vector<std::string> sans, int first_number, bool is_black_first, int current_ply)
+void MainView::SetMoves(std::vector<std::string> sans, int first_number, bool is_black_first, int current_ply,
+                        std::vector<VariationRow> variations)
 {
-    moves_.SetMoves(std::move(sans), first_number, is_black_first, current_ply);
+    moves_.SetMoves(std::move(sans), first_number, is_black_first, current_ply, std::move(variations));
 }
 
 void MainView::SetCurrentPly(int ply)

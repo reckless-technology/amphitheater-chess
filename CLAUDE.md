@@ -63,7 +63,8 @@ GUI will save with the toolkit's JSON.
   threefold, fifty), `Pgn` (reader with variations, NAGs, comments, error recovery per game; writer with the Seven Tag
   Roster and 80 columns), `PolyglotBook` (Polyglot .bin books: the format's 781-key table in `PolyglotRandom.cpp`,
   generated from its description; keys checked against its published test keys), `TimeControl` and `Clock`, `Perft`,
-  `BoardSetup` (a position set up square by square, read back strictly), `Result`/`Status`.
+  `BoardSetup` (a position set up square by square, read back strictly), `GameTree` (a game with its variations,
+  read from and written to `PgnGame`), `Result`/`Status`.
 - `src/uci/` (`amphitheater_uci`): `ChildProcess` (`ProcessWindows.cpp`: CreateProcessW, a handle list, a kill-on-close
   job object; `ProcessPosix.cpp`: posix_spawn, a process group, SIGPIPE ignored), `ThreadSafeQueue`, `UciProtocol`
   (every info field, every option type, `go`/`position`/`setoption` formatting), `Engine` (the session: handshake,

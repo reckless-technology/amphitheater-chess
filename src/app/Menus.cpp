@@ -99,6 +99,8 @@ reckless::app::MenuBar BuildMenuBar(const MenuState &state)
                         {Item("New game...", kNewGame, Shortcut::Primary('n')),
                          Item("Take back", kTakeBack, Shortcut::Primary('z'), state.can_take_back),
                          Item("Stop the game", kStopGame, {}, state.is_game_running), MenuEntry::Separator(),
+                         Item("Promote variation", kPromoteVariation, {}, state.is_in_variation),
+                         Item("Delete variation", kDeleteVariation, {}, state.is_in_variation), MenuEntry::Separator(),
                          Item("First position", kFirst, Shortcut::Plain(ShortcutKey::kHome), state.can_step_back),
                          Item("Back a move", kBack, Shortcut::Plain(ShortcutKey::kLeft), state.can_step_back),
                          Item("Forward a move", kForward, Shortcut::Plain(ShortcutKey::kRight), state.can_step_forward),

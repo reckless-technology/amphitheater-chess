@@ -3,6 +3,7 @@
 add_library(amphitheater_chess STATIC
     BoardSetup.cpp
     Game.cpp
+    GameTree.cpp
     Notation.cpp
     Pgn.cpp
     PolyglotBook.cpp

@@ -13,6 +13,7 @@
 #include "UpdateCheck.h"
 #include "WindowSizes.h"
 #include "chess/Game.h"
+#include "chess/GameTree.h"
 
 #include "chess/Pgn.h"
 
@@ -122,10 +123,36 @@ class MainController
 
     /**
      * A person's move on the board: the person's move in a game on the board, or, with no game being played, a move
-     * that takes the game shown on from the position shown (cutting what followed it).
+     * from the position shown - the next move of the line shown, or a variation leaving it there (one already there
+     * entered, a new one added) - and the line through it shown.
      * @param move The move, legal in the position shown.
      */
     void BoardMove(chess::Move move);
+
+    /**
+     * Show a line of the game: the one through a node, at a position of it.
+     * @param id The node; the line runs on past it along its main continuations.
+     * @param ply The position to show on it.
+     */
+    void ShowLineThrough(chess::GameTree::NodeId id, int ply);
+
+    /** @return The game with its variations. */
+    const chess::GameTree &tree() const
+    {
+        return tree_;
+    }
+
+    /** @return The line shown, as the tree's nodes: game() is its moves. */
+    const std::vector<chess::GameTree::NodeId> &line() const
+    {
+        return line_;
+    }
+
+    /**
+     * @return The variation the position shown is in: the last move of the line shown at or before it that is not its
+     *         line's main continuation, else the first after it; none on the main line.
+     */
+    chess::GameTree::NodeId ShownVariation() const;
 
     /**
      * Play a game on the board, a game on the board already being stopped.
@@ -288,6 +315,24 @@ class MainController
     /** The view brought to the game, the position shown and the players. */
     void Refresh();
 
+    /** @return Whether the line shown is the game's moves: else the game was set from outside the tree. */
+    bool LineMatchesGame() const;
+
+    /** The tree made again from the game shown - its record's PGN, comments and all, where that is its record - and
+        its main line shown. */
+    void MirrorGame();
+
+    /**
+     * Show a line of the tree: the game its moves, at a position of it, the scores of the moves it shares with the
+     * line shown before kept and the rest let go.
+     * @param line The line.
+     * @param ply The position.
+     */
+    void ShowLine(std::vector<chess::GameTree::NodeId> line, int ply);
+
+    /** @return The variations leaving the line shown, for the moves list. */
+    std::vector<VariationRow> LineVariations() const;
+
     /** @return The graph's caption: the move shown and White's score after it, "12...b4  +0.42". */
     std::string EvalCaption() const;
 
@@ -379,11 +424,14 @@ class MainController
     std::string                   file_name_;  ///< The file the game shown was opened from or saved to; empty for none.
     EngineReaper                  reaper_; ///< Engines being quit off the window's thread; outlives the sessions below.
     ControllerFiles               files_;  ///< Where it keeps things.
-    EngineCatalogue               catalogue_;       ///< The configured engines.
-    chess::Game                   game_;            ///< The game shown.
-    GameInfo                      info_;            ///< What the card says of it.
-    std::vector<EvalSeries>       game_series_;     ///< The game's engines' scores, from White's side, as known.
-    std::vector<EvalSeries>       analysis_series_; ///< Each analysing engine's scores for the positions it analysed.
+    EngineCatalogue               catalogue_;   ///< The configured engines.
+    chess::Game                   game_;        ///< The line shown, as a game.
+    chess::GameTree               tree_;        ///< The game shown with its variations.
+    std::vector<chess::GameTree::NodeId> line_; ///< The line shown, as the tree's nodes.
+    chess::Outcome main_outcome_; ///< How the main line ended, by its record or its play where the rules do not say.
+    GameInfo       info_;         ///< What the card says of it.
+    std::vector<EvalSeries> game_series_;        ///< The game's engines' scores, from White's side, as known.
+    std::vector<EvalSeries> analysis_series_;    ///< Each analysing engine's scores for the positions it analysed.
     std::vector<EvalSeries> opening_series_;     ///< The scores a game on the board was started with, from a take-back.
     int                     view_ply_   = 0;     ///< The position shown.
     bool                    is_flipped_ = false; ///< Black at the bottom.

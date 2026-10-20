@@ -142,7 +142,11 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
     };
     view_.on_command    = [this](int command) { Command(command); };
     view_.on_select_ply = [this](int ply) { ShowPly(ply); };
-    view_.on_move       = [this](chess::Move move) { BoardMove(move); };
+    view_.on_variation  = [this](int id) {
+        // The variation entered at its first move.
+        ShowLineThrough(id, tree_.node(id).ply);
+    };
+    view_.on_move = [this](chess::Move move) { BoardMove(move); };
     if (!services_.set_menu_bar)
     {
         // No platform's bar: the window's own, drawn across its top, its shortcuts pressed by whoever drives it.
@@ -230,6 +234,25 @@ void MainController::Command(int command)
         break;
     case kClearLog:
         view_.log().Clear();
+        break;
+    case kPromoteVariation:
+        if (const chess::GameTree::NodeId variation = ShownVariation();
+            variation != chess::GameTree::kNone && !IsPlaying())
+        {
+            tree_.Promote(variation);
+            ShowLine(line_, view_ply_);
+        }
+        break;
+    case kDeleteVariation:
+        if (const chess::GameTree::NodeId variation = ShownVariation();
+            variation != chess::GameTree::kNone && !IsPlaying())
+        {
+            // The line it left shown again, at the position the variation left it.
+            const chess::GameTree::NodeId parent = tree_.node(variation).parent;
+            const int                     ply    = tree_.node(parent).ply;
+            tree_.Remove(variation);
+            ShowLine(tree_.LineThrough(parent), ply);
+        }
         break;
     case kShowLog:
         view_.ToggleLog();
@@ -356,6 +379,140 @@ void MainController::Command(int command)
     }
 }
 
+void MainController::ShowLineThrough(chess::GameTree::NodeId id, int ply)
+{
+    if (IsPlaying())
+    {
+        return;
+    }
+    ShowLine(tree_.LineThrough(id), ply);
+}
+
+chess::GameTree::NodeId MainController::ShownVariation() const
+{
+    for (int index = std::min(view_ply_, static_cast<int>(line_.size())) - 1; index >= 0; --index)
+    {
+        if (!tree_.IsMainContinuation(line_[static_cast<std::size_t>(index)]))
+        {
+            return line_[static_cast<std::size_t>(index)];
+        }
+    }
+    for (std::size_t index = static_cast<std::size_t>(std::max(0, view_ply_)); index < line_.size(); ++index)
+    {
+        if (!tree_.IsMainContinuation(line_[index]))
+        {
+            return line_[index];
+        }
+    }
+    return chess::GameTree::kNone;
+}
+
+bool MainController::LineMatchesGame() const
+{
+    if (static_cast<int>(line_.size()) != game_.PlyCount())
+    {
+        return false;
+    }
+    for (std::size_t index = 0; index < line_.size(); ++index)
+    {
+        if (!(tree_.node(line_[index]).move == game_.Moves()[index]))
+        {
+            return false;
+        }
+    }
+    return tree_.start().ToFen() == game_.StartPosition().ToFen();
+}
+
+void MainController::MirrorGame()
+{
+    // A record's PGN where it is the game's - its comments, its NAGs and its variations kept - else the moves alone.
+    tree_ = chess::GameTree::FromGame(game_);
+    if (source_pgn_)
+    {
+        const chess::Game read = source_pgn_->ToGame();
+        if (read.UciMoves() == game_.UciMoves() && read.StartPosition().ToFen() == game_.StartPosition().ToFen())
+        {
+            tree_ = chess::GameTree::FromPgn(*source_pgn_);
+        }
+    }
+    line_         = tree_.MainLine();
+    main_outcome_ = game_.GetOutcome();
+}
+
+void MainController::ShowLine(std::vector<chess::GameTree::NodeId> line, int ply)
+{
+    std::size_t shared = 0;
+    while (shared < line.size() && shared < line_.size() && line[shared] == line_[shared])
+    {
+        ++shared;
+    }
+    line_ = std::move(line);
+    game_ = tree_.GameOf(line_);
+    // The main line to its end keeps how it ended where its record or its play says, not the rules alone.
+    const std::vector<chess::GameTree::NodeId> main = tree_.MainLine();
+    if (line_ == main && main_outcome_.IsOver() && !game_.IsOver())
+    {
+        game_.SetOutcome(main_outcome_);
+    }
+    // The scores of the moves both lines share stay; a score of a move the line no longer holds goes.
+    for (auto *list : {&game_series_, &analysis_series_})
+    {
+        for (EvalSeries &series : *list)
+        {
+            series.points.resize(std::min(series.points.size(), shared));
+        }
+    }
+    FitSeries();
+    view_ply_ = std::clamp(ply, 0, game_.PlyCount());
+    view_.board().SetBanner({}, {});
+    Refresh();
+}
+
+std::vector<VariationRow> MainController::LineVariations() const
+{
+    std::vector<VariationRow> rows;
+    for (std::size_t index = 0; index < line_.size(); ++index)
+    {
+        const chess::GameTree::NodeId parent = index == 0 ? chess::GameTree::kRoot : line_[index - 1];
+        for (const chess::GameTree::NodeId other : tree_.node(parent).children)
+        {
+            if (other == line_[index])
+            {
+                continue;
+            }
+            // Its first moves, numbered from the position it leaves: "(12...a5 13.Nd5 Nxd5 ...)".
+            const std::vector<chess::GameTree::NodeId> through = tree_.LineThrough(other);
+            const std::size_t                          from    = index;
+            constexpr std::size_t                      kShown  = 6;
+            std::string                                text;
+            for (std::size_t at = from; at < through.size() && at < from + kShown; ++at)
+            {
+                const chess::Position &before = tree_.node(tree_.node(through[at]).parent).position;
+                if (before.SideToMove() == chess::kWhite)
+                {
+                    text += (text.empty() ? "" : " ") + std::to_string(before.FullmoveNumber()) + ".";
+                }
+                else if (at == from)
+                {
+                    text += std::to_string(before.FullmoveNumber()) + "...";
+                }
+                else
+                {
+                    text += ' ';
+                }
+                text += tree_.node(through[at]).san;
+            }
+            if (through.size() > from + kShown)
+            {
+                text += " \xe2\x80\xa6";
+            }
+            rows.push_back({static_cast<int>(index),
+                            (tree_.IsMainContinuation(other) ? "main line: (" : "(") + text + ")", other});
+        }
+    }
+    return rows;
+}
+
 void MainController::BoardMove(chess::Move move)
 {
     if (IsPlaying())
@@ -370,21 +527,22 @@ void MainController::BoardMove(chess::Move move)
         }
         return;
     }
-    // No game is played: the move takes the game shown on from the position shown, cutting what followed it.
-    chess::Game next(game_.StartPosition());
-    for (int ply = 0; ply < view_ply_; ++ply)
+    // No game is played: the move goes on from the position shown - the line's next move, or a variation leaving the
+    // line there, one already there entered and a new one added - and the line through it is shown.
+    if (view_ply_ < static_cast<int>(line_.size()) &&
+        tree_.node(line_[static_cast<std::size_t>(view_ply_)]).move == move)
     {
-        next.Play(game_.Moves()[static_cast<std::size_t>(ply)]);
+        ShowPly(view_ply_ + 1); // the line's own next move: on along the line shown
+        return;
     }
-    if (!next.Play(move))
+    const chess::GameTree::NodeId parent =
+        view_ply_ > 0 ? line_[static_cast<std::size_t>(view_ply_ - 1)] : chess::GameTree::kRoot;
+    const chess::GameTree::NodeId child = tree_.Add(parent, move);
+    if (child == chess::GameTree::kNone)
     {
         return;
     }
-    game_ = std::move(next);
-    FitSeries();
-    view_ply_ = game_.PlyCount();
-    view_.board().SetBanner({}, {});
-    Refresh();
+    ShowLine(tree_.LineThrough(child), view_ply_ + 1);
 }
 
 void MainController::StartGame(PlaySettings settings)
@@ -470,13 +628,14 @@ void MainController::TakeBack()
 {
     if (!IsPlaying())
     {
-        if (game_.PlyCount() > 0)
+        // The line's last move taken off the game, and the line shown up to the move before.
+        if (!line_.empty())
         {
-            game_.Undo();
-            FitSeries();
-            view_ply_ = game_.PlyCount();
-            view_.board().SetBanner({}, {});
-            Refresh();
+            std::vector<chess::GameTree::NodeId> shorter = line_;
+            tree_.Remove(shorter.back());
+            shorter.pop_back();
+            const int ply = static_cast<int>(shorter.size());
+            ShowLine(std::move(shorter), ply);
         }
         return;
     }
@@ -565,7 +724,8 @@ void MainController::SetAnalysing(bool is_on)
 void MainController::ShowPgnGame(const chess::PgnGame &game)
 {
     ShowGame(game.ToGame(), InfoFromPgn(game));
-    source_pgn_  = game;
+    source_pgn_ = game;
+    MirrorGame();                     // its variations, comments and NAGs
     game_series_ = SeriesOfPgn(game); // the scores its comments give, from White's side
     Refresh();
 }
@@ -608,7 +768,16 @@ void MainController::OpenPgn(const std::string &path)
 
 chess::PgnGame MainController::CurrentPgn() const
 {
-    return PgnOf(game_, info_, source_pgn_, TodayInPgn());
+    // The tags and the result the main line's, the movetext every line of the tree with what was written round it.
+    chess::Game main = tree_.GameOf(tree_.MainLine());
+    if (main_outcome_.IsOver() && !main.IsOver() && main.PlyCount() == static_cast<int>(tree_.MainLine().size()))
+    {
+        main.SetOutcome(main_outcome_);
+    }
+    chess::PgnGame pgn = PgnOf(main, info_, source_pgn_, TodayInPgn());
+    pgn.start          = tree_.start();
+    pgn.moves          = tree_.ToPgnLine();
+    return pgn;
 }
 
 bool MainController::SavePgn(const std::string &path)
@@ -870,6 +1039,7 @@ void MainController::PollCompetition()
         FitSeries();
         view_ply_   = game_.PlyCount();
         source_pgn_ = record->ToPgn();
+        MirrorGame(); // the record's comments on the tree's moves
         if (competition_->IsFinished())
         {
             view_.board().SetBanner("Finished", info_.score.empty() ? std::string(kind) + " over" : info_.score);
@@ -1059,6 +1229,7 @@ void MainController::PollPlay()
         if (const auto record = play_->Record())
         {
             source_pgn_ = record->ToPgn(); // the game as played: its clocks, scores and depths as comments
+            MirrorGame();
         }
     }
     Refresh();
@@ -1255,6 +1426,7 @@ MenuState MainController::Menus() const
     MenuState state;
     state.is_dialog_open   = dialog_ != nullptr;
     state.is_log_open      = view_.is_log_open();
+    state.is_in_variation  = !IsPlaying() && ShownVariation() != chess::GameTree::kNone;
     state.updates_revision = updates_ ? updates_->revision() : 0;
     if (services_.window_sizes)
     {
@@ -1292,6 +1464,10 @@ MenuState MainController::Menus() const
 
 void MainController::Refresh()
 {
+    if (!LineMatchesGame())
+    {
+        MirrorGame(); // the game set from outside the tree: a game played, followed or opened
+    }
     const chess::Position     &position = game_.PositionAt(view_ply_);
     std::optional<chess::Move> last;
     if (view_ply_ > 0)
@@ -1301,7 +1477,8 @@ void MainController::Refresh()
     view_.SetBoard(position, last, IsPersonToMove() || (!IsPlaying() && position.GenerateLegalMoves().size() > 0));
     view_.SetFlipped(is_flipped_);
     const chess::Position &start = game_.StartPosition();
-    view_.SetMoves(game_.SanMoves(), start.FullmoveNumber(), start.SideToMove() == chess::kBlack, view_ply_);
+    view_.SetMoves(game_.SanMoves(), start.FullmoveNumber(), start.SideToMove() == chess::kBlack, view_ply_,
+                   LineVariations());
     RefreshStrips();
 
     std::vector<CardLine> card;

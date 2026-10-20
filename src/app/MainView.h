@@ -66,6 +66,7 @@ class MainView final : public reckless::view::View
     std::function<void(int command)>      on_command;    ///< A menu item, a plate or a key: a Command.
     std::function<void(chess::Move move)> on_move;       ///< A person's move on the board.
     std::function<void(int ply)>          on_select_ply; ///< A move pressed in the list or on the graph.
+    std::function<void(int id)>           on_variation;  ///< A variation pressed in the list: its handle.
     /** The engine log folded, opened or made another height by a person: the layout to keep (log_height(),
         is_log_open()). */
     std::function<void()> on_log_layout;
@@ -99,8 +100,10 @@ class MainView final : public reckless::view::View
      * @param first_number The first move's number.
      * @param is_black_first Whether the first move is Black's.
      * @param current_ply The position the board shows.
+     * @param variations The variations leaving the line, shown under the moves they are alternatives to.
      */
-    void SetMoves(std::vector<std::string> sans, int first_number, bool is_black_first, int current_ply);
+    void SetMoves(std::vector<std::string> sans, int first_number, bool is_black_first, int current_ply,
+                  std::vector<VariationRow> variations = {});
 
     /** @param ply The position the board shows, lit in the list. */
     void SetCurrentPly(int ply);

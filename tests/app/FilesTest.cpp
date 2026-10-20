@@ -114,13 +114,14 @@ TEST(Files, AGameOpenedFromPgnIsShownAndSavedBackWithItsCommentsAndVariations)
     EXPECT_NE(saved->find("{the best by test}"), std::string::npos);
     EXPECT_NE(saved->find("(1... c5 2. Nf3)"), std::string::npos);
 
-    // A move made from the middle of the game makes it another: the save is of the new game.
+    // A move made from the middle of the game is a variation: the save keeps the game whole, the move beside its own.
     rig.controller.ShowPly(2);
     rig.view.board().on_move(*chess::ParseUciMove(rig.controller.game().PositionAt(2), "g1f3"));
     const std::string changed = chess::WritePgn(rig.controller.CurrentPgn());
-    EXPECT_EQ(changed.find("the best by test"), std::string::npos);
-    EXPECT_NE(changed.find("2. Nf3"), std::string::npos);
+    EXPECT_NE(changed.find("the best by test"), std::string::npos);
+    EXPECT_NE(changed.find("2. Qh5 (2. Nf3) 2... Nc6"), std::string::npos) << changed;
     EXPECT_NE(changed.find("[White \"Alpha\"]"), std::string::npos);
+    EXPECT_NE(changed.find("1-0"), std::string::npos) << "the main line's result kept";
 }
 
 TEST(Files, AFileOfManyGamesOffersAListAndShowsThePickedOne)

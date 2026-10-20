@@ -19,7 +19,8 @@ void ShowSample(MainView &view)
     }
     const int ply = game.PlyCount();
     view.SetBoard(game.CurrentPosition(), game.Moves().back(), false);
-    view.SetMoves(game.SanMoves(), 1, false, ply);
+    // The Scheveningen's 6...e6 beside the game's 6...e5, as a variation under the sixth move's row.
+    view.SetMoves(game.SanMoves(), 1, false, ply, {{11, "(6...e6 7.f3 b5 8.g4 h6 9.Qd2 Nbd7 \xe2\x80\xa6)", 1}});
 
     const auto from_uci = [&game](const char *text) {
         const auto move = chess::ParseUciMove(game.CurrentPosition(), text);

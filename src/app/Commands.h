@@ -20,14 +20,16 @@ enum Command : int
     kPasteFen,      ///< Edit > Paste FEN or PGN: a position, or a game, from the clipboard.
     kSetUpPosition, ///< Edit > Set up position...: pieces put on a board, the position shown from there.
 
-    kTakeBack = 300, ///< Game > Take back: the person's last move and the engine's reply.
-    kStopGame,       ///< Game > Stop the game: abandoned, kept on the board.
-    kFirst,          ///< Game > First position.
-    kBack,           ///< Game > Back a move.
-    kForward,        ///< Game > Forward a move.
-    kLast,           ///< Game > Last position.
-    kFlip,           ///< View > Flip the board.
-    kAnalyse,        ///< Engines > Analyse: the selected engines think about the position shown.
+    kTakeBack = 300,   ///< Game > Take back: the person's last move and the engine's reply.
+    kStopGame,         ///< Game > Stop the game: abandoned, kept on the board.
+    kFirst,            ///< Game > First position.
+    kBack,             ///< Game > Back a move.
+    kForward,          ///< Game > Forward a move.
+    kLast,             ///< Game > Last position.
+    kFlip,             ///< View > Flip the board.
+    kAnalyse,          ///< Engines > Analyse: the selected engines think about the position shown.
+    kPromoteVariation, ///< Game > Promote variation: the variation shown made its line's main continuation.
+    kDeleteVariation,  ///< Game > Delete variation: the variation shown taken off the game.
 
     kEngineManager = 400, ///< Engines > Manage engines...: add, remove and configure engines.
 
