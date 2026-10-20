@@ -127,6 +127,7 @@ runtime.
 | `packaging` | `tests/packaging/test_bundled_engines.py` | the engines' pins, a hash that differs refused, the stage's layout and manifest, the handshake and the smoke test, the pins' update |
 | `notices` | `tools/third_party_notices.py --check` | `THIRD-PARTY-NOTICES.txt` as the build's fetches and the engines' pins write it |
 | `icon` | `tools/make_icon.py --check` | the committed icon as the script renders it from the artwork; skipped where the Python lacks Pillow or resvg-py |
+| `pieces_cburnett` | `assets/pieces/cburnett/convert_pieces.py --check` | the committed cburnett pieces as the script writes them from the Commons originals; skipped where the Python lacks svgelements or skia-pathops |
 | `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings`, `render_about` | `amphitheater_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```
@@ -465,5 +466,7 @@ entry point, `src/app/Main.cpp`, which opens a window and runs in the window sui
 (universal, each binary held to arm64 and x86_64 and to macOS 13.3, the app's bundle to its signature, the icon its
 plist names - `assets/icon/Icon.icns` byte for byte - and a plist that asks for no microphone), each platform's packages unsigned (above), clang-format 22.1.8, and `CI`, the one
 job to require. Every job checks the toolkit
-submodule out with its read-only deploy key (`.github/actions/toolkit`); the window suites (label `window`) run under
+submodule out with its read-only deploy key (`.github/actions/toolkit`) and runs the suites' scripts with a venv kept
+on the runner holding `tools/requirements.txt` (`.github/actions/cpp`), so the `icon` and `pieces_cburnett` checks run
+there rather than skip; the window suites (label `window`) run under
 `xvfb-run` on Linux and on the runners' own displays elsewhere.

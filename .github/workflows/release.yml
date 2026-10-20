@@ -174,7 +174,8 @@ jobs:
           set -o pipefail
           mkdir -p build
           cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
-            "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" | tee build/configure.log
+            "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" \
+            "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" | tee build/configure.log
           grep -q "Reckless Amphitheater $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
       - name: Build
         run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}

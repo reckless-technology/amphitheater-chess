@@ -116,7 +116,7 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build/ci-linux -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
-          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: cmake --build build/ci-linux -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
@@ -164,6 +164,7 @@ jobs:
         run: >
           cmake -S . -B build/ci-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAMPHITHEATER_ASAN=ON
           -DFETCHCONTENT_UPDATES_DISCONNECTED=ON "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+          "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: cmake --build build/ci-asan -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
@@ -202,6 +203,7 @@ jobs:
         run: >
           cmake -S . -B build/ci-coverage -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAMPHITHEATER_COVERAGE=ON
           -DFETCHCONTENT_UPDATES_DISCONNECTED=ON "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
+          "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: |
           find build/ci-coverage -name '*.gcda' -delete

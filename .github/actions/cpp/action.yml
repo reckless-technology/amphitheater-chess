@@ -3,8 +3,9 @@ description: >
   What every C++ job of the host needs on a self-hosted runner: on Linux g++, CMake and Ninja, and the libraries the
   window's toolkit links (X11, FreeType, fontconfig, found by pkg-config) with xvfb for a display, installed with the
   runner's passwordless sudo where they are missing; on macOS Xcode's clang and Homebrew's CMake and Ninja; on Windows
-  the MSVC developer environment of the Visual Studio vswhere finds, exported to the job's later steps; on macOS and
-  Windows a Python for the packaging scripts and the suites, a venv under the tool cache; and a directory under the
+  the MSVC developer environment of the Visual Studio vswhere finds, exported to the job's later steps; on every
+  platform a Python for the packaging scripts and the suites, a venv under the tool cache holding
+  tools/requirements.txt, so the suites' icon and pieces checks run rather than skip; and a directory under the
   runner's tool cache, keyed by compiler, where FetchContent keeps GoogleTest, Skia and the toolkit's other fetches
   between runs.
 outputs:
@@ -15,7 +16,7 @@ outputs:
     description: The build's parallelism for this runner
     value: ${{ steps.unix.outputs.jobs || steps.windows.outputs.jobs }}
   python:
-    description: The Python the packaging scripts and the suites run with (macOS, Windows); empty on Linux
+    description: The Python the packaging scripts and the suites run with, tools/requirements.txt installed
     value: ${{ steps.unix.outputs.python || steps.windows.outputs.python }}
 runs:
   using: composite
@@ -57,13 +58,16 @@ runs:
           compiler="appleclang$(clang --version | sed -nE '1s/.*version ([0-9]+).*/\1/p')"
           jobs=$(sysctl -n hw.ncpu)
           echo "$(uname -m), $jobs cores, macOS $(sw_vers -productVersion); $(clang --version | head -1)"
-          # The packaging scripts' and the suites' Python: a venv of the runner's own Python, kept. The build needs
-          # none: the app's icon is committed (tools/make_icon.py).
-          venv="$RUNNER_TOOL_CACHE/reckless-amphitheater-python"
-          [ -x "$venv/bin/python" ] || python3 -m venv "$venv"
-          echo "python=$venv/bin/python" >> "$GITHUB_OUTPUT"
-          echo "the scripts' Python: $("$venv/bin/python" --version)"
         fi
+        # The packaging scripts' and the suites' Python: a venv of the runner's own Python, kept, with the packages the
+        # icon's and the pieces' checks render with (tools/requirements.txt). The build needs none: the icon and the
+        # pieces are committed.
+        venv="$RUNNER_TOOL_CACHE/reckless-amphitheater-python"
+        [ -x "$venv/bin/python" ] || python3 -m venv "$venv"
+        "$venv/bin/python" -m pip install --quiet --disable-pip-version-check -r tools/requirements.txt
+        "$venv/bin/python" -c "import resvg_py, PIL, svgelements, pathops"
+        echo "python=$venv/bin/python" >> "$GITHUB_OUTPUT"
+        echo "the scripts' Python: $("$venv/bin/python" --version), tools/requirements.txt installed"
         cmake --version | head -1; echo "ninja $(ninja --version)"
         deps="$RUNNER_TOOL_CACHE/reckless-amphitheater-deps/$compiler-ninja"
         mkdir -p "$deps"
@@ -96,13 +100,18 @@ runs:
         "dependencies: $deps"
         "deps=$deps" >> $env:GITHUB_OUTPUT
         "jobs=$env:NUMBER_OF_PROCESSORS" >> $env:GITHUB_OUTPUT
-        # The packaging scripts' and the suites' Python: a venv of the runner's machine-wide Python, kept. The build
-        # needs none: the app's icon is committed (tools/make_icon.py).
+        # The packaging scripts' and the suites' Python: a venv of the runner's machine-wide Python, kept, with the
+        # packages the icon's and the pieces' checks render with (tools/requirements.txt). The build needs none: the
+        # icon and the pieces are committed.
         $venv = Join-Path $env:RUNNER_TOOL_CACHE 'reckless-amphitheater-python'
         $python = Join-Path $venv 'Scripts/python.exe'
         if (-not (Test-Path $python)) {
           python -m venv $venv
           if ($LASTEXITCODE -ne 0) { throw "No Python on the runner to make the scripts' venv with" }
         }
-        "the scripts' Python: $(& $python --version)"
+        & $python -m pip install --quiet --disable-pip-version-check -r tools/requirements.txt
+        if ($LASTEXITCODE -ne 0) { throw "tools/requirements.txt could not be installed in $venv" }
+        & $python -c "import resvg_py, PIL, svgelements, pathops"
+        if ($LASTEXITCODE -ne 0) { throw "the scripts' venv lacks a package of tools/requirements.txt" }
+        "the scripts' Python: $(& $python --version), tools/requirements.txt installed"
         "python=$python" >> $env:GITHUB_OUTPUT
