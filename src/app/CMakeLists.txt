@@ -34,6 +34,7 @@ add_library(amphitheater_gui STATIC
     Evaluations.cpp
     GameFiles.cpp
     GamePickerDialog.cpp
+    LayoutSettings.cpp
     MainController.cpp
     MainView.cpp
     Menus.cpp

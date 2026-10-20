@@ -3,8 +3,9 @@
 /// (docs/design/main-window-mockup.html): the menu bar across the top where it is drawn (Linux, and a window drawn to
 /// an image), none where the platform shows the bar itself (macOS, Windows); the board column - a player's strip above
 /// and below the board, the navigation plates under it - and beside it the moves and the game's card; across the foot
-/// the analysis with the evaluation graph, the engine log and the status bar. The board grows with the window; the foot
-/// keeps its height.
+/// the analysis with the evaluation graph, the engine log under its header and the status bar. The board grows with the
+/// window; the foot keeps its height but for the log's, which a person sets by dragging its header, or folds away to
+/// the header alone by clicking it.
 ///
 /// The view shows what it is given and tells what a person does: the controllers (GameController and the rest) hold
 /// the game, the engines and the files, and set what it shows each frame.
@@ -42,18 +43,22 @@ class MainView final : public reckless::view::View
     static constexpr int kMinimumWidth  = kDesignWidth / 2;
     static constexpr int kMinimumHeight = kDesignHeight / 2; ///< The shortest: half the design's, likewise.
 
-    static constexpr int kMenuHeight     = 34;  ///< The menu bar.
-    static constexpr int kStatusHeight   = 28;  ///< The status bar.
-    static constexpr int kMargin         = 18;  ///< Round the body.
-    static constexpr int kGap            = 16;  ///< Between the columns and the rows.
-    static constexpr int kStripHeight    = 54;  ///< A player's strip.
-    static constexpr int kNavHeight      = 32;  ///< The navigation plates.
-    static constexpr int kLabelHeight    = 28;  ///< A section's label.
-    static constexpr int kAnalysisHeight = 192; ///< The analysis panel and the graph, under their labels.
-    static constexpr int kLogHeight      = 100; ///< The engine log, at most: four rows; less in a shorter window.
-    static constexpr int kMovesWidth     = 250; ///< The moves' column at least: a number and two moves in SAN.
-    static constexpr int kSideWidth      = 380; ///< The players' column at least: the strips, the card, the plates.
-    static constexpr int kGraphWidth     = 320; ///< The evaluation graph's column.
+    static constexpr int kMenuHeight       = 34;  ///< The menu bar.
+    static constexpr int kStatusHeight     = 28;  ///< The status bar.
+    static constexpr int kMargin           = 18;  ///< Round the body.
+    static constexpr int kGap              = 16;  ///< Between the columns and the rows.
+    static constexpr int kStripHeight      = 54;  ///< A player's strip.
+    static constexpr int kNavHeight        = 32;  ///< The navigation plates.
+    static constexpr int kLabelHeight      = 28;  ///< A section's label.
+    static constexpr int kAnalysisHeight   = 192; ///< The analysis panel and the graph, under their labels.
+    static constexpr int kLogDefaultHeight = 161; ///< The engine log as it first opens: seven rows.
+    static constexpr int kLogLeastHeight   = 46;  ///< The shortest a drag makes the log: two rows.
+    static constexpr int kLogHeaderGap     = 8;   ///< Between the analysis and the log's header.
+    /** The smallest a board square becomes as the log is made taller, in design pixels. */
+    static constexpr int kLeastSquare = 40;
+    static constexpr int kMovesWidth  = 250; ///< The moves' column at least: a number and two moves in SAN.
+    static constexpr int kSideWidth   = 380; ///< The players' column at least: the strips, the card, the plates.
+    static constexpr int kGraphWidth  = 320; ///< The evaluation graph's column.
 
     /** @param pieces The pieces the board draws with; outlives the view. */
     explicit MainView(const PieceSet &pieces);
@@ -61,6 +66,9 @@ class MainView final : public reckless::view::View
     std::function<void(int command)>      on_command;    ///< A menu item, a plate or a key: a Command.
     std::function<void(chess::Move move)> on_move;       ///< A person's move on the board.
     std::function<void(int ply)>          on_select_ply; ///< A move pressed in the list or on the graph.
+    /** The engine log folded, opened or made another height by a person: the layout to keep (log_height(),
+        is_log_open()). */
+    std::function<void()> on_log_layout;
 
     // ---- What it shows ----------------------------------------------------------------------------------------------
 
@@ -117,6 +125,32 @@ class MainView final : public reckless::view::View
 
     /** @param items The status bar's phrases. */
     void SetStatus(std::vector<std::string> items);
+
+    /**
+     * The engine log's layout, as kept: laid out at once, telling no one.
+     * @param height The log's height asked for, in design pixels: held between kLogLeastHeight and what leaves the
+     *               board squares of kLeastSquare, and shown as the whole rows that fit.
+     * @param is_open Whether the log shows; folded, only its header does, and the board has the room.
+     */
+    void SetLogLayout(int height, bool is_open);
+
+    /** The engine log opened or folded, as its header's click or View > Engine log does, telling on_log_layout. */
+    void ToggleLog();
+
+    /** @return The engine log's height asked for, in design pixels, kept while it is folded. */
+    int log_height() const
+    {
+        return log_height_;
+    }
+
+    /** @return Whether the engine log shows. */
+    bool is_log_open() const
+    {
+        return is_log_open_;
+    }
+
+    /** @return The tallest the log may be made in the window's height now: the board left squares of kLeastSquare. */
+    int LogMostHeight() const;
 
     /**
      * The drawn menu bar across the top, or none where the platform shows the bar itself: the layout then starts at
@@ -187,6 +221,12 @@ class MainView final : public reckless::view::View
         return log_;
     }
 
+    /** @return The engine log's header: its fold and its drag. */
+    LogHeader &log_header()
+    {
+        return log_header_;
+    }
+
     /** @return The status bar. */
     StatusBar &status()
     {
@@ -251,11 +291,15 @@ class MainView final : public reckless::view::View
     MovesList                                   moves_;        ///< The moves.
     SectionLabel                                card_label_;   ///< "GAME".
     GameCard                                    card_;         ///< The game's card.
-    SectionLabel                                analysis_label_;    ///< "ANALYSIS".
-    AnalysisPanel                               analysis_;          ///< The engines' lines.
-    SectionLabel                                graph_label_;       ///< "EVALUATION".
-    EvalGraph                                   graph_;             ///< The evaluation by move.
-    EngineLog                                   log_;               ///< The engine log.
+    SectionLabel                                analysis_label_;                  ///< "ANALYSIS".
+    AnalysisPanel                               analysis_;                        ///< The engines' lines.
+    SectionLabel                                graph_label_;                     ///< "EVALUATION".
+    EvalGraph                                   graph_;                           ///< The evaluation by move.
+    LogHeader                                   log_header_;                      ///< The engine log's header.
+    EngineLog                                   log_;                             ///< The engine log.
+    int                                         log_height_  = kLogDefaultHeight; ///< The log's height asked for.
+    bool                                        is_log_open_ = true;              ///< The log shows.
+    int                                         drag_from_   = 0;   ///< The log's height as a drag of its header began.
     StatusBar                                   status_;            ///< The status bar.
     PlayerStripState                            white_;             ///< White's strip.
     reckless::view::View                       *overlay_ = nullptr; ///< The view over the window, if any.

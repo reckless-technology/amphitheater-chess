@@ -6,6 +6,7 @@
 #include "PanelStyle.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace amphitheater::app
 {
@@ -55,8 +56,29 @@ MainView::MainView(const PieceSet &pieces)
     AddChild(analysis_);
     AddChild(graph_label_);
     AddChild(graph_);
+    AddChild(log_header_);
     AddChild(log_.view());
     AddChild(status_);
+
+    log_header_.on_toggle     = [this] { ToggleLog(); };
+    log_header_.on_drag_start = [this] { drag_from_ = log_.view().height(); };
+    log_header_.on_drag       = [this](float travel) {
+        // Dragged up, the log's top edge rises with the pointer: the log grows by the travel.
+        const int height = std::clamp(drag_from_ - static_cast<int>(std::lround(travel)), kLogLeastHeight,
+                                      std::max(kLogLeastHeight, LogMostHeight()));
+        if (height != log_height_)
+        {
+            log_height_ = height;
+            Resized();
+            Repaint();
+        }
+    };
+    log_header_.on_drag_end = [this] {
+        if (on_log_layout)
+        {
+            on_log_layout();
+        }
+    };
 
     board_.on_move = [this](chess::Move move) {
         if (on_move)
@@ -165,6 +187,33 @@ void MainView::SetStatus(std::vector<std::string> items)
     status_.SetItems(std::move(items));
 }
 
+void MainView::SetLogLayout(int height, bool is_open)
+{
+    log_height_  = std::max(kLogLeastHeight, height);
+    is_log_open_ = is_open;
+    log_header_.SetOpen(is_open);
+    Resized();
+    Repaint();
+}
+
+void MainView::ToggleLog()
+{
+    SetLogLayout(log_height_, !is_log_open_);
+    if (on_log_layout)
+    {
+        on_log_layout();
+    }
+}
+
+int MainView::LogMostHeight() const
+{
+    const int menu_height = menu_bar_ ? kMenuHeight : 0;
+    const int board_least = BoardView::kFileGutter + 2 * BoardView::kFrame + 8 * kLeastSquare;
+    const int above_log =
+        menu_height + kMargin + board_least + kGap + kLabelHeight + kAnalysisHeight + kLogHeaderGap + kLabelHeight;
+    return height() - kStatusHeight - kMargin - above_log;
+}
+
 void MainView::SetMenuBarView(std::unique_ptr<reckless::app::MenuBarView> bar)
 {
     if (menu_bar_)
@@ -213,12 +262,25 @@ void MainView::Resized()
     const int right  = w - kMargin;
     const int bottom = h - kStatusHeight - kMargin;
 
-    // The foot: the log at the bottom, the analysis and the graph over it.
-    const int log_height = log_.FittedHeight(std::clamp(h / 8, 100, kLogHeight)); // whole rows, as the moves
-    const int log_top    = bottom - log_height;
+    // The foot: the log at the bottom under its header - the height asked for, held so the board keeps its least
+    // squares, in whole rows as the moves - or the header alone while the log is folded; the analysis and the graph
+    // over it.
+    int log_height = 0;
+    if (is_log_open_)
+    {
+        log_height =
+            log_.FittedHeight(std::clamp(log_height_, kLogLeastHeight, std::max(kLogLeastHeight, LogMostHeight())));
+    }
+    const int log_top = bottom - log_height;
+    log_.view().SetVisible(is_log_open_);
     log_.view().SetBounds({left, log_top, right - left, log_height});
-    log_.Fit();
-    const int foot_top   = log_top - kGap - kLabelHeight - kAnalysisHeight;
+    if (is_log_open_)
+    {
+        log_.Fit();
+    }
+    const int header_top = log_top - kLabelHeight;
+    log_header_.SetBounds({left, header_top, right - left, kLabelHeight});
+    const int foot_top   = header_top - kLogHeaderGap - kLabelHeight - kAnalysisHeight;
     const int graph_left = right - kGraphWidth;
     analysis_label_.SetBounds({left, foot_top, graph_left - kGap - left, kLabelHeight});
     analysis_.SetBounds({left, foot_top + kLabelHeight, graph_left - kGap - left, kAnalysisHeight});

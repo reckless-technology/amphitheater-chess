@@ -2,14 +2,14 @@
 // draws it - the review images in docs/design/ are made with it.
 //
 //   amphitheater_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines] [tournament]
-//                       [standings] [about]
+//                       [standings] [about] [logfolded]
 //
-// The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the
-// board; "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on
-// two engines, the first with options of every type; "tournament" opens Tournament > New tournament on three;
-// "standings" shows Tournament > Standings and crosstable for a double round robin of four after ten games; "about"
-// shows Help > About for an install carrying the five engines the installers pin. The scale is the device pixels per
-// design pixel, 1 by default; the size is the window's, in design pixels.
+// The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the board;
+// "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on two
+// engines, the first with options of every type; "tournament" opens Tournament > New tournament on three; "standings"
+// shows Tournament > Standings and crosstable for a double round robin of four after ten games; "about" shows Help >
+// About for an install carrying the five engines the installers pin; "logfolded" folds the engine log away to its
+// header. The scale is the device pixels per design pixel, 1 by default; the size is the window's, in design pixels.
 
 #include "AboutDialog.h"
 #include "Commands.h"
@@ -82,6 +82,7 @@ int main(int argc, char **argv)
     bool                     is_tournament = false;
     bool                     is_standings  = false;
     bool                     is_about      = false;
+    bool                     is_log_folded = false;
     for (int index = 2; index < argc; ++index)
     {
         const std::string argument = argv[index];
@@ -112,6 +113,10 @@ int main(int argc, char **argv)
         else if (argument == "about")
         {
             is_about = true;
+        }
+        else if (argument == "logfolded")
+        {
+            is_log_folded = true;
         }
         else
         {
@@ -144,6 +149,7 @@ int main(int argc, char **argv)
         amphitheater::app::ShowSample(view);
     }
     view.SetFlipped(is_flipped);
+    view.SetLogLayout(view.log_height(), !is_log_folded);
     view.SetBounds({width, height});
     if (is_newgame)
     {

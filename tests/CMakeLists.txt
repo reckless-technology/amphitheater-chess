@@ -59,7 +59,7 @@ add_test(NAME integration COMMAND amphitheater_integration_test)
 # drawn through Skia (its review image written where RECKLESS_SCREENSHOT_DIR names).
 if(AMPHITHEATER_GUI)
     amphitheater_suite(amphitheater_window_test
-        SOURCES app/WindowTest.cpp app/PlayTest.cpp app/BundledEnginesTest.cpp app/CatalogueTest.cpp app/ControlsTest.cpp app/AnalysisTest.cpp app/EngineManagerTest.cpp app/FilesTest.cpp app/MenusTest.cpp app/CompetitionTest.cpp app/WindowSizesTest.cpp app/AboutTest.cpp app/EvaluationsTest.cpp app/SettingsFolderTest.cpp
+        SOURCES app/WindowTest.cpp app/PlayTest.cpp app/BundledEnginesTest.cpp app/CatalogueTest.cpp app/ControlsTest.cpp app/AnalysisTest.cpp app/EngineManagerTest.cpp app/FilesTest.cpp app/MenusTest.cpp app/CompetitionTest.cpp app/WindowSizesTest.cpp app/AboutTest.cpp app/EvaluationsTest.cpp app/SettingsFolderTest.cpp app/LogPanelTest.cpp
         LIBRARIES amphitheater_gui reckless_toolkit_test_support)
     target_compile_definitions(amphitheater_window_test PRIVATE AMPHITHEATER_FAKE_ENGINE="$<TARGET_FILE:amphitheater_fake_engine>")
     add_dependencies(amphitheater_window_test amphitheater_fake_engine)
@@ -69,12 +69,12 @@ endif()
 # The render tool end to end, with no display: the window with the mockup's state, and with each dialog open.
 if(AMPHITHEATER_GUI)
     add_test(NAME render_main COMMAND amphitheater_render_main "${CMAKE_CURRENT_BINARY_DIR}/render-main.png" 1 1240 1000)
-    foreach(view flipped newgame engines tournament standings about)
+    foreach(view flipped newgame engines tournament standings about logfolded)
         add_test(NAME render_${view}
                  COMMAND amphitheater_render_main "${CMAKE_CURRENT_BINARY_DIR}/render-${view}.png" 1 1240 1000 ${view})
     endforeach()
     set_tests_properties(render_main render_flipped render_newgame render_engines render_tournament
-                         render_standings render_about
+                         render_standings render_about render_logfolded
                          PROPERTIES PASS_REGULAR_EXPRESSION "1240 x 1000")
 endif()
 

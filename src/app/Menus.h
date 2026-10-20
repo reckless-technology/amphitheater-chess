@@ -27,6 +27,7 @@ struct MenuState
     bool is_tournament_running = false; ///< A tournament being played.
     bool has_standings         = false; ///< A tournament's results to show.
     bool is_dialog_open        = false; ///< A dialog over the window, which every menu waits for.
+    bool is_log_open           = true;  ///< The engine log shown: View > Engine log ticked.
     /** The games of a match or a tournament in progress that the board may follow: the game's number and its title. */
     std::vector<std::pair<int, std::string>> watchable_games;
     /** The update check's revision, so its menu says what the check says now. */

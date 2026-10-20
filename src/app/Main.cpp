@@ -4,6 +4,7 @@
 
 #include "BundledEngines.h"
 #include "Faces.h"
+#include "LayoutSettings.h"
 #include "MainController.h"
 #include "MainView.h"
 #include "PieceSet.h"
@@ -94,6 +95,12 @@ int main(int argc, char **argv)
     // tree's app carries none, and leaves the list as it is.
     amphitheater::app::ControllerFiles files;
     files.bundled_engines = amphitheater::app::BundledEnginesFolder(amphitheater::app::RunningExecutable());
+    // The engine log's height and whether it shows, kept across launches (LayoutSettings.h); a launch's check keeps
+    // none.
+    if (!options.is_smoke)
+    {
+        files.layout = amphitheater::app::LayoutSettings::DefaultFile();
+    }
     amphitheater::app::MainController controller(view, files, services);
     // The update check, as every product on the toolkit runs it: once a day at most while the window shows, never in a
     // launch's check, and none where RECKLESS_UPDATE_CHECK=off (every CI runner).

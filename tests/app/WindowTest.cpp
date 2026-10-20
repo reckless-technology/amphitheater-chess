@@ -338,10 +338,13 @@ TEST(MainView, TheBoardTakesTheRoomAndTheColumnsBesideItAreNarrow)
     ShowSample(view);
     view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
     const float square = view.board().SquareSize();
-    EXPECT_GE(square, 80.0f) << "the review size's squares";
+    EXPECT_GE(square, 68.0f) << "the review size's squares, the engine log open at seven rows";
     EXPECT_EQ(square, std::floor(square)) << "whole pixels, crisp";
-    EXPECT_LE(view.moves().view().width(), MainView::kMovesWidth + 20);
+    view.SetLogLayout(view.log_height(), false);
+    EXPECT_GE(view.board().SquareSize(), 80.0f) << "the log folded away: the board has its room";
+    EXPECT_LE(view.moves().view().width(), MainView::kMovesWidth + 20) << "and the columns beside it are narrow";
     EXPECT_LE(view.card().width(), MainView::kSideWidth + 40);
+    view.SetLogLayout(view.log_height(), true);
     EXPECT_EQ(view.top_strip().bounds().y(), view.board().bounds().y()) << "the top player level with the board";
     EXPECT_EQ(view.bottom_strip().bounds().bottom(), view.board().bounds().bottom() - BoardView::kFileGutter);
     EXPECT_EQ(view.log().view().bounds().width(), MainView::kDesignWidth - 2 * MainView::kMargin)

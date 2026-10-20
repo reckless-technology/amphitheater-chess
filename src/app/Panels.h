@@ -1,11 +1,12 @@
 #pragma once
-/// @file Panels.h The window's smaller pieces: a section's label, a player's strip with its clock, the game's card,
-/// and the status bar.
+/// @file Panels.h The window's smaller pieces: a section's label, the engine log's header, a player's strip with its
+/// clock, the game's card, and the status bar.
 
 #include "Color.h"
 #include "Text.h"
 #include "View.h"
 
+#include <functional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -35,6 +36,69 @@ class SectionLabel final : public reckless::view::View
 
   private:
     std::string text_; ///< The label, in capitals.
+};
+
+/**
+ * The engine log's header: its label behind a disclosure triangle, pointing down while the log shows and right while
+ * it is folded away. A click opens or folds the log; while it shows, a drag up or down makes it taller or shorter, a
+ * short grip in the middle of the row saying so.
+ */
+class LogHeader final : public reckless::view::View
+{
+  public:
+    /** How far a press moves, in pixels, before it is a drag and no longer a click. */
+    static constexpr float kDragThreshold = 3.0f;
+
+    LogHeader();
+
+    std::function<void()> on_toggle;     ///< Clicked: the log to be opened or folded.
+    std::function<void()> on_drag_start; ///< A drag begun, the log showing.
+    /** A drag's travel: how far below where the press began the pointer is, in pixels; negative above it. */
+    std::function<void(float travel)> on_drag;
+    std::function<void()>             on_drag_end; ///< The drag let go.
+
+    /** @param is_open Whether the log shows: the triangle's way, and whether a drag resizes it. */
+    void SetOpen(bool is_open);
+
+    /** @return Whether the log shows. */
+    bool open() const
+    {
+        return is_open_;
+    }
+
+    /** @return Whether a drag is under way. */
+    bool dragging() const
+    {
+        return is_dragging_;
+    }
+
+    /**
+     * The triangle, the label, and the grip while the log shows.
+     * @param c The canvas.
+     */
+    void Paint(reckless::gfx::Canvas &c) override;
+
+    /**
+     * A press: a click or a drag, as it goes on.
+     * @param e The press.
+     */
+    void MouseDown(const reckless::view::MouseEvent &e) override;
+
+    /**
+     * A drag past kDragThreshold resizes the log while it shows.
+     * @param e The pointer.
+     */
+    void MouseDrag(const reckless::view::MouseEvent &e) override;
+
+    /**
+     * A release ends a drag, or, with no drag and over the header, is a click.
+     * @param e The release.
+     */
+    void MouseUp(const reckless::view::MouseEvent &e) override;
+
+  private:
+    bool is_open_     = true;  ///< The log shows.
+    bool is_dragging_ = false; ///< A drag under way.
 };
 
 /** What a player's strip shows. */

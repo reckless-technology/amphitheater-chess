@@ -2,6 +2,8 @@
 
 #include "Theme.h"
 
+#include "Path.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -62,6 +64,97 @@ void SectionLabel::Paint(reckless::gfx::Canvas &c)
     c.SetFont(fonts::Label());
     c.SetColor(theme::kInk);
     c.DrawText(text_, LocalBounds().ToFloat(), Justify::kCentredLeft, true);
+}
+
+LogHeader::LogHeader()
+{
+    cursor  = reckless::view::Cursor::kUpDown;
+    tooltip = "Click to fold the engine log away or open it; drag to make it taller or shorter.";
+}
+
+void LogHeader::SetOpen(bool is_open)
+{
+    if (is_open != is_open_)
+    {
+        is_open_ = is_open;
+        cursor   = is_open_ ? reckless::view::Cursor::kUpDown : reckless::view::Cursor::kPointingHand;
+        Repaint();
+    }
+}
+
+void LogHeader::Paint(reckless::gfx::Canvas &c)
+{
+    const RectF bounds = LocalBounds().ToFloat();
+    const float y      = bounds.CentreY();
+    // The triangle: down while the log shows, right while it is folded away.
+    reckless::gfx::Path triangle;
+    if (is_open_)
+    {
+        triangle.AddTriangle({1.0f, y - 3.0f}, {11.0f, y - 3.0f}, {6.0f, y + 3.0f});
+    }
+    else
+    {
+        triangle.AddTriangle({3.0f, y - 5.0f}, {3.0f, y + 5.0f}, {9.0f, y});
+    }
+    c.SetColor(theme::kMuted);
+    c.FillPath(triangle);
+    c.SetFont(fonts::Label());
+    c.SetColor(theme::kInk);
+    c.DrawText("ENGINE LOG", RectF{18.0f, 0.0f, bounds.width() - 18.0f, bounds.height()}, Justify::kCentredLeft, true);
+    if (is_open_)
+    {
+        // The grip: two short rules in the middle of the row, where a drag takes the log's top edge.
+        const float centre = bounds.CentreX();
+        c.SetColor(is_dragging_ ? theme::kAmber : theme::kRule);
+        c.DrawLine({centre - 14.0f, y - 2.0f}, {centre + 14.0f, y - 2.0f}, 1.0f);
+        c.DrawLine({centre - 14.0f, y + 2.0f}, {centre + 14.0f, y + 2.0f}, 1.0f);
+    }
+}
+
+void LogHeader::MouseDown(const reckless::view::MouseEvent &e)
+{
+    static_cast<void>(e);
+    is_dragging_ = false;
+}
+
+void LogHeader::MouseDrag(const reckless::view::MouseEvent &e)
+{
+    const float travel = e.position.y - e.down.y;
+    if (!is_dragging_)
+    {
+        if (!is_open_ || std::abs(travel) < kDragThreshold)
+        {
+            return;
+        }
+        is_dragging_ = true;
+        Repaint();
+        if (on_drag_start)
+        {
+            on_drag_start();
+        }
+    }
+    if (on_drag)
+    {
+        on_drag(travel);
+    }
+}
+
+void LogHeader::MouseUp(const reckless::view::MouseEvent &e)
+{
+    if (is_dragging_)
+    {
+        is_dragging_ = false;
+        Repaint();
+        if (on_drag_end)
+        {
+            on_drag_end();
+        }
+        return;
+    }
+    if (LocalBounds().ToFloat().Contains(e.position) && on_toggle)
+    {
+        on_toggle();
+    }
 }
 
 PlayerStrip::PlayerStrip()

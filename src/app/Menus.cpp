@@ -63,6 +63,7 @@ std::vector<MenuEntry> ViewItems(const MenuState &state)
 {
     const WindowSizeMenu  &sizes = state.window_sizes;
     std::vector<MenuEntry> items{Item("Flip the board", kFlip, Shortcut::Plain(U'f')),
+                                 Item("Engine log", kShowLog, Shortcut::Primary('l'), true, state.is_log_open),
                                  Item("Clear the engine log", kClearLog), MenuEntry::Separator()};
     for (std::size_t index = 0; index < kWindowSizes.size(); ++index)
     {

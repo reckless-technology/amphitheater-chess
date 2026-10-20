@@ -38,6 +38,7 @@ enum Command : int
     kShowStandings,       ///< Tournament > Standings and crosstable.
 
     kClearLog     = 700, ///< View > Clear the engine log.
+    kShowLog      = 701, ///< View > Engine log: shown, or folded away to its header.
     kWindowSize50 = 710, ///< View > 50%: the window at half the layout's design size.
     kWindowSize75,       ///< View > 75%.
     kWindowSize100,      ///< View > 100%: the design size.

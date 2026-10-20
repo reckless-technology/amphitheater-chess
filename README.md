@@ -140,6 +140,13 @@ its long lines wrapped to its width at a space and indented under their text; th
 the board the room first and the columns what width it leaves; under 1240 x 1000 design pixels the whole layout is
 zoomed down rather than squeezed. The window may be made as small as half the design size.
 
+The engine log sits under a header of its own, ENGINE LOG behind a disclosure triangle. It opens seven rows tall; a
+drag on the header makes it taller or shorter, in whole rows, from two rows up to as tall as leaves the board squares
+of 40 design pixels, the board giving it the room. A click on the header, or View > Engine log (Ctrl+L, Command-L on a
+Mac), folds it away to the header alone and gives the board its room back, and opens it again at the height it had.
+The log's height and whether it shows are kept in `reckless-technology/amphitheater/layout.json` in the user's
+settings folder (`LayoutSettings.h`), and the next launch opens with them.
+
 View offers five sizes, 50%, 75%, 100%, 125% and 150% of the 1380 x 1120 design size (`WindowSizes.h`): a size chosen
 makes the window that size, its top left kept unless the window would then cross an edge of its screen's work area,
 when it is moved in until all of it stands there, and the layout is drawn at the design size at exactly that scale
@@ -182,8 +189,8 @@ bar: the screen's menu bar on a Mac, the window's on Windows, drawn across the w
 tool's images). Every item's shortcut shows beside it, and the platform offers every key no view takes to the bar, so
 the keys work as soon as the window has the keyboard, with no click into it first: Left, Right, Home and End step
 through the game and F flips the board; with Command on a Mac and Control elsewhere, N starts a new game, O and S open
-and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, Z takes back, E manages the engines, Q
-quits, 0 makes the window 100 %, = (or +) the next size up and - the next size down. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is open. The
+and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, Z takes back, E manages the engines, L
+shows or folds the engine log, Q quits, 0 makes the window 100 %, = (or +) the next size up and - the next size down. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is open. The
 window's title follows the game - "White vs Black - Reckless Amphitheater", the file's name before the app's while the game
 shown was opened from a file or saved to one. The lists' scroll bars are in the accent.
 
@@ -267,9 +274,10 @@ finish. Stop abandons the games in progress; the workers finish their moves in t
 `amphitheater_render_main <out.png> [scale] [width height] [view]` draws the window to a PNG with the mockup's state, with
 no window and no display; the view is `flipped`, `empty` (a fresh window), `newgame`, `engines` (the engine manager),
 `tournament` (a new tournament's setup), `standings` (the standings and crosstable), `about` (Help > About, for
-an install carrying the five pinned engines). The review images in `docs/design/` are made with it at 1380 x 1120:
-`main-window.png`, `main-window-flipped.png`, `new-game.png`, `engine-manager.png`, `new-tournament.png`,
-`standings.png` and `about.png`.
+an install carrying the five pinned engines) or `logfolded` (the engine log folded away). The review images in
+`docs/design/` are made with it at 1380 x 1120: `main-window.png`, `main-window-flipped.png`,
+`main-window-log-folded.png`, `new-game.png`, `engine-manager.png`, `new-tournament.png`, `standings.png` and
+`about.png`.
 
 ## The command line
 

@@ -8,6 +8,7 @@
 #include "EngineManagerDialog.h"
 #include "GameFiles.h"
 #include "GamePickerDialog.h"
+#include "LayoutSettings.h"
 #include "NewGameDialog.h"
 #include "StandingsDialog.h"
 #include "Theme.h"
@@ -132,6 +133,12 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
     {
         error_ = "The engine list could not be read: " + error;
     }
+    const LayoutSettings layout = LayoutSettings::Load(files_.layout);
+    view_.SetLogLayout(layout.log_height, layout.is_log_open);
+    view_.on_log_layout = [this] {
+        SaveLayout();
+        RefreshMenuBar();
+    };
     view_.on_command    = [this](int command) { Command(command); };
     view_.on_select_ply = [this](int ply) { ShowPly(ply); };
     view_.on_move       = [this](chess::Move move) { BoardMove(move); };
@@ -222,6 +229,9 @@ void MainController::Command(int command)
         break;
     case kClearLog:
         view_.log().Clear();
+        break;
+    case kShowLog:
+        view_.ToggleLog();
         break;
     case kWindowSize50:
     case kWindowSize75:
@@ -698,6 +708,21 @@ void MainController::OpenAbout()
     dialog->open_url = services_.open_url;
     dialog->on_close = [this] { CloseDialog(); };
     OpenDialog(std::move(dialog));
+}
+
+void MainController::SaveLayout()
+{
+    if (files_.layout.empty())
+    {
+        return;
+    }
+    LayoutSettings layout;
+    layout.log_height  = view_.log_height();
+    layout.is_log_open = view_.is_log_open();
+    if (!layout.Save(files_.layout))
+    {
+        error_ = "The window's layout could not be written to " + files_.layout.string();
+    }
 }
 
 void MainController::RetireCompetition()
@@ -1212,6 +1237,7 @@ MenuState MainController::Menus() const
 {
     MenuState state;
     state.is_dialog_open   = dialog_ != nullptr;
+    state.is_log_open      = view_.is_log_open();
     state.updates_revision = updates_ ? updates_->revision() : 0;
     if (services_.window_sizes)
     {

@@ -74,6 +74,10 @@ struct ControllerFiles
     /** The engines the install carries (BundledEngines.h), seeded into the list as the controller starts; empty for
         none, as for a build tree's host. */
     std::filesystem::path bundled_engines;
+    /** The window's layout (LayoutSettings.h): read as the controller starts, written when a person folds, opens or
+        resizes the engine log; empty to keep none - the suites' and the render tool's - where the app names
+        LayoutSettings::DefaultFile(). */
+    std::filesystem::path layout;
 };
 
 /** The main window's controller. */
@@ -337,6 +341,9 @@ class MainController
 
     /** Help > About: the app's name, version and terms, and the engines the install carries. */
     void OpenAbout();
+
+    /** The engine log's layout as the view has it kept in the layout file, where there is one. */
+    void SaveLayout();
 
     /** The competition's progress taken in, and the game the board follows shown. */
     void PollCompetition();
