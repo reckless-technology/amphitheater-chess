@@ -3,7 +3,7 @@
 
 # The files the binary carries (the toolkit's reckless_module_assets): the series' serif, the knob and the company mark,
 # the monospaced family the engines' output and the FEN are set in, the app's icon for a Linux window (its 256-pixel
-# render, icon-256.png, which Main.cpp hands the platform as _NET_WM_ICON), and the twelve pieces
+# render, icon-256.png, which Main.cpp hands the platform as _NET_WM_ICON and Help > About draws as its mark), and the twelve pieces
 # (assets/pieces/staunton), each by the name pieces/<piece>.svg.
 reckless_monospace_font_files(uci_host_monospace)
 set(uci_host_pieces "")
@@ -58,9 +58,9 @@ target_link_libraries(RecklessUciHost PRIVATE uci_host_gui reckless_app_platform
 add_executable(uci_host_render_main RenderMain.cpp)
 target_link_libraries(uci_host_render_main PRIVATE uci_host_gui uci_host_warnings)
 
-# The identity the bundle carries, as the toolkit's bundle helpers read it. Its icon is the host's own, the black queen
-# on a white square, rendered for every size by tools/make_icon.py into assets/icon/ and committed - so the toolkit's
-# reckless_bundle_icon, which scales one picture down at build time, is not used.
+# The identity the bundle carries, as the toolkit's bundle helpers read it. Its icon is the host's own, Jonny's sketch
+# of the Colosseum on a rounded square, rendered for every size by tools/make_icon.py into assets/icon/ and committed -
+# so the toolkit's reckless_bundle_icon, which scales one picture down at build time, is not used.
 set(UCI_HOST_ICONS "${PROJECT_SOURCE_DIR}/assets/icon")
 set(UCI_HOST_COMPANY "Reckless Technology")
 set(UCI_HOST_DISPLAY "Reckless UCI Host")

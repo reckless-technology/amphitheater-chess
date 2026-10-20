@@ -2,6 +2,7 @@
 
 #include "Theme.h"
 
+#include "Embedded.h"
 #include "SkiaCanvas.h"
 
 #include <algorithm>
@@ -17,10 +18,7 @@ using reckless::gfx::Justify;
 using reckless::gfx::RectF;
 using reckless::gfx::RectI;
 
-constexpr int kMarkSide = 112; ///< The mark's square.
-/// The queen's drawing's box over the square's side: the drawing's own margin leaves the queen at 80 % of the side, as
-/// on the icon.
-constexpr float kQueenShare   = 1.0f;
+constexpr int   kMarkSide     = 112;    ///< The mark's square.
 constexpr int   kTextLeft     = 136;    ///< The text beside the mark, from the content's left.
 constexpr int   kLine         = 24;     ///< A line of body text.
 constexpr int   kNameHeight   = 38;     ///< The app's name.
@@ -138,10 +136,14 @@ void LinkLabel::MouseUp(const reckless::view::MouseEvent &e)
     }
 }
 
-AboutDialog::AboutDialog(AboutInfo info, const PieceSet &pieces)
+AboutDialog::AboutDialog(AboutInfo info)
     : DialogFrame("About Reckless UCI Host", kCardWidth, CardHeightFor(info.engines.size())), info_(std::move(info)),
-      pieces_(pieces), link_("recklesstechnology.com")
+      link_("recklesstechnology.com")
 {
+    if (const auto bytes = reckless::embedded::Find(kMarkFile); !bytes.empty())
+    {
+        mark_ = reckless::gfx::DecodeImage(bytes);
+    }
     link_.on_click = [this] {
         if (open_url)
         {
@@ -210,17 +212,14 @@ void AboutDialog::Paint(reckless::gfx::Canvas &c)
     const float right     = static_cast<float>(area.right());
     float       y         = static_cast<float>(area.y()) + 4.0f;
 
-    // The mark: the app's icon (assets/icon/icon.svg) drawn at its proportions - a white square with a hairline grey
-    // edge, its corners rounded at 9 % of its side, the black queen at 80 % of its height lifted 1.2 % above centre.
-    const float side = static_cast<float>(kMarkSide);
-    const RectF mark{left, y, side, side};
-    c.SetColor(reckless::gfx::Color(0xffffffffu));
-    c.FillRoundedRect(mark, side * 0.09f);
-    c.SetColor(reckless::gfx::Color(0xffd0d0d0u));
-    c.DrawRoundedRect(mark.Reduced(0.5f), side * 0.09f, 1.0f);
-    const float queen = side * kQueenShare;
-    pieces_.Draw(c, chess::kBlack, chess::kQueen,
-                 RectF{left + (side - queen) / 2.0f, y + (side - queen) / 2.0f - side * 0.012f, queen, queen});
+    // The mark: the app's icon as Windows and Linux show it (tools/make_icon.py), its 256-pixel render drawn down to
+    // the square.
+    if (mark_.IsValid())
+    {
+        const float side = static_cast<float>(kMarkSide);
+        c.SetResampling(reckless::gfx::Resampling::kHigh);
+        c.DrawImage(mark_, RectF{left, y, side, side});
+    }
 
     c.SetFont(fonts::Body().WithHeight(28.0f).Bold());
     c.SetColor(theme::kInk);

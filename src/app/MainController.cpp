@@ -694,7 +694,7 @@ void MainController::OpenAbout()
             info.engines.push_back({engine.name, engine.version, engine.licence});
         }
     }
-    auto dialog      = std::make_unique<AboutDialog>(std::move(info), view_.board().pieces());
+    auto dialog      = std::make_unique<AboutDialog>(std::move(info));
     dialog->open_url = services_.open_url;
     dialog->on_close = [this] { CloseDialog(); };
     OpenDialog(std::move(dialog));

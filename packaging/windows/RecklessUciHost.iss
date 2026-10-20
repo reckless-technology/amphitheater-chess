@@ -8,7 +8,7 @@
 ; installer put there and nothing else: the person's engine list and settings in their own folder are theirs, and the
 ; other products' folders under Reckless Technology are never touched.
 ;
-; The installer's and the uninstaller's icon is the app's own, assets\icon\Icon.ico (the black queen, tools/make_icon.py),
+; The installer's and the uninstaller's icon is the app's own, assets\icon\Icon.ico (the Colosseum, tools/make_icon.py),
 ; unless /DIconFile=<file.ico> names another; the uninstaller's entry in Settings shows the installed executable's.
 ;
 ; /DTestRoot=<dir> makes a test build (packaging/windows/test-installer.ps1): every part under that folder, an id and a

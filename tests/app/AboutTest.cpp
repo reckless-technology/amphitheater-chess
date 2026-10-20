@@ -197,7 +197,7 @@ TEST(About, TheEnginesTheInstallCarriesAreListedWithTheirVersionsAndLicences)
     EXPECT_NE(std::find(lines.begin(), lines.end(), "Pawnstar 1.2.0 (GPLv3)"), lines.end());
 
     // The card grows with the list, and the link stays on it.
-    AboutDialog bare(AboutInfo{VersionText(), {}}, Pieces());
+    AboutDialog bare(AboutInfo{VersionText(), {}});
     bare.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
     EXPECT_GT(about->CardBounds().height(), bare.CardBounds().height());
     EXPECT_TRUE(about->CardBounds().Contains(about->link().bounds()));
@@ -210,8 +210,14 @@ TEST(About, ALicenceIsNamedForTheGplsVersionOrShownAsItIs)
     EXPECT_EQ(LicenceName("GPL-3.0-or-later"), "GPLv3 or later");
     EXPECT_EQ(LicenceName("MIT"), "MIT");
     EXPECT_EQ(LicenceName(""), "");
-    AboutDialog about(AboutInfo{"1.2.3", {{"Toy", "0.1.0", ""}}}, Pieces());
+    AboutDialog about(AboutInfo{"1.2.3", {{"Toy", "0.1.0", ""}}});
     EXPECT_EQ(about.EngineLines(), std::vector<std::string>{"Toy 0.1.0"}) << "no licence named, none shown";
+}
+
+TEST(About, ItsMarkIsTheAppsIconCarriedInTheBinary)
+{
+    const AboutDialog about(AboutInfo{"1.2.3", {}});
+    EXPECT_TRUE(about.has_mark());
 }
 
 } // namespace uci_host::app

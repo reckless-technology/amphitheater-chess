@@ -37,9 +37,10 @@ viewBox using only `<path>` with the commands M, L, Q, C and Z (absolute), `<cir
 `fill` (a colour, `none` or `url(#id)`), `stroke`, `stroke-width`, `stroke-linejoin`, `stroke-linecap` and
 `stroke-opacity`: the subset the toolkit's SVG reader must draw for the GUI.
 
-**The app's icon** is the black queen on a white square, rendered at every size from `bQ.svg` by `tools/make_icon.py`
-(resvg-py and Pillow, pinned in `tools/requirements.txt`, in the `.venv`) into `assets/icon/` and committed: the build
-needs no Python and never scales one bitmap. The app's CMake takes `Icon.ico` and `Icon.icns` from there rather than
+**The app's icon** is Jonny's pencil sketch of the Colosseum (`assets/art/amphitheater-colosseum.jpg`), unaltered, on a
+rounded square, rendered at every size from the full-resolution artwork by `tools/make_icon.py` (resvg-py and Pillow,
+pinned in `tools/requirements.txt`, in the `.venv`) into `assets/icon/` and committed: the build needs no Python and
+never scales one bitmap. The app's CMake takes `Icon.ico` and `Icon.icns` from there rather than
 the toolkit's `reckless_bundle_icon`; the installers, the macOS uninstaller, the Debian package's hicolor icons and
 the Linux window's 256 take the same files. Change the composition in the script and run it again (`--check` holds the
 committed files to it); never edit a render.

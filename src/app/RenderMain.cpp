@@ -214,7 +214,7 @@ int main(int argc, char **argv)
                           {"Pawnstar-Go", "1.2.0", "GPL-3.0"},
                           {"Pawnstar-RS", "1.2.0", "GPL-3.0"},
                           {"Stoopid Chess", "3.0.0", "GPL-3.0"}};
-    uci_host::app::AboutDialog about(about_info, pieces);
+    uci_host::app::AboutDialog about(about_info);
     if (is_about)
     {
         view.SetOverlay(&about);

@@ -51,7 +51,6 @@ for size in 16 24 32 48 64 128 256 512; do
     cmp -s "$root/assets/icon/png/icon-$size.png" "$x/usr/share/icons/hicolor/${size}x${size}/apps/$id.png" ||
         fail "the ${size}x${size} icon is not assets/icon/png/icon-$size.png"
 done
-cmp -s "$root/assets/icon/icon.svg" "$x/usr/share/icons/hicolor/scalable/apps/$id.svg" || fail "the scalable icon"
 desktop="$x/usr/share/applications/$id.desktop"
 grep -qx "Exec=/opt/reckless-technology/bin/RecklessUciHost %F" "$desktop" || fail "the menu entry runs something else"
 if command -v desktop-file-validate > /dev/null; then desktop-file-validate "$desktop" || fail "the menu entry"; fi

@@ -118,6 +118,7 @@ runtime.
 | `app_smoke` | `RecklessUciHost --smoke` | the app opens its window and draws thirty frames (label `window`: a display is needed) |
 | `packaging` | `tests/packaging/test_bundled_engines.py` | the engines' pins, a hash that differs refused, the stage's layout and manifest, the handshake and the smoke test, the pins' update |
 | `notices` | `tools/third_party_notices.py --check` | `THIRD-PARTY-NOTICES.txt` as the build's fetches and the engines' pins write it |
+| `icon` | `tools/make_icon.py --check` | the committed icon as the script renders it from the artwork; skipped where the Python lacks Pillow or resvg-py |
 | `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings`, `render_about` | `uci_host_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```
@@ -165,13 +166,16 @@ The pieces are the Staunton SVGs, carried inside the binary and drawn by the too
 squares are. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
 promotion.
 
-The app's icon is the black queen, `bQ.svg` unchanged, on a white square with a hairline light-grey edge, filling 80 %
-of its height (87.5 % under 32 pixels). `tools/make_icon.py` renders it from the SVG at every size the platforms
-carry, each size its own render and never one picture scaled down, with resvg's wheel and Pillow
-(`tools/requirements.txt`, pinned) into `assets/icon/`, which is committed, so the build needs no Python: `Icon.ico` (16 to 256) in the Windows
+The app's icon is Jonny's pencil sketch of the Colosseum with its red Rt roundel
+(`assets/art/amphitheater-colosseum.jpg`, 2048 pixels square), unaltered - neither cropped nor retouched - on a rounded
+square with a hairline light-grey edge. `tools/make_icon.py` renders it at every size the platforms carry, each size
+resampled once from the full-resolution artwork by a Lanczos filter, never one picture stepped down through the sizes
+and never sharpened, the square's shape, edge and shadow drawn by resvg's wheel, with Pillow (`tools/requirements.txt`,
+pinned) into `assets/icon/`, which is committed, so the build needs no Python: `Icon.ico` (16 to 256) in the Windows
 executable, its installer and uninstaller; `Icon.icns` (16 to 1024, on Apple's grid: an 824-unit rounded square with
-its drop shadow) in the macOS bundle and the uninstaller app; the hicolor sizes 16 to 512 and `icon.svg` in the Debian
-package; the 256 as the Linux window's icon. `--check` holds the committed files to what it renders.
+its drop shadow) in the macOS bundle and the uninstaller app; the hicolor sizes 16 to 512 in the Debian package; the
+256 as the Linux window's icon and as the About window's mark. `--check` holds the committed files to what it renders.
+`docs/design/icon-sizes.png` shows every size side by side.
 
 The menu bar is the platform's own, built from the window's state by `Menus.h` on the toolkit's one description of a
 bar: the screen's menu bar on a Mac, the window's on Windows, drawn across the window's top on Linux (and in the render
@@ -190,7 +194,7 @@ in the user's settings folder; its menu says what the check found, opens a newer
 the clock on and off, and the status bar says UPDATE while a newer release is out. Nothing is downloaded or installed.
 A launch's check (`--smoke`) makes none, and `RECKLESS_UPDATE_CHECK=off` - every CI job sets it - switches it off.
 
-Help > About (`AboutDialog`) shows the app's mark - the black queen on a white square, drawn from the pieces - its name
+Help > About (`AboutDialog`) shows the app's mark - its icon, from the 256-pixel render the binary carries - its name
 and version, the copyright, the terms (free, proprietary, under `EULA.txt`), the engines the install carries with their
 versions and licences (read from `bundled.json`, every engine whose program is there; none in a build tree), where the
 third-party notices are, and recklesstechnology.com as a link to the person's browser. Close, Escape and Return close
@@ -260,7 +264,7 @@ finish. Stop abandons the games in progress; the workers finish their moves in t
 
 `uci_host_render_main <out.png> [scale] [width height] [view]` draws the window to a PNG with the mockup's state, with
 no window and no display; the view is `flipped`, `empty` (a fresh window), `newgame`, `engines` (the engine manager),
-`tournament` (a new tournament's setup), `standings` (the standings and crosstable) or `about` (Help > About, for
+`tournament` (a new tournament's setup), `standings` (the standings and crosstable), `about` (Help > About, for
 an install carrying the five pinned engines). The review images in `docs/design/` are made with it at 1380 x 1120:
 `main-window.png`, `main-window-flipped.png`, `new-game.png`, `engine-manager.png`, `new-tournament.png`,
 `standings.png` and `about.png`.

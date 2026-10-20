@@ -85,6 +85,14 @@ if(Python3_Interpreter_FOUND)
     set_tests_properties(packaging PROPERTIES ENVIRONMENT "UCI_HOST_FAKE_ENGINE=$<TARGET_FILE:uci_host_fake_engine>")
 endif()
 
+# The app's icon as tools/make_icon.py renders it from Jonny's artwork (assets/art/): the committed files held to the
+# script. It skips (77) where the Python lacks the pinned resvg-py and Pillow (tools/requirements.txt), which the setup
+# scripts' .venv and CI's venvs carry.
+if(Python3_Interpreter_FOUND)
+    add_test(NAME icon COMMAND Python3::Interpreter -I "${PROJECT_SOURCE_DIR}/tools/make_icon.py" --check)
+    set_tests_properties(icon PROPERTIES SKIP_RETURN_CODE 77)
+endif()
+
 # THIRD-PARTY-NOTICES.txt as tools/third_party_notices.py writes it from this tree's fetches and the engines' pins.
 if(UCI_HOST_GUI AND Python3_Interpreter_FOUND)
     add_test(NAME notices

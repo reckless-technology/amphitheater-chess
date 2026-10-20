@@ -8,9 +8,10 @@
 #                                                                       where the host in /opt/reckless-technology/bin
 #                                                                       looks for them (src/app/BundledEngines.h)
 #   /usr/share/applications/com.recklesstechnology.ucihost.desktop      the menu entry
-#   /usr/share/icons/hicolor/<N>x<N>/apps/com.recklesstechnology.ucihost.png    the app's icon, the black queen, each
-#   /usr/share/icons/hicolor/scalable/apps/com.recklesstechnology.ucihost.svg   size its own render (assets/icon/,
-#                                                                               tools/make_icon.py), N 16 to 512
+#   /usr/share/icons/hicolor/<N>x<N>/apps/com.recklesstechnology.ucihost.png    the app's icon, Jonny's sketch of the
+#                                                                               Colosseum, each size its own render
+#                                                                               (assets/icon/, tools/make_icon.py), N 16
+#                                                                               to 512; a drawing has no scalable form
 #   /usr/share/doc/reckless-uci-host/                                   EULA.txt, THIRD-PARTY-NOTICES.txt, copyright
 #
 # every file the staged one byte for byte, owned by root, 0755 where it runs and 0644 elsewhere, its time
@@ -58,8 +59,6 @@ for size in 16 24 32 48 64 128 256 512; do
     install -d -m 0755 "$pkg/usr/share/icons/hicolor/${size}x${size}/apps"
     install -m 0644 "$root/assets/icon/png/icon-$size.png" "$pkg/usr/share/icons/hicolor/${size}x${size}/apps/$id.png"
 done
-install -d -m 0755 "$pkg/usr/share/icons/hicolor/scalable/apps"
-install -m 0644 "$root/assets/icon/icon.svg" "$pkg/usr/share/icons/hicolor/scalable/apps/$id.svg"
 install -m 0644 "$dist/EULA.txt" "$dist/THIRD-PARTY-NOTICES.txt" "$pkg/usr/share/doc/reckless-uci-host/"
 cat > "$pkg/usr/share/doc/reckless-uci-host/copyright" <<COPYRIGHT
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/

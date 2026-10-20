@@ -1,10 +1,11 @@
 #pragma once
-/// @file AboutDialog.h Help > About Reckless UCI Host: the app's mark - the black queen on a white square, the icon's
-/// drawing - its name and version, the copyright, the terms it is used on, the engines the install carries with their
-/// versions and licences, where the third-party notices are, and the website as a link to the person's browser.
+/// @file AboutDialog.h Help > About Reckless UCI Host: the app's mark - its icon, Jonny's sketch of the Colosseum on a
+/// rounded square - its name and version, the copyright, the terms it is used on, the engines the install carries with
+/// their versions and licences, where the third-party notices are, and the website as a link to the person's browser.
 
 #include "Controls.h"
-#include "PieceSet.h"
+
+#include "Canvas.h"
 
 #include <functional>
 #include <string>
@@ -86,11 +87,11 @@ class AboutDialog final : public DialogFrame
   public:
     static constexpr const char *kWebsite = "https://recklesstechnology.com"; ///< The page the link opens.
 
-    /**
-     * @param info What it says.
-     * @param pieces The pieces it draws the queen with; outlive the dialog.
-     */
-    AboutDialog(AboutInfo info, const PieceSet &pieces);
+    /** The embedded file the mark is drawn from: the icon's 256-pixel render (src/app/CMakeLists.txt). */
+    static constexpr const char *kMarkFile = "icon-256.png";
+
+    /** @param info What it says. */
+    explicit AboutDialog(AboutInfo info);
 
     std::function<void()>                       on_close; ///< Closed.
     std::function<void(const std::string &url)> open_url; ///< Opens a page in the person's browser.
@@ -106,6 +107,12 @@ class AboutDialog final : public DialogFrame
 
     /** @return The engines' lines, "Pawnstar 1.2.0 (GPLv3)"; none when the install carries none. */
     std::vector<std::string> EngineLines() const;
+
+    /** @return Whether the mark was read from the binary: without it the card leaves its place empty. */
+    bool has_mark() const
+    {
+        return mark_.IsValid();
+    }
 
     /** @return The website's link. */
     LinkLabel &link()
@@ -123,10 +130,10 @@ class AboutDialog final : public DialogFrame
     void LayOutContent(reckless::gfx::RectI area) override;
 
   private:
-    AboutInfo            info_;   ///< What it says.
-    const PieceSet      &pieces_; ///< The queen's drawing.
-    LinkLabel            link_;   ///< The website.
-    reckless::gfx::RectI area_;   ///< Where the content goes, as last laid out.
+    AboutInfo            info_; ///< What it says.
+    reckless::gfx::Image mark_; ///< The app's icon.
+    LinkLabel            link_; ///< The website.
+    reckless::gfx::RectI area_; ///< Where the content goes, as last laid out.
 };
 
 } // namespace uci_host::app
