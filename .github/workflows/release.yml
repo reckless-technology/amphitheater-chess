@@ -302,16 +302,15 @@ jobs:
           ESIGNER_CREDENTIAL_ID: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
         run: |
           $python = "${{ steps.cpp.outputs.python }}"
-          $icon = 'build/release-ci/src/app/RecklessUciHost/Icon.ico'
           & $python -I packaging/stage.py build/release-ci build/release-dist windows
           if ($LASTEXITCODE -ne 0) { throw "the stage failed" }
           $sign = @()
           if ('${{ steps.esigner.outputs.sign }}' -eq 'true') { $sign = @('-SignWithESigner') }
           pwsh -NoProfile -File packaging/windows/make-installer.ps1 -DistDir build/release-dist -Version $env:VERSION `
-            -OutDir build/release-out -IconFile $icon -Fetch @sign
+            -OutDir build/release-out -Fetch @sign
           if ($LASTEXITCODE -ne 0) { throw "the installer was not made" }
           pwsh -NoProfile -File packaging/windows/test-installer.ps1 -DistDir build/release-dist -Version $env:VERSION `
-            -Python $python -IconFile $icon
+            -Python $python
           if ($LASTEXITCODE -ne 0) { throw "the installer's test failed" }
           Get-ChildItem build/release-out | ForEach-Object { "$($_.Name)  $([math]::Round($_.Length / 1MB, 1)) MB" }
       # The installer as Windows checks it before anything is uploaded: signed, by Jonathan Reckless, timestamped - and
@@ -387,7 +386,7 @@ jobs:
           grep -q "Reckless UCI Host $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
       - name: Build
         run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
-      - name: Both slices, the floor and the version
+      - name: Both slices, the floor, the version and the icon
         run: |
           app=build/release-ci/src/app/RecklessUciHost.app
           for binary in "$app/Contents/MacOS/RecklessUciHost" build/release-ci/src/cli/uci-host-cli; do
@@ -396,6 +395,9 @@ jobs:
           done
           [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$VERSION" ] ||
             { echo "::error::the app's plist is not at $VERSION"; exit 1; }
+          icon=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$app/Contents/Info.plist")
+          cmp "$app/Contents/Resources/$icon" assets/icon/Icon.icns ||
+            { echo "::error::the bundle's $icon, which its plist names, is not assets/icon/Icon.icns"; exit 1; }
           build/release-ci/src/cli/uci-host-cli --version | grep -qx "Reckless UCI Host $VERSION"
           arch -x86_64 build/release-ci/src/cli/uci-host-cli --version | grep -qx "Reckless UCI Host $VERSION"
       - name: Test

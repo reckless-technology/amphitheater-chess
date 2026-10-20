@@ -8,7 +8,9 @@
 #                                                                       where the host in /opt/reckless-technology/bin
 #                                                                       looks for them (src/app/BundledEngines.h)
 #   /usr/share/applications/com.recklesstechnology.ucihost.desktop      the menu entry
-#   /usr/share/icons/hicolor/256x256/apps/com.recklesstechnology.ucihost.png     the series' icon
+#   /usr/share/icons/hicolor/<N>x<N>/apps/com.recklesstechnology.ucihost.png    the app's icon, the black queen, each
+#   /usr/share/icons/hicolor/scalable/apps/com.recklesstechnology.ucihost.svg   size its own render (assets/icon/,
+#                                                                               tools/make_icon.py), N 16 to 512
 #   /usr/share/doc/reckless-uci-host/                                   EULA.txt, THIRD-PARTY-NOTICES.txt, copyright
 #
 # every file the staged one byte for byte, owned by root, 0755 where it runs and 0644 elsewhere, its time
@@ -42,7 +44,7 @@ id=com.recklesstechnology.ucihost
 engines=/usr/lib/reckless-uci-host/engines
 
 install -d -m 0755 "$pkg/DEBIAN" "$pkg/opt/reckless-technology/bin" "$pkg/usr/bin" "$pkg/usr/share/applications" \
-    "$pkg/usr/share/icons/hicolor/256x256/apps" "$pkg/usr/share/doc/reckless-uci-host" "$pkg$engines"
+    "$pkg/usr/share/doc/reckless-uci-host" "$pkg$engines"
 install -m 0755 "$dist/RecklessUciHost" "$dist/uci-host-cli" "$pkg/opt/reckless-technology/bin/"
 ln -s /opt/reckless-technology/bin/uci-host-cli "$pkg/usr/bin/uci-host-cli"
 (cd "$dist/engines" && find . -type d) | while read -r folder; do install -d -m 0755 "$pkg$engines/$folder"; done
@@ -52,8 +54,12 @@ ln -s /opt/reckless-technology/bin/uci-host-cli "$pkg/usr/bin/uci-host-cli"
     install -m "$mode" "$dist/engines/$file" "$pkg$engines/$file"
 done
 install -m 0644 "$here/$id.desktop" "$pkg/usr/share/applications/$id.desktop"
-install -m 0644 "$root/external/reckless-toolkit/assets/logos/RecklessAppIcon256.png" \
-    "$pkg/usr/share/icons/hicolor/256x256/apps/$id.png"
+for size in 16 24 32 48 64 128 256 512; do
+    install -d -m 0755 "$pkg/usr/share/icons/hicolor/${size}x${size}/apps"
+    install -m 0644 "$root/assets/icon/png/icon-$size.png" "$pkg/usr/share/icons/hicolor/${size}x${size}/apps/$id.png"
+done
+install -d -m 0755 "$pkg/usr/share/icons/hicolor/scalable/apps"
+install -m 0644 "$root/assets/icon/icon.svg" "$pkg/usr/share/icons/hicolor/scalable/apps/$id.svg"
 install -m 0644 "$dist/EULA.txt" "$dist/THIRD-PARTY-NOTICES.txt" "$pkg/usr/share/doc/reckless-uci-host/"
 cat > "$pkg/usr/share/doc/reckless-uci-host/copyright" <<COPYRIGHT
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/

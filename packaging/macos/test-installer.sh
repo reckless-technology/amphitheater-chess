@@ -62,6 +62,12 @@ codesign --verify --deep --strict "$uninstaller" 2> /dev/null || fail "the unins
 [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$uninstaller/Contents/Info.plist")" = "$version" ] ||
     fail "the uninstaller is not at $version"
 [ -x "$uninstaller/Contents/Resources/uninstall.sh" ] || fail "the uninstaller has no script"
+uninstaller_icon=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$uninstaller/Contents/Info.plist")
+uninstaller_icon=${uninstaller_icon%.icns}.icns
+cmp -s "$uninstaller/Contents/Resources/$uninstaller_icon" "$app/Contents/Resources/Icon.icns" ||
+    fail "the uninstaller's icon ($uninstaller_icon) is not the app's"
+! /usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$uninstaller/Contents/Info.plist" > /dev/null 2>&1 ||
+    fail "the uninstaller names an asset catalog's icon before its file"
 grep -q 'relocatable="false"' "$work/x/uninstaller.pkg/PackageInfo" || fail "the uninstaller is relocatable"
 stand_in="$work/root"
 mkdir -p "$stand_in/Applications/Reckless Technology" "$stand_in/usr/local/bin" "$stand_in/Library/Documentation"

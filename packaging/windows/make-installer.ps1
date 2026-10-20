@@ -12,7 +12,8 @@
 # ESIGNER_TOTP_SECRET, RECKLESS_CODESIGNTOOL), whose own words, which ISCC's /Qp hides, are printed on a failure; the
 # signature is then held as Windows checks it, valid and Jonathan Reckless's. -TestRoot makes the test build
 # packaging\windows\test-installer.ps1 installs: every part under that folder, an id of its own,
-# reckless-uci-host-<version>-win64-setup-test.exe.
+# reckless-uci-host-<version>-win64-setup-test.exe. The installer and its uninstaller carry the app's icon,
+# assets\icon\Icon.ico, unless -IconFile names another.
 param(
     [Parameter(Mandatory = $true)] [string] $DistDir,
     [Parameter(Mandatory = $true)] [string] $Version,

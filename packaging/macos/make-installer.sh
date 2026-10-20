@@ -61,6 +61,13 @@ done
 /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string $id.uninstall" \
                         -c "Add :CFBundleShortVersionString string $version" \
                         -c "Add :CFBundleVersion string $version" "$uninstaller/Contents/Info.plist"
+# The app's icon, the black queen, in place of the script icon osacompile gives every applet: its applet.icns, which
+# the plist's CFBundleIconFile names, written over with the app's Icon.icns, and the plist's CFBundleIconName dropped
+# where osacompile writes one, so the system never prefers the applet's asset catalog to the file.
+cp "$dist/RecklessUciHost.app/Contents/Resources/Icon.icns" "$uninstaller/Contents/Resources/applet.icns"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIconFile applet" "$uninstaller/Contents/Info.plist" 2> /dev/null ||
+    /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string applet" "$uninstaller/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$uninstaller/Contents/Info.plist" 2> /dev/null || true
 if [ -n "${RECKLESS_APPLICATION_IDENTITY:-}" ]; then
     app_signing=(--sign "$RECKLESS_APPLICATION_IDENTITY" --options runtime --timestamp)
     [ -n "${RECKLESS_SIGNING_KEYCHAIN:-}" ] && app_signing+=(--keychain "$RECKLESS_SIGNING_KEYCHAIN")

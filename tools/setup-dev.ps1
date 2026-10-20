@@ -17,7 +17,8 @@
       AddressSanitizer (the asan-windows preset)
     - uv, Astral's tool installer, and with it clang-format and gcovr at the versions CI pins (build.yml)
     - the toolkit submodule (external/reckless-toolkit), which the window is built on, and the repository's .venv with
-      Pillow, which renders the app's icon
+      tools/requirements.txt (resvg and Pillow, which tools/make_icon.py renders the app's icon with; the suites'
+      Python, which the configure finds there)
     - the repo's git hooks (core.hooksPath .githooks) and the VS Code extensions .vscode/extensions.json recommends
 
   Building happens in Visual Studio's developer environment (VsDevCmd.bat), which puts cmake, ninja and cl on the
@@ -140,18 +141,20 @@ function Set-ToolkitSubmodule {
   if ($LASTEXITCODE -ne 0) { throw "git submodule update --init failed ($LASTEXITCODE)" }
 }
 
-# The repository's .venv with Pillow, which renders the app's icon (the configure finds it there).
+# The repository's .venv with tools/requirements.txt: resvg and Pillow, which tools/make_icon.py renders the app's icon
+# with, at their pins (the configure takes its Python for the suites).
 function Set-IconPython {
   $python = Join-Path (Get-Location) '.venv\Scripts\python.exe'
+  $pinned = "import importlib.metadata as m; import sys; sys.exit(0 if (m.version('resvg-py'), m.version('Pillow')) == ('0.5.0', '13.0.0') else 1)"
   if (Test-Path $python) {
-    & $python -c 'import PIL' 2> $null
-    if ($LASTEXITCODE -eq 0) { Write-Ok 'Pillow (.venv)' "$(& $python --version)"; return }
+    & $python -c $pinned 2> $null
+    if ($LASTEXITCODE -eq 0) { Write-Ok 'icon renderer (.venv)' "$(& $python --version), resvg-py 0.5.0, Pillow 13.0.0"; return }
   }
-  if ($Check -or -not $script:uv) { Write-Missing 'Pillow (.venv)' 'uv venv .venv; uv pip install --python .venv\Scripts\python.exe Pillow'; return }
-  Write-Installing 'Pillow (.venv)' 'uv venv .venv, then Pillow into it'
+  if ($Check -or -not $script:uv) { Write-Missing 'icon renderer (.venv)' 'uv venv .venv; uv pip install --python .venv\Scripts\python.exe -r tools\requirements.txt'; return }
+  Write-Installing 'icon renderer (.venv)' 'uv venv .venv, then tools\requirements.txt into it'
   if (-not (Test-Path $python)) { & $script:uv venv .venv; if ($LASTEXITCODE -ne 0) { throw "uv venv failed ($LASTEXITCODE)" } }
-  & $script:uv pip install --python $python Pillow
-  if ($LASTEXITCODE -ne 0) { throw "Pillow did not install ($LASTEXITCODE)" }
+  & $script:uv pip install --python $python -r tools\requirements.txt
+  if ($LASTEXITCODE -ne 0) { throw "tools\requirements.txt did not install ($LASTEXITCODE)" }
 }
 
 function Set-GitHooks {

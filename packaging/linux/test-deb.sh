@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The Debian package held to the stage it was made from, with no root and nothing installed: its control fields, every
 # staged file byte for byte at its place with its mode (the engines under /usr/lib/reckless-uci-host/engines), the link
-# on the PATH, the menu entry (desktop-file-validate where it is installed) and the icon, its md5sums, nothing outside
-# its folders, every library the binaries need owned by a package its Depends names, and every bundled engine started
+# on the PATH, the menu entry (desktop-file-validate where it is installed) and the icon at every size, its md5sums,
+# nothing outside its folders, every library the binaries need owned by a package its Depends names, and every bundled engine started
 # from its place in the extracted package and held to answer uci with uciok (tools/bundled_engines.py smoke).
 #
 #   packaging/linux/test-deb.sh <dist-dir> <version> <deb>
@@ -47,7 +47,11 @@ for doc in EULA.txt THIRD-PARTY-NOTICES.txt; do
     cmp -s "$dist/$doc" "$x/usr/share/doc/reckless-uci-host/$doc" || fail "$doc is not the staged one"
 done
 [ -s "$x/usr/share/doc/reckless-uci-host/copyright" ] || fail "no copyright file"
-[ -s "$x/usr/share/icons/hicolor/256x256/apps/$id.png" ] || fail "no icon"
+for size in 16 24 32 48 64 128 256 512; do
+    cmp -s "$root/assets/icon/png/icon-$size.png" "$x/usr/share/icons/hicolor/${size}x${size}/apps/$id.png" ||
+        fail "the ${size}x${size} icon is not assets/icon/png/icon-$size.png"
+done
+cmp -s "$root/assets/icon/icon.svg" "$x/usr/share/icons/hicolor/scalable/apps/$id.svg" || fail "the scalable icon"
 desktop="$x/usr/share/applications/$id.desktop"
 grep -qx "Exec=/opt/reckless-technology/bin/RecklessUciHost %F" "$desktop" || fail "the menu entry runs something else"
 if command -v desktop-file-validate > /dev/null; then desktop-file-validate "$desktop" || fail "the menu entry"; fi

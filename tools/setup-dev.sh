@@ -10,8 +10,9 @@
 #     Homebrew's cmake and ninja on macOS)
 #   - the libraries the window's toolkit links on Linux (X11, FreeType, fontconfig) and xvfb for its suites' display
 #   - uv, Astral's tool installer, and with it clang-format and gcovr at the versions CI pins (build.yml)
-#   - the toolkit submodule (external/reckless-toolkit), which the window is built on, and on macOS the repository's
-#     .venv with Pillow, which renders the app's icon
+#   - the toolkit submodule (external/reckless-toolkit), which the window is built on, and the repository's .venv with
+#     tools/requirements.txt (resvg and Pillow, which tools/make_icon.py renders the app's icon with; the suites' Python,
+#     which the configure finds there)
 #   - the repo's git hooks (core.hooksPath .githooks) and the VS Code extensions .vscode/extensions.json recommends
 #
 #   tools/setup-dev.sh                # set up
@@ -136,14 +137,18 @@ toolkit_submodule() {
     else installing 'toolkit submodule' 'git submodule update --init'; git submodule update --init; fi
 }
 
-# The repository's .venv with Pillow, which renders the app's icon on macOS (the configure finds it there).
+# The repository's .venv with tools/requirements.txt: resvg and Pillow, which tools/make_icon.py renders the app's icon
+# with, at their pins (the configure takes its Python for the suites).
 icon_python() {
-    if [ -x .venv/bin/python ] && .venv/bin/python -c 'import PIL' 2>/dev/null; then ok 'Pillow (.venv)' "$(.venv/bin/python --version)"
-    elif [ "$check" = 1 ] || ! have uv; then miss 'Pillow (.venv)' "uv venv .venv && uv pip install --python .venv/bin/python Pillow"
+    local pinned="import importlib.metadata as m, sys; sys.exit((m.version('resvg-py'), m.version('Pillow')) != ('0.5.0', '13.0.0'))"
+    if [ -x .venv/bin/python ] && .venv/bin/python -c "$pinned" 2>/dev/null; then
+        ok 'icon renderer (.venv)' "$(.venv/bin/python --version), resvg-py 0.5.0, Pillow 13.0.0"
+    elif [ "$check" = 1 ] || ! have uv; then
+        miss 'icon renderer (.venv)' "uv venv .venv && uv pip install --python .venv/bin/python -r tools/requirements.txt"
     else
-        installing 'Pillow (.venv)' 'uv venv .venv, then Pillow into it'
+        installing 'icon renderer (.venv)' 'uv venv .venv, then tools/requirements.txt into it'
         [ -x .venv/bin/python ] || uv venv .venv
-        uv pip install --python .venv/bin/python Pillow
+        uv pip install --python .venv/bin/python -r tools/requirements.txt
     fi
 }
 
@@ -232,7 +237,7 @@ uv_tool clang-format "$clang_format_version" exact 'which the pre-commit hook an
 uv_tool gcovr "$gcovr_version" at-least "CI's coverage report"
 
 toolkit_submodule
-[ "$os" = Darwin ] && icon_python
+icon_python
 set_git_hooks
 install_vscode_extensions
 

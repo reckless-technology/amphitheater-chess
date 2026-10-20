@@ -1,0 +1,5 @@
+# The repository's .venv (tools/setup-dev.ps1 and tools/setup-dev.sh make it): what tools/make_icon.py renders the
+# app's icon with - resvg's wheel, which rasterises the SVG with nothing of the system on any platform, and Pillow,
+# which packs the renders into the .ico and reads them back. Pinned, so one source renders one set of files.
+resvg-py==0.5.0
+Pillow==13.0.0

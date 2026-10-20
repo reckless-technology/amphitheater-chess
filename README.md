@@ -81,9 +81,9 @@ however the host goes; on Linux and macOS each runs in a process group of its ow
 ## Building
 
 Set up a machine with `tools/setup-dev.ps1` (Windows) or `tools/setup-dev.sh` (Linux, macOS) - the compiler, CMake,
-Ninja, clang-format 22.1.8 and gcovr, the toolkit submodule, a `.venv` with Pillow for the app's icon (Windows and
-macOS), the libraries the window links on Linux (X11, FreeType, fontconfig), the git hooks and the editor's
-extensions; `-Check` / `--check` only reports. In VS Code these are the "setup environment" and "check environment"
+Ninja, clang-format 22.1.8 and gcovr, the toolkit submodule, a `.venv` with `tools/requirements.txt` (the icon's
+renderer, below, and the suites' Python), the libraries the window links on Linux (X11, FreeType, fontconfig), the git
+hooks and the editor's extensions; `-Check` / `--check` only reports. In VS Code these are the "setup environment" and "check environment"
 tasks.
 
 The window is built on the toolkit, a private repository at `external/reckless-toolkit`: clone with
@@ -144,6 +144,14 @@ row at its top. The last move lights both its squares, each shade in its own tin
 The pieces are the Staunton SVGs, carried inside the binary and drawn by the toolkit's SVG reader at whatever size the
 squares are. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
 promotion.
+
+The app's icon is the black queen, `bQ.svg` unchanged, on a white square with a hairline light-grey edge, filling 80 %
+of its height (87.5 % under 32 pixels). `tools/make_icon.py` renders it from the SVG at every size the platforms
+carry, each size its own render and never one picture scaled down, with resvg's wheel and Pillow
+(`tools/requirements.txt`, pinned) into `assets/icon/`, which is committed, so the build needs no Python: `Icon.ico` (16 to 256) in the Windows
+executable, its installer and uninstaller; `Icon.icns` (16 to 1024, on Apple's grid: an 824-unit rounded square with
+its drop shadow) in the macOS bundle and the uninstaller app; the hicolor sizes 16 to 512 and `icon.svg` in the Debian
+package; the 256 as the Linux window's icon. `--check` holds the committed files to what it renders.
 
 The menu bar is the platform's own, built from the window's state by `Menus.h` on the toolkit's one description of a
 bar: the screen's menu bar on a Mac, the window's on Windows, drawn across the window's top on Linux (and in the render
@@ -330,8 +338,8 @@ which writes `updates/uci-host.json`; it needs the secret `PUBLIC_RELEASES_TOKEN
 `.github/workflows/build.yml`, on the organisation's self-hosted runners only: Linux (gcc, Release), Linux under
 AddressSanitizer and UndefinedBehaviorSanitizer, Linux coverage (gcovr, red under 90 % of `src/`'s lines but the app's
 entry point, `src/app/Main.cpp`, which opens a window and runs in the window suites), Windows (MSVC, Release), macOS
-(universal, each binary held to arm64 and x86_64 and to macOS 13.3, the app's bundle to its signature, its icon and a
-plist that asks for no microphone), each platform's packages unsigned (above), clang-format 22.1.8, and `CI`, the one
+(universal, each binary held to arm64 and x86_64 and to macOS 13.3, the app's bundle to its signature, the icon its
+plist names - `assets/icon/Icon.icns` byte for byte - and a plist that asks for no microphone), each platform's packages unsigned (above), clang-format 22.1.8, and `CI`, the one
 job to require. Every job checks the toolkit
 submodule out with its read-only deploy key (`.github/actions/toolkit`); the window suites (label `window`) run under
 `xvfb-run` on Linux and on the runners' own displays elsewhere.

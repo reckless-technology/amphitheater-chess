@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     }
 
     const std::unique_ptr<reckless::app::AppPlatform> platform =
-        reckless::app::AppPlatform::Create("Reckless UCI Host", reckless::embedded::Find("RecklessAppIcon256.png"));
+        reckless::app::AppPlatform::Create("Reckless UCI Host", reckless::embedded::Find("icon-256.png"));
     MainView                          view(pieces);
     uci_host::app::ControllerServices services;
     services.read_clipboard  = [&platform] { return platform->ClipboardText(); };

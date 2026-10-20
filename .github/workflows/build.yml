@@ -272,7 +272,7 @@ jobs:
           & "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-windows build/ci-windows-dist windows --leave-out-unfit
           if ($LASTEXITCODE -ne 0) { throw "the stage failed" }
           pwsh -NoProfile -File packaging/windows/test-installer.ps1 -DistDir build/ci-windows-dist -Version $version `
-            -Python "${{ steps.cpp.outputs.python }}" -IconFile build/ci-windows/src/app/RecklessUciHost/Icon.ico
+            -Python "${{ steps.cpp.outputs.python }}"
           if ($LASTEXITCODE -ne 0) { throw "the installer's test failed" }
           Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/ci-windows-dist
 
@@ -309,13 +309,19 @@ jobs:
             for arch in arm64 x86_64; do lipo "$binary" -verify_arch "$arch"; done
             [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}' | sort -u)" = 13.3 ] || { echo "::error::$binary is not for macOS 13.3"; exit 1; }
           done
-      # The app's bundle as the system checks it: signed whole, and a plist that names its icon and asks for nothing
-      # the host does not use (no microphone).
+      # The app's bundle as the system checks it: signed whole, a plist that names its icon - the icon it names in the
+      # bundle, the host's own black queen (assets/icon/Icon.icns) byte for byte - and asks for nothing the host does
+      # not use (no microphone).
       - name: The app's bundle
         run: |
           app=build/ci-macos/src/app/RecklessUciHost.app
           codesign --verify --deep --strict "$app"
-          [ -f "$app/Contents/Resources/Icon.icns" ] || { echo "::error::the bundle has no Icon.icns"; exit 1; }
+          icon=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIconFile" "$app/Contents/Info.plist") ||
+            { echo "::error::the plist names no icon"; exit 1; }
+          [ -f "$app/Contents/Resources/$icon" ] || { echo "::error::the bundle has no $icon, which its plist names"; exit 1; }
+          cmp "$app/Contents/Resources/$icon" assets/icon/Icon.icns ||
+            { echo "::error::the bundle's $icon is not assets/icon/Icon.icns"; exit 1; }
+          echo "the bundle's icon: $icon, $(wc -c < "$app/Contents/Resources/$icon") bytes, assets/icon/Icon.icns"
           if /usr/libexec/PlistBuddy -c "Print :NSMicrophoneUsageDescription" "$app/Contents/Info.plist" 2> /dev/null; then
             echo "::error::the plist asks for the microphone"; exit 1
           fi

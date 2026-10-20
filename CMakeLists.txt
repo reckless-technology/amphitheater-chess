@@ -127,6 +127,18 @@ if(UCI_HOST_BUILD_TESTS)
     endif()
 endif()
 
+# The Python the suites run the packaging and notices tests with: the repository's own .venv where there is one (made
+# by the setup scripts), else the first Python 3 on the PATH; -DPython3_EXECUTABLE names one outright (CI passes a venv
+# of its own). The build itself needs none: the app's icon is rendered by tools/make_icon.py and committed.
+if(NOT Python3_EXECUTABLE)
+    foreach(_candidate "${CMAKE_CURRENT_SOURCE_DIR}/.venv/Scripts/python.exe" "${CMAKE_CURRENT_SOURCE_DIR}/.venv/bin/python")
+        if(EXISTS "${_candidate}")
+            set(Python3_EXECUTABLE "${_candidate}" CACHE FILEPATH "The Python the suites run their scripts with")
+            break()
+        endif()
+    endforeach()
+endif()
+
 # The window, Reckless UCI Host, is drawn on the toolkit (reckless-technology/reckless-toolkit), a git submodule at
 # external/reckless-toolkit: its views, its look, its child window on Skia and its app platform. The core and the
 # command line need none of it, and build with the GUI off.
@@ -136,33 +148,6 @@ if(UCI_HOST_GUI)
                             "checkout does not hold. Fetch it with 'git submodule update --init' (tools/setup-dev.ps1 "
                             "and tools/setup-dev.sh do), or build the core and the command line alone with "
                             "-DUCI_HOST_GUI=OFF.")
-    endif()
-
-    # The app's icon (the toolkit's reckless_bundle_icon: an .icns on macOS, an .ico on Windows) is rendered at build
-    # time by a Python 3 with Pillow: the repository's own .venv where there is one (made by the setup scripts), else
-    # the first Python 3 on the PATH; -DPython3_EXECUTABLE names one outright (CI passes a venv of its own).
-    if(APPLE OR WIN32)
-        set(_uci_host_venv_python "")
-        foreach(_candidate "${CMAKE_CURRENT_SOURCE_DIR}/.venv/Scripts/python.exe"
-                           "${CMAKE_CURRENT_SOURCE_DIR}/.venv/bin/python")
-            if(EXISTS "${_candidate}")
-                set(_uci_host_venv_python "${_candidate}")
-                break()
-            endif()
-        endforeach()
-        if(NOT Python3_EXECUTABLE AND _uci_host_venv_python)
-            set(Python3_EXECUTABLE "${_uci_host_venv_python}" CACHE FILEPATH "The Python the app's icon is made with")
-        endif()
-        find_package(Python3 REQUIRED COMPONENTS Interpreter)
-        execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import PIL"
-                        RESULT_VARIABLE _uci_host_pillow OUTPUT_QUIET ERROR_QUIET)
-        if(NOT _uci_host_pillow EQUAL 0)
-            message(FATAL_ERROR "The app's icon is made with Pillow, which ${Python3_EXECUTABLE} lacks. Make the "
-                                "repository's .venv (tools/setup-dev.ps1 or tools/setup-dev.sh do it; by hand, "
-                                "'uv venv .venv' and 'uv pip install --python <the venv's python> Pillow'), then "
-                                "configure again, or -DPython3_EXECUTABLE=<a Python that has Pillow>.")
-        endif()
-        message(STATUS "The app's icon: ${Python3_EXECUTABLE} (Python ${Python3_VERSION}, Pillow found)")
     endif()
 
     # The toolkit's options, as normal variables before it is added: its windowed parts on, its own suites off (the

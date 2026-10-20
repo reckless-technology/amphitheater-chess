@@ -2,8 +2,9 @@
 # version resource and icon, a Linux binary - and the files it carries inside itself.
 
 # The files the binary carries (the toolkit's reckless_module_assets): the series' serif, the knob and the company mark,
-# the monospaced family the engines' output and the FEN are set in, the app's icon for a Linux window, and the twelve
-# pieces (assets/pieces/staunton), each by the name pieces/<piece>.svg.
+# the monospaced family the engines' output and the FEN are set in, the app's icon for a Linux window (its 256-pixel
+# render, icon-256.png, which Main.cpp hands the platform as _NET_WM_ICON), and the twelve pieces
+# (assets/pieces/staunton), each by the name pieces/<piece>.svg.
 reckless_monospace_font_files(uci_host_monospace)
 set(uci_host_pieces "")
 foreach(colour w b)
@@ -14,7 +15,7 @@ endforeach()
 reckless_module_assets(uci_host_assets
     ${uci_host_monospace}
     ${uci_host_pieces}
-    "RecklessAppIcon256.png=${RECKLESS_TOOLKIT_DIR}/assets/logos/RecklessAppIcon256.png")
+    "icon-256.png=${PROJECT_SOURCE_DIR}/assets/icon/png/icon-256.png")
 
 # The window's views and controllers, which the app, the render tool and the window's suite link.
 add_library(uci_host_gui STATIC
@@ -54,7 +55,10 @@ target_link_libraries(RecklessUciHost PRIVATE uci_host_gui reckless_app_platform
 add_executable(uci_host_render_main RenderMain.cpp)
 target_link_libraries(uci_host_render_main PRIVATE uci_host_gui uci_host_warnings)
 
-# The identity the bundle carries, as the toolkit's bundle helpers read it.
+# The identity the bundle carries, as the toolkit's bundle helpers read it. Its icon is the host's own, the black queen
+# on a white square, rendered for every size by tools/make_icon.py into assets/icon/ and committed - so the toolkit's
+# reckless_bundle_icon, which scales one picture down at build time, is not used.
+set(UCI_HOST_ICONS "${PROJECT_SOURCE_DIR}/assets/icon")
 set(UCI_HOST_COMPANY "Reckless Technology")
 set(UCI_HOST_DISPLAY "Reckless UCI Host")
 set(UCI_HOST_COPYRIGHT "Copyright (C) 2026 Jonny Reckless")
@@ -65,7 +69,8 @@ set(RECKLESS_VERSION_BUILD "${UCI_HOST_VERSION_BUILD}")
 
 if(APPLE)
     # The bundle's plist: the host's own (Info.plist.in beside this file), which asks for nothing the host does not
-    # use - no microphone - with the toolkit's icon and PkgInfo beside it and an ad-hoc signature over the whole.
+    # use - no microphone - with the host's Icon.icns, which the plist names, and the PkgInfo of an app (APPL, signature
+    # ????) beside it, and an ad-hoc signature over the whole.
     set(BUNDLE_EXECUTABLE RecklessUciHost)
     set(BUNDLE_IDENTIFIER com.recklesstechnology.ucihost)
     set(DISPLAY "${UCI_HOST_DISPLAY}")
@@ -74,7 +79,11 @@ if(APPLE)
     set(plist "${CMAKE_CURRENT_BINARY_DIR}/RecklessUciHost_Info.plist")
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in" "${plist}" @ONLY)
     set_target_properties(RecklessUciHost PROPERTIES MACOSX_BUNDLE TRUE MACOSX_BUNDLE_INFO_PLIST "${plist}")
-    reckless_mac_bundle_files(RecklessUciHost APPL)
+    set(pkginfo "${CMAKE_CURRENT_BINARY_DIR}/RecklessUciHost/PkgInfo")
+    file(CONFIGURE OUTPUT "${pkginfo}" CONTENT "APPL????")
+    target_sources(RecklessUciHost PRIVATE "${UCI_HOST_ICONS}/Icon.icns" "${pkginfo}")
+    set_source_files_properties("${UCI_HOST_ICONS}/Icon.icns" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    set_source_files_properties("${pkginfo}" PROPERTIES MACOSX_PACKAGE_LOCATION ".")
     reckless_sign_bundle(RecklessUciHost "$<TARGET_BUNDLE_DIR:RecklessUciHost>")
 elseif(WIN32)
     # A window of its own, no console; main() as its entry, as the toolkit's platform expects. The version resource
@@ -83,8 +92,7 @@ elseif(WIN32)
     if(MSVC)
         target_link_options(RecklessUciHost PRIVATE "/ENTRY:mainCRTStartup")
     endif()
-    reckless_bundle_icon(RecklessUciHost Icon.ico uci_host_ico)
-    reckless_windows_version_resource(RecklessUciHost UCI_HOST APP RecklessUciHost.exe "${uci_host_ico}")
+    reckless_windows_version_resource(RecklessUciHost UCI_HOST APP RecklessUciHost.exe "${UCI_HOST_ICONS}/Icon.ico")
 endif()
 
 if(UCI_HOST_BUILD_TESTS)
