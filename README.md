@@ -59,6 +59,12 @@ the board does: on along the line shown, a variation leaving it, or a person's m
 card takes only the height its lines need. The book open is kept in `layout.json` and opened again at the next
 launch; File > Close book takes it away.
 
+The window carries a book of its own, Zenith's (`assets/books`, embedded as `books/zenith.bin`): about 14,000
+positions built entirely from Zenith's self-play, with replies to openings Zenith does not choose itself. A first launch
+opens it, and File > Built-in book opens it again. File > Open book takes a person's own book too: a Polyglot `.bin`,
+or a PGN file, read as a book of its games' openings (`chess/PgnBook.h`) - every move each game and each of its
+variations plays in its first 40 plies, weighted by the number of games that play it in that position.
+
 ### Pondering
 
 An engine set to ponder (`ponder`, or `EngineConfig::does_ponder`) has its Ponder option set. After it answers

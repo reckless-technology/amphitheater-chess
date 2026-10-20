@@ -13,9 +13,10 @@ enum Command : int
     kNewGame = 100, ///< Game > New game...: the players, the time control, from a position or the start.
     kOpenPgn,       ///< File > Open PGN...: a file's games, one picked.
     kSavePgn,       ///< File > Save PGN...: the game shown, written to a file.
-    kOpenBook,      ///< File > Open book...: a Polyglot book, its moves for the position shown listed under the card.
-    kCloseBook,     ///< File > Close book.
-    kQuit,          ///< File > Quit.
+    kOpenBook,      ///< File > Open book...: a Polyglot book or a PGN, its moves for the position shown under the card.
+    kUseBuiltInBook, ///< File > Built-in book: Zenith's own, which the window carries.
+    kCloseBook,      ///< File > Close book.
+    kQuit,           ///< File > Quit.
 
     kCopyFen = 200, ///< Edit > Copy FEN.
     kCopyPgn,       ///< Edit > Copy PGN.

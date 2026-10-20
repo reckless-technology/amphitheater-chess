@@ -18,6 +18,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -207,6 +208,83 @@ TEST(BookWindow, TheBookOpenIsKeptForTheNextLaunch)
         controller.Command(kCloseBook);
     }
     EXPECT_EQ(LayoutSettings::Load(layout).book, "");
+}
+
+TEST(BookWindow, AFirstLaunchOpensTheBuiltInBookAndASuiteKeepingNoLayoutOpensNone)
+{
+    {
+        MainView       view(Pieces());
+        MainController controller(view, ControllerFiles{{}});
+        EXPECT_FALSE(view.is_book_shown()) << "no layout file: no book";
+    }
+    const auto folder = reckless::test::ScratchPath("amphitheater-book-first-launch");
+    std::filesystem::remove_all(folder);
+    MainView        view(Pieces());
+    ControllerFiles files{{}};
+    files.layout = folder / "layout.json";
+    MainController controller(view, files);
+    EXPECT_TRUE(view.is_book_shown());
+    EXPECT_EQ(controller.book_path(), kBuiltInBook);
+    EXPECT_EQ(view.book_label().detail(), "Zenith's, built in");
+    EXPECT_EQ(Sans(controller), (std::vector<std::string>{"e4", "c4"})) << "Zenith's own first moves";
+    ASSERT_TRUE(controller.Paste("1. d4 *"));
+    controller.Frame(0.0);
+    EXPECT_FALSE(Sans(controller).empty()) << "it answers 1.d4, which it does not play";
+}
+
+TEST(BookWindow, BuiltInBookOpensZenithsBookAndIsTickedWhileItIsOpen)
+{
+    MainView       view(Pieces());
+    MainController controller(view, ControllerFiles{{}});
+    const auto     built_in_item = [&controller]() -> const reckless::app::MenuEntry     *{
+        for (const auto &entry : controller.menu_bar().menus[0].submenu)
+        {
+            if (entry.id == kUseBuiltInBook)
+            {
+                return &entry;
+            }
+        }
+        return nullptr;
+    };
+    ASSERT_NE(built_in_item(), nullptr);
+    EXPECT_FALSE(built_in_item()->checked);
+    controller.Command(kUseBuiltInBook);
+    EXPECT_TRUE(built_in_item()->checked);
+    EXPECT_FALSE(Sans(controller).empty());
+    ASSERT_TRUE(controller.OpenBook(WriteBook("amphitheater-book-built-in").string()));
+    EXPECT_FALSE(built_in_item()->checked) << "another book in its place";
+}
+
+TEST(BookWindow, APgnFileOpensAsABookOfItsGamesOpenings)
+{
+    const auto folder = reckless::test::ScratchPath("amphitheater-book-pgn");
+    std::filesystem::create_directories(folder);
+    const auto file = folder / "Repertoire.PGN";
+    std::ofstream(file, std::ios::trunc) << "[Event \"a\"]\n\n1. d4 d5 2. c4 *\n\n[Event \"b\"]\n\n1. d4 Nf6 *\n\n"
+                                         << "[Event \"c\"]\n\n1. c4 *\n";
+    MainView       view(Pieces());
+    MainController controller(view, ControllerFiles{{}});
+    ASSERT_TRUE(controller.OpenBook(file.string())) << controller.last_error();
+    EXPECT_EQ(view.book_label().detail(), "Repertoire.PGN");
+    EXPECT_EQ(Sans(controller), (std::vector<std::string>{"d4", "c4"}));
+    EXPECT_EQ(view.book().model().CellText(0, 2), "2") << "two games play 1.d4";
+
+    const auto empty = folder / "empty.pgn";
+    std::ofstream(empty, std::ios::trunc) << "[Event \"a\"]\n\n*\n";
+    EXPECT_FALSE(controller.OpenBook(empty.string()));
+    EXPECT_NE(controller.last_error().find("no moves"), std::string::npos);
+}
+
+TEST(LayoutSettings, AFileThatNamesNoBookOpensTheBuiltInOneAndAnEmptyOneNone)
+{
+    const auto folder = reckless::test::ScratchPath("amphitheater-layout-book");
+    std::filesystem::create_directories(folder);
+    const auto file = folder / "layout.json";
+    EXPECT_EQ(LayoutSettings{}.book, kBuiltInBook);
+    std::ofstream(file, std::ios::trunc) << "{\"format\": 1, \"engine_log\": {\"open\": false}}";
+    EXPECT_EQ(LayoutSettings::Load(file).book, kBuiltInBook) << "a layout kept before books were";
+    std::ofstream(file, std::ios::trunc) << "{\"format\": 1, \"book\": \"\", \"engine_log\": {\"open\": false}}";
+    EXPECT_EQ(LayoutSettings::Load(file).book, "") << "closed";
 }
 
 } // namespace amphitheater::app

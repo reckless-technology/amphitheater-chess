@@ -12,7 +12,7 @@ endfunction()
 
 amphitheater_suite(amphitheater_chess_test
     SOURCES chess/PerftTest.cpp chess/FenTest.cpp chess/NotationTest.cpp chess/GameTest.cpp chess/PgnTest.cpp
-            chess/TimeControlTest.cpp chess/PolyglotTest.cpp chess/BoardSetupTest.cpp chess/GameTreeTest.cpp
+            chess/TimeControlTest.cpp chess/PolyglotTest.cpp chess/PgnBookTest.cpp chess/BoardSetupTest.cpp chess/GameTreeTest.cpp
     LIBRARIES amphitheater_chess)
 add_test(NAME chess COMMAND amphitheater_chess_test)
 

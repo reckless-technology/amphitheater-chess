@@ -16,12 +16,15 @@
 #include "TestSuiteDialog.h"
 #include "Theme.h"
 #include "chess/Notation.h"
+#include "chess/PgnBook.h"
 #include "match/Openings.h"
 #include "version/Version.h"
 
 #include "AppUpdates.h"
+#include "Embedded.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -162,9 +165,11 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
             menus->Set(bar, std::move(chosen));
         };
     }
-    if (!layout.book.empty())
+    // The book open at the last launch, the built-in one at the first; the status bar says where it cannot be read. A
+    // controller keeping no layout - the suites', the render tool's - opens none.
+    if (!files_.layout.empty() && !layout.book.empty())
     {
-        OpenBook(layout.book); // the book open at the last launch; the status bar says where it cannot be read
+        OpenBook(layout.book);
     }
     Refresh();
     RefreshMenuBar();
@@ -353,8 +358,8 @@ void MainController::Command(int command)
     }
     case kOpenBook: {
         reckless::view::FileRequest request;
-        request.title    = "Open a Polyglot opening book";
-        request.patterns = {"*.bin"};
+        request.title    = "Open an opening book: Polyglot (.bin) or PGN";
+        request.patterns = {"*.bin", "*.pgn"};
         services_.choose_file(request, [this](const std::string &path) {
             if (!path.empty())
             {
@@ -365,6 +370,11 @@ void MainController::Command(int command)
         });
         break;
     }
+    case kUseBuiltInBook:
+        OpenBook(std::string(kBuiltInBook));
+        SaveLayout();
+        Refresh();
+        break;
     case kCloseBook:
         CloseBook();
         SaveLayout();
@@ -1182,9 +1192,51 @@ void MainController::UsePieces(const std::string &id)
     view_.SetPieces(at->second);
 }
 
+namespace
+{
+
+/**
+ * A book read: the built-in one, a PGN file's openings, or a Polyglot file.
+ * @param path kBuiltInBook, a .pgn file (any case) or a .bin.
+ * @return The book, or why it could not be read.
+ */
+Result<chess::PolyglotBook> ReadBook(const std::string &path)
+{
+    if (path == kBuiltInBook)
+    {
+        const auto bytes = reckless::embedded::Find("books/zenith.bin");
+        if (bytes.empty())
+        {
+            return Error{"this build carries no built-in book"};
+        }
+        return chess::PolyglotBook::FromBytes({bytes.begin(), bytes.end()});
+    }
+    std::string extension = std::filesystem::path(std::u8string(path.begin(), path.end())).extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    if (extension != ".pgn")
+    {
+        return chess::PolyglotBook::Load(path);
+    }
+    const auto text = match::ReadTextFile(path);
+    if (!text)
+    {
+        return Error{text.ErrorMessage()};
+    }
+    auto book = chess::BookFromPgn(*text);
+    if (!book)
+    {
+        return Error{"'" + path + "': " + book.ErrorMessage()};
+    }
+    return book;
+}
+
+} // namespace
+
 bool MainController::OpenBook(const std::string &path)
 {
-    auto book = chess::PolyglotBook::Load(path);
+    const bool is_built_in = path == kBuiltInBook;
+    auto       book        = ReadBook(path);
     if (!book)
     {
         error_ = "The opening book could not be read: " + book.ErrorMessage();
@@ -1194,7 +1246,7 @@ bool MainController::OpenBook(const std::string &path)
     book_      = std::move(*book);
     book_path_ = path;
     book_position_.reset();
-    view_.SetBookShown(true, std::filesystem::path(path).filename().string());
+    view_.SetBookShown(true, is_built_in ? "Zenith's, built in" : std::filesystem::path(path).filename().string());
     RefreshBook(game_.PositionAt(view_ply_));
     RefreshMenuBar();
     return true;
@@ -1794,6 +1846,7 @@ MenuState MainController::Menus() const
     state.can_analyse_game  = !catalogue_.engines.empty() && !IsPlaying() && game_.PlyCount() > 0 && !review_;
     state.is_analysing_game = review_ != nullptr;
     state.has_book          = book_.has_value();
+    state.is_built_in_book  = book_.has_value() && book_path_ == kBuiltInBook;
     state.updates_revision  = updates_ ? updates_->revision() : 0;
     if (services_.window_sizes)
     {

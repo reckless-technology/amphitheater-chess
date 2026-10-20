@@ -422,10 +422,16 @@ class MainController
     /**
      * Open a Polyglot opening book in place of any open: its moves for the position shown listed under the card and
      * drawn faintly on the board, and kept in the layout file for the next launch.
-     * @param path The book's file.
+     * @param path The book's file, or kBuiltInBook for the book the window carries.
      * @return Whether it was read; the book open before stays open where it was not.
      */
     bool OpenBook(const std::string &path);
+
+    /** @return The book open: its file, kBuiltInBook, or empty for none. */
+    const std::string &book_path() const
+    {
+        return book_path_;
+    }
 
     /** File > Close book: the book's list and arrows taken away. */
     void CloseBook();

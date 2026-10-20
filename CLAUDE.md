@@ -66,7 +66,8 @@ GUI will save with the toolkit's JSON.
   threefold, fifty), `Pgn` (reader with variations, NAGs, comments, error recovery per game; writer with the Seven Tag
   Roster and 80 columns), `PolyglotBook` (Polyglot .bin books: the format's 781-key table in `PolyglotRandom.cpp`,
   generated from its description; keys checked against its published test keys), `TimeControl` and `Clock`, `Perft`,
-  `BoardSetup` (a position set up square by square, read back strictly), `GameTree` (a game with its variations,
+  `BoardSetup` (a position set up square by square, read back strictly), `PgnBook` (a PGN's openings as a Polyglot
+  book, each move weighted by the games that play it), `GameTree` (a game with its variations,
   read from and written to `PgnGame`), `Result`/`Status`.
 - `src/uci/` (`amphitheater_uci`): `ChildProcess` (`ProcessWindows.cpp`: CreateProcessW, a handle list, a kill-on-close
   job object; `ProcessPosix.cpp`: posix_spawn, a process group, SIGPIPE ignored), `ThreadSafeQueue`, `UciProtocol`
@@ -110,7 +111,8 @@ GUI will save with the toolkit's JSON.
   argument. `PositionEditor` is Edit > Set up position over `chess::BoardSetup`; `GameAnalysisDialog` is Game >
   Analyse the game, which writes `[%eval]` comments, NAGs and the engine's lines into the tree; `TestSuiteDialog` is
   Engines > Test suite (`amphitheater-cli epd` on the command line); `BookPanel` is File > Open book's list of a
-  Polyglot book's moves under the card, drawn faintly on the board too. `EngineCatalogue` is the engine list
+  Polyglot or PGN book's moves under the card, drawn faintly on the board too, Zenith's own book built in
+  (`assets/books`). `EngineCatalogue` is the engine list
   (`reckless-technology/amphitheater/engines.json` in the user's settings folder); `WindowSizes` the View menu's window
   sizes, held by `AppRoot::SetFixedZoom` and kept in `window.json` beside it; `LayoutSettings` the engine log's height
   and whether it shows (its header, `LogHeader`, folds it and drags it), the pieces and the book open, kept in

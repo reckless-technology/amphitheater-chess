@@ -8,9 +8,13 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 namespace amphitheater::app
 {
+
+/** The book setting naming the built-in book, Zenith's own (assets/books), which the window carries inside itself. */
+inline constexpr std::string_view kBuiltInBook = "built-in";
 
 /** The window's layout a launch opens with. */
 struct LayoutSettings
@@ -18,7 +22,9 @@ struct LayoutSettings
     int         log_height  = MainView::kLogDefaultHeight; ///< The engine log's height asked for, in design pixels.
     bool        is_log_open = true;                        ///< Whether the engine log shows.
     std::string pieces{kDefaultPieceSet};                  ///< The pieces' set: View > Pieces, one of kPieceSets.
-    std::string book; ///< The opening book open (File > Open book); empty for none.
+    /** The opening book open: a file (File > Open book), kBuiltInBook (File > Built-in book, and a first launch's),
+        or empty for none (File > Close book). */
+    std::string book{kBuiltInBook};
 
     /**
      * The settings kept in a file.
