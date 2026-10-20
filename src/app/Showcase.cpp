@@ -52,15 +52,18 @@ void ShowSample(MainView &view)
     pawnstar.name  = "Pawnstar 2.1";
     pawnstar.state = "thinking 4.8 s";
     pawnstar.stats = "depth 24/38 \xc2\xb7 11.2 Mn \xc2\xb7 2.31 Mn/s \xc2\xb7 hash 34 %";
+    // One line at a time, as every bundled engine gives: the newest, and the lines at the depths before it dimmed.
     pawnstar.lines = {{"24/38", "+0.42", 1, "13.Ne2 Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1"},
-                      {"24/35", "+0.31", 1, "13.gxf6 bxc3 14.Qxc3 Nxf6 15.Kb1 a5 16.Bh3 Bxh3 17.Rhg1"},
-                      {"23/33", "+0.08", 1, "13.Nd5 Nxd5 14.exd5 Bf5 15.Bd3 Bxd3 16.Qxd3 Nc5"}};
+                      {"23/35", "+0.31", 1, "13.Ne2 Ne8 14.f4 a5 15.Ng3 a4 16.Nd2 Nc5 17.f5", true},
+                      {"22/33", "+0.38", 1, "13.Nd5 Nxd5 14.exd5 Bf5 15.Bd3 Bxd3 16.Qxd3 Nc5", true}};
     EngineBlock zenith;
     zenith.name        = "Zenith 0.9";
     zenith.state       = "pondering 13.Ne2";
     zenith.is_thinking = false;
     zenith.stats       = "depth 21/33 \xc2\xb7 6.4 Mn \xc2\xb7 1.48 Mn/s \xc2\xb7 hash 21 %";
-    zenith.lines       = {{"21/33", "-0.27", -1, "13...Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1 bxc2+"}};
+    zenith.lines       = {{"21/33", "-0.27", -1, "13...Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1 bxc2+"},
+                          {"20/31", "-0.19", -1, "13...Ne8 14.f4 a5 15.f5 Bc4 16.Nf4 a4 17.Nd2", true},
+                          {"19/30", "-0.22", -1, "13...a5 14.f4 a4 15.Nd2 Nb6 16.f5 Bc4", true}};
     view.SetAnalysis({pawnstar, zenith});
     view.SetAnalysing(true);
 

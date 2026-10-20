@@ -161,6 +161,7 @@ void SearchTracker::Begin(const chess::Position &position, bool is_ponder, TimeP
     is_ponder_    = is_ponder;
     started_      = at;
     lines_.clear();
+    depths_.clear();
     nodes_.reset();
     nps_.reset();
     hash_full_.reset();
@@ -199,6 +200,22 @@ void SearchTracker::Info(const uci::SearchInfo &info)
     line.seldepth = info.selective_depth.value_or(0);
     line.score    = info.score;
     line.pv       = info.pv;
+    if (info.multipv.value_or(1) == 1)
+    {
+        // The best line at each depth: a line at the depth already held takes its place, a deeper one goes after it.
+        if (!depths_.empty() && depths_.back().depth == line.depth)
+        {
+            depths_.back() = line;
+        }
+        else
+        {
+            depths_.push_back(line);
+            if (depths_.size() > kDepthsKept)
+            {
+                depths_.erase(depths_.begin());
+            }
+        }
+    }
 }
 
 void SearchTracker::End()
@@ -333,14 +350,33 @@ EngineBlock SearchTracker::Block(TimePoint now, std::size_t most_lines) const
         append("hash " + std::to_string(*hash_full_ / 10) + " %");
     }
     block.stats = stats;
-    for (const auto &[rank, line] : lines_)
+    // Several lines at once (MultiPV): each rank's latest, the best first. One at a time: the newest, and under it
+    // what the engine gave at the depths before, so its block shows how its thought has gone.
+    std::vector<const Line *> chosen;
+    if (lines_.size() > 1)
+    {
+        for (const auto &[rank, line] : lines_)
+        {
+            chosen.push_back(&line);
+        }
+    }
+    else
+    {
+        for (auto line = depths_.rbegin(); line != depths_.rend(); ++line)
+        {
+            chosen.push_back(&*line);
+        }
+    }
+    for (const Line *source : chosen)
     {
         if (block.lines.size() == most_lines)
         {
             break;
         }
+        const Line  &line = *source;
         AnalysisLine shown;
-        shown.depth = std::to_string(line.depth) + (line.seldepth > 0 ? "/" + std::to_string(line.seldepth) : "");
+        shown.is_earlier = lines_.size() <= 1 && !block.lines.empty();
+        shown.depth      = std::to_string(line.depth) + (line.seldepth > 0 ? "/" + std::to_string(line.seldepth) : "");
         if (line.score)
         {
             shown.score       = WhiteScoreText(*line.score, position_.SideToMove());

@@ -1,7 +1,8 @@
 #pragma once
 /// @file SearchTracker.h One engine's search as the window shows it, followed from the lines it exchanges: the position
-/// it searches (from the "position" the host sent), whether it thinks or ponders and since when, and its latest line at
-/// each multi-PV rank - depth, score from White's side, and the line in SAN - with the figures of its search.
+/// it searches (from the "position" the host sent), whether it thinks or ponders and since when, its latest line at
+/// each multi-PV rank - depth, score from White's side, and the line in SAN - and its best line at each of the last few
+/// depths, with the figures of its search.
 
 #include "AnalysisPanel.h"
 #include "Evaluations.h"
@@ -147,7 +148,10 @@ class SearchTracker
      * @param most_lines The most lines to show.
      * @return The block.
      */
-    EngineBlock Block(TimePoint now, std::size_t most_lines = 4) const;
+    EngineBlock Block(TimePoint now, std::size_t most_lines = kDepthsKept) const;
+
+    /** The depths whose best line is kept, the newest last, for an engine that gives one line at a time. */
+    static constexpr std::size_t kDepthsKept = 6;
 
   private:
     /** One multi-PV rank's latest line. */
@@ -168,6 +172,7 @@ class SearchTracker
     std::string                 ponder_san_;           ///< The move pondered on, in SAN.
     TimePoint                   started_{};            ///< When the search (or its ponderhit) began.
     std::map<int, Line>         lines_;                ///< The latest line at each rank.
+    std::vector<Line>           depths_;               ///< The best line at each depth, oldest first.
     std::optional<std::int64_t> nodes_;                ///< The latest node count.
     std::optional<std::int64_t> nps_;                  ///< The latest speed.
     std::optional<int>          hash_full_;            ///< The latest hash fill, in permille.

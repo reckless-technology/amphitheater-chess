@@ -229,6 +229,13 @@ engine's block, the board the first engine's best move as an amber arrow, and th
 score for each position analysed. Engines are quit on worker threads too (`EngineReaper`), so the window never waits on
 one.
 
+An engine's block, in a game or under Analyse, shows the engine's lines under its name, its chip and its figures. An
+engine that gives several lines at once (MultiPV) shows each one's latest, the best first; one that gives a line at a
+time - every bundled engine - shows its newest line lit and, under it and dimmed, the best line it gave at each depth
+before, so the block shows how its thought has gone (`SearchTracker`, which keeps the last six depths). The panel shares
+its rows alike among the blocks, as many whole lines each as its height leaves after their headers: five for one engine
+alone, two each for the two engines of a game.
+
 The evaluation graph (`EvalGraph`, its data in `Evaluations.h`) draws each engine's scores as a series of its own, all
 from White's side on one scale with the zero line: in a game between engines White's engine's score at each of its
 moves and Black's at each of its, so the two interleave ply by ply, the first in amber and the second in blue, a legend

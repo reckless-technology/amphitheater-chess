@@ -1115,7 +1115,7 @@ void MainController::RefreshSearches()
         status.push_back("Analysing with " + names);
         for (const SearchTracker *tracker : analysis_->Trackers())
         {
-            blocks.push_back(tracker->Block(now, kAnalysisLines));
+            blocks.push_back(tracker->Block(now));
             if (tracker->position() != shown)
             {
                 continue;
@@ -1189,7 +1189,7 @@ void MainController::RefreshSearches()
     for (const SearchTracker *found : playing)
     {
         const SearchTracker &tracker = *found;
-        blocks.push_back(tracker.Block(now, 3));
+        blocks.push_back(tracker.Block(now));
         if (tracker.IsSearching())
         {
             status.push_back(tracker.name() + (tracker.IsPondering() ? " pondering" : " searching"));

@@ -59,7 +59,24 @@ add_test(NAME integration COMMAND amphitheater_integration_test)
 # drawn through Skia (its review image written where RECKLESS_SCREENSHOT_DIR names).
 if(AMPHITHEATER_GUI)
     amphitheater_suite(amphitheater_window_test
-        SOURCES app/WindowTest.cpp app/PlayTest.cpp app/BundledEnginesTest.cpp app/CatalogueTest.cpp app/ControlsTest.cpp app/AnalysisTest.cpp app/EngineManagerTest.cpp app/FilesTest.cpp app/MenusTest.cpp app/CompetitionTest.cpp app/WindowSizesTest.cpp app/AboutTest.cpp app/EvaluationsTest.cpp app/SettingsFolderTest.cpp app/LogPanelTest.cpp app/PositionEditorTest.cpp
+        SOURCES
+            app/WindowTest.cpp
+            app/PlayTest.cpp
+            app/BundledEnginesTest.cpp
+            app/CatalogueTest.cpp
+            app/ControlsTest.cpp
+            app/AnalysisTest.cpp
+            app/EngineManagerTest.cpp
+            app/FilesTest.cpp
+            app/MenusTest.cpp
+            app/CompetitionTest.cpp
+            app/WindowSizesTest.cpp
+            app/AboutTest.cpp
+            app/EvaluationsTest.cpp
+            app/SettingsFolderTest.cpp
+            app/LogPanelTest.cpp
+            app/PositionEditorTest.cpp
+            app/AnalysisLinesTest.cpp
         LIBRARIES amphitheater_gui reckless_toolkit_test_support)
     target_compile_definitions(amphitheater_window_test PRIVATE AMPHITHEATER_FAKE_ENGINE="$<TARGET_FILE:amphitheater_fake_engine>")
     add_dependencies(amphitheater_window_test amphitheater_fake_engine)

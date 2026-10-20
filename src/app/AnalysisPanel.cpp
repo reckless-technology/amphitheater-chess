@@ -32,6 +32,17 @@ void AnalysisPanel::SetEmptyText(std::string text)
     Repaint();
 }
 
+std::size_t AnalysisPanel::LinesPerBlock(int height, std::size_t blocks)
+{
+    if (blocks == 0)
+    {
+        return 1;
+    }
+    const int count = static_cast<int>(blocks);
+    const int room  = height - count * kHeaderHeight - (count - 1) * kGap;
+    return static_cast<std::size_t>(std::max(1, room / (count * kLineHeight)));
+}
+
 void AnalysisPanel::Paint(reckless::gfx::Canvas &c)
 {
     const RectF bounds = LocalBounds().ToFloat();
@@ -46,16 +57,17 @@ void AnalysisPanel::Paint(reckless::gfx::Canvas &c)
         c.DrawText(empty_text_, bounds.Reduced(14.0f, 0.0f), Justify::kCentredLeft, true);
         return;
     }
-    float y = 0.0f;
+    const std::size_t share = LinesPerBlock(height(), blocks_.size());
+    float             y     = 0.0f;
     for (const EngineBlock &block : blocks_)
     {
         if (y >= bounds.bottom())
         {
             break;
         }
-        const float block_height =
-            static_cast<float>(kHeaderHeight + kLineHeight * static_cast<int>(block.lines.size()));
-        const RectF frame{0.0f, y, bounds.width(), std::min(block_height, bounds.bottom() - y)};
+        const std::size_t shown        = std::min(block.lines.size(), share);
+        const float       block_height = static_cast<float>(kHeaderHeight + kLineHeight * static_cast<int>(shown));
+        const RectF       frame{0.0f, y, bounds.width(), std::min(block_height, bounds.bottom() - y)};
         c.SetColor(theme::kPanel);
         c.FillRect(frame);
 
@@ -85,9 +97,9 @@ void AnalysisPanel::Paint(reckless::gfx::Canvas &c)
         c.SetColor(theme::kRule);
         c.DrawHorizontalLine(static_cast<int>(y + header.height()) - 1, 0.0f, bounds.width());
 
-        // The lines: the best lit, the rest striped.
+        // The lines: the best (or the newest) lit, the rest striped, a shallower depth's line dimmed.
         float row_y = y + header.height();
-        for (std::size_t index = 0; index < block.lines.size() && row_y < bounds.bottom(); ++index)
+        for (std::size_t index = 0; index < shown && row_y < bounds.bottom(); ++index)
         {
             const AnalysisLine &line = block.lines[index];
             const RectF         row{0.0f, row_y, bounds.width(), static_cast<float>(kLineHeight)};
@@ -101,12 +113,16 @@ void AnalysisPanel::Paint(reckless::gfx::Canvas &c)
                 c.SetColor(theme::kRow);
                 c.FillRect(row);
             }
+            const float strength = line.is_earlier ? 0.55f : 1.0f;
             c.SetFont(fonts::Body().WithHeight(18.0f));
-            c.SetColor(theme::kMuted);
+            c.SetColor(theme::kMuted.WithAlpha(strength));
             c.DrawText(line.depth, RectF{0.0f, row_y, 74.0f, row.height()}, Justify::kCentredRight, false);
-            c.SetColor(line.sign > 0 ? theme::kPlus : line.sign < 0 ? theme::kMinus : theme::kInk);
+            c.SetColor((line.sign > 0   ? theme::kPlus
+                        : line.sign < 0 ? theme::kMinus
+                                        : theme::kInk)
+                           .WithAlpha(strength));
             c.DrawText(line.score, RectF{78.0f, row_y, 74.0f, row.height()}, Justify::kCentredRight, false);
-            c.SetColor(theme::kInk);
+            c.SetColor(theme::kInk.WithAlpha(strength));
             c.DrawText(line.pv, RectF{168.0f, row_y, bounds.width() - 180.0f, row.height()}, Justify::kCentredLeft,
                        true);
             row_y += row.height();
