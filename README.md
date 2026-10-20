@@ -137,7 +137,17 @@ lit amber), the plates |< < > >| Flip Analyse over the lower one and the game's 
 width; across the foot, at the full width, the analysis, the evaluation graph and the engine log in Monaspace Xenon,
 its long lines wrapped to its width at a space and indented under their text; the status bar. A larger window gives
 the board the room first and the columns what width it leaves; under 1240 x 1000 design pixels the whole layout is
-zoomed down rather than squeezed. The moves
+zoomed down rather than squeezed. The window may be made as small as half the design size.
+
+View offers five sizes, 50%, 75%, 100%, 125% and 150% of the 1380 x 1120 design size (`WindowSizes.h`): a size chosen
+makes the window that size, its top left kept unless the window would then cross an edge of its screen's work area,
+when it is moved in until all of it stands there, and the layout is drawn at the design size at exactly that scale
+(`AppRoot::SetFixedZoom`). The size drawn is ticked; dragging the frame to any other size ticks none and the layout
+follows the window again as above. A size the window's screen cannot take whole is dim rather than shrunk to fit, so a
+ticked size is always the one drawn. Larger and Smaller step to the next size that fits and stop at the ends. The size
+chosen is kept in `reckless-technology/uci-host/window.json` in the user's settings folder, and the next launch opens
+at it, held to its screen; with none kept - a first launch, or a window last left at a dragged size - the window opens
+at the design size, held to its screen. The moves
 and the log are a whole number of rows tall, so a list kept on the move shown or the newest line never leaves part of a
 row at its top. The last move lights both its squares, each shade in its own tint of the accent.
 
@@ -158,8 +168,8 @@ bar: the screen's menu bar on a Mac, the window's on Windows, drawn across the w
 tool's images). Every item's shortcut shows beside it, and the platform offers every key no view takes to the bar, so
 the keys work as soon as the window has the keyboard, with no click into it first: Left, Right, Home and End step
 through the game and F flips the board; with Command on a Mac and Control elsewhere, N starts a new game, O and S open
-and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, Z takes back, E manages the engines and Q
-quits. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is open. The
+and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, Z takes back, E manages the engines, Q
+quits, 0 makes the window 100 %, = (or +) the next size up and - the next size down. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is open. The
 window's title follows the game - "White vs Black - Reckless UCI Host", the file's name before the app's while the game
 shown was opened from a file or saved to one. The lists' scroll bars are in the accent.
 

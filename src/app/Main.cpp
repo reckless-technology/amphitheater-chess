@@ -8,6 +8,7 @@
 #include "MainView.h"
 #include "PieceSet.h"
 #include "Theme.h"
+#include "WindowSizes.h"
 #include "version/Version.h"
 
 #include "AppPlatform.h"
@@ -18,6 +19,7 @@
 #include "Window.h"
 
 #include <cstdio>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -69,6 +71,16 @@ int main(int argc, char **argv)
     {
         view.SetMenuBarView(platform->MakeMenuBarView(uci_host::app::theme::MenuBarLook()));
     }
+    // The window's root, and the sizes the View menu offers (WindowSizes.h): opened at the size chosen last, kept in
+    // the user's settings, or at the design size; a launch's check keeps none.
+    reckless::app::AppRoot     root(view, uci_host::app::theme::Shell().Tooltip(), {},
+                                    {MainView::kLayoutWidth, MainView::kLayoutHeight});
+    uci_host::app::WindowSizes sizes(root, {MainView::kDesignWidth, MainView::kDesignHeight},
+                                     options.is_smoke ? std::filesystem::path()
+                                                      : uci_host::app::WindowSizes::DefaultFile());
+    sizes.Restore();
+    services.window_sizes       = [&sizes] { return sizes.Menu(); };
+    services.choose_window_size = [&sizes](int percent) { sizes.Choose(percent); };
     // The engines the install carries beside the app (BundledEngines.h): seeded into the person's engine list. A build
     // tree's app carries none, and leaves the list as it is.
     uci_host::app::ControllerFiles files;
@@ -88,17 +100,18 @@ int main(int argc, char **argv)
     {
         controller.OpenPgn(file);
     }
-    reckless::app::AppRoot root(view, uci_host::app::theme::Shell().Tooltip(), {},
-                                {MainView::kLayoutWidth, MainView::kLayoutHeight});
-    root.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
 
     // The window titled after the game it shows, retitled whenever the game or its file changes.
     reckless::app::AppWindow  *window = nullptr;
     std::string                title;
     reckless::app::AppRunHooks hooks;
     hooks.has_menu_bar = true;
-    hooks.on_open      = [&](reckless::app::AppWindow &opened) { window = &opened; };
-    hooks.on_frame     = [&](double seconds) {
+    hooks.on_open      = [&](reckless::app::AppWindow &opened) {
+        window = &opened;
+        sizes.SetWindow(&opened);
+    };
+    hooks.on_frame = [&](double seconds) {
+        sizes.Frame(seconds);
         controller.Frame(seconds);
         root.Frame();
         if (std::string now = controller.WindowTitle(); window != nullptr && now != title)
@@ -109,6 +122,8 @@ int main(int argc, char **argv)
     };
     hooks.on_end = [&](std::optional<std::pair<int, int>> position) {
         static_cast<void>(position);
+        sizes.Save(); // the size in force, or none where the window was dragged to another
+        sizes.SetWindow(nullptr);
         window = nullptr;
     };
     return reckless::app::RunApp(*platform, root, {MainView::kMinimumWidth, MainView::kMinimumHeight}, options,

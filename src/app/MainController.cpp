@@ -220,6 +220,27 @@ void MainController::Command(int command)
     case kClearLog:
         view_.log().Clear();
         break;
+    case kWindowSize50:
+    case kWindowSize75:
+    case kWindowSize100:
+    case kWindowSize125:
+    case kWindowSize150:
+        if (services_.choose_window_size)
+        {
+            services_.choose_window_size(kWindowSizes[static_cast<std::size_t>(command - kWindowSize50)]);
+        }
+        break;
+    case kWindowLarger:
+    case kWindowSmaller:
+        if (services_.window_sizes && services_.choose_window_size)
+        {
+            const WindowSizeMenu sizes = services_.window_sizes();
+            if (const int percent = command == kWindowLarger ? sizes.larger : sizes.smaller; percent != 0)
+            {
+                services_.choose_window_size(percent);
+            }
+        }
+        break;
     case kNewGame:
         OpenNewGame();
         break;
@@ -1111,6 +1132,10 @@ MenuState MainController::Menus() const
     MenuState state;
     state.is_dialog_open   = dialog_ != nullptr;
     state.updates_revision = updates_ ? updates_->revision() : 0;
+    if (services_.window_sizes)
+    {
+        state.window_sizes = services_.window_sizes();
+    }
     state.can_step_back    = view_ply_ > 0;
     state.can_step_forward = view_ply_ < game_.PlyCount();
     state.is_game_running  = IsPlaying();

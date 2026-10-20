@@ -4,6 +4,7 @@
 /// Linux drawn across its top.
 
 #include "MenuBar.h"
+#include "WindowSizes.h"
 
 #include <cstdint>
 #include <string>
@@ -30,6 +31,8 @@ struct MenuState
     std::vector<std::pair<int, std::string>> watchable_games;
     /** The update check's revision, so its menu says what the check says now. */
     std::uint64_t updates_revision = 0;
+    /** The window's sizes: the one ticked, those its screen takes, the next up and down. */
+    WindowSizeMenu window_sizes;
 
     /**
      * Whether two states show the same menus.
@@ -43,7 +46,8 @@ struct MenuState
 /**
  * The menu bar: File, Edit, Game, Engines, Match, Tournament, View, Help, each item's id its command (Commands.h) and
  * its shortcut the primary modifier (Command on a Mac, Control elsewhere) with a letter, or a plain key for stepping
- * through the game and turning the board. Every menu is disabled while a dialog is open, so neither a click nor a
+ * through the game and turning the board; View's window sizes on the primary modifier with 0 (100 %), = or + (the next
+ * size up) and - (the next size down). Every menu is disabled while a dialog is open, so neither a click nor a
  * shortcut acts behind it.
  * @param state What is possible now: the items enabled and ticked by it.
  * @return The bar.

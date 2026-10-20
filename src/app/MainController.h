@@ -11,6 +11,7 @@
 #include "PlaySession.h"
 #include "SearchTracker.h"
 #include "UpdateCheck.h"
+#include "WindowSizes.h"
 #include "chess/Game.h"
 
 #include "chess/Pgn.h"
@@ -44,8 +45,8 @@ struct GameInfo
 };
 
 /** What the controller asks of the window and the platform: the clipboard, the file dialog, the app's end, the menu
-    bar. Each left empty is the window's own: the clipboard and the dialog through the view's host, no quit, and a menu
-    bar drawn across the window's top. */
+    bar, the window's sizes. Each left empty is the window's own: the clipboard and the dialog through the view's host,
+   no quit, and a menu bar drawn across the window's top. */
 struct ControllerServices
 {
     std::function<std::string()>                 read_clipboard;  ///< The clipboard's text.
@@ -57,6 +58,11 @@ struct ControllerServices
     /** The menu bar shown, as the platform shows it (AppPlatform::SetMenuBar): `chosen` runs with each entry chosen,
         by its click or its shortcut. The controller sets it again whenever what the menus can do changes. */
     std::function<void(const reckless::app::MenuBar &bar, std::function<void(int id)> chosen)> set_menu_bar;
+    /** What the View menu shows of the window's sizes (WindowSizes::Menu); empty for no window to size - a suite, the
+        render tool - where every size is dim. */
+    std::function<WindowSizeMenu()> window_sizes;
+    /** A size from the View menu chosen, one of kWindowSizes (WindowSizes::Choose). */
+    std::function<void(int percent)> choose_window_size;
 };
 
 /** Where the controller keeps what it keeps. */

@@ -42,7 +42,8 @@ add_library(uci_host_gui STATIC
     PlaySession.cpp
     SearchTracker.cpp
     Showcase.cpp
-    StandingsDialog.cpp)
+    StandingsDialog.cpp
+    WindowSizes.cpp)
 target_include_directories(uci_host_gui PUBLIC "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(uci_host_gui
     PUBLIC  uci_host_match uci_host_cli_core uci_host_version uci_host_assets reckless_app_shell reckless_common_panel reckless_gfx_skia

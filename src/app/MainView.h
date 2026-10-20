@@ -34,12 +34,13 @@ namespace uci_host::app
 class MainView final : public reckless::view::View
 {
   public:
-    static constexpr int kDesignWidth   = 1380; ///< The window's width when first opened, in design pixels.
-    static constexpr int kDesignHeight  = 1120; ///< Its height.
-    static constexpr int kLayoutWidth   = 1240; ///< The narrowest the layout is laid out at; a narrower window zooms.
-    static constexpr int kLayoutHeight  = 1000; ///< The shortest the layout is laid out at; a shorter window zooms.
-    static constexpr int kMinimumWidth  = 760;  ///< The narrowest the window may be made.
-    static constexpr int kMinimumHeight = 600;  ///< The shortest the window may be made.
+    static constexpr int kDesignWidth  = 1380; ///< The window's width when first opened, in design pixels.
+    static constexpr int kDesignHeight = 1120; ///< Its height.
+    static constexpr int kLayoutWidth  = 1240; ///< The narrowest the layout is laid out at; a narrower window zooms.
+    static constexpr int kLayoutHeight = 1000; ///< The shortest the layout is laid out at; a shorter window zooms.
+    /** The narrowest the window may be made: the View menu's smallest size, half the design's. */
+    static constexpr int kMinimumWidth  = kDesignWidth / 2;
+    static constexpr int kMinimumHeight = kDesignHeight / 2; ///< The shortest: half the design's, likewise.
 
     static constexpr int kMenuHeight     = 34;  ///< The menu bar.
     static constexpr int kStatusHeight   = 28;  ///< The status bar.
