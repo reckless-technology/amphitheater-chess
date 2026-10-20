@@ -1,7 +1,7 @@
 #pragma once
 /// @file LayoutSettings.h What the window keeps of its layout across launches - the engine log's height and whether
-/// it shows, and the pieces the board is drawn with - in `reckless-technology/amphitheater/layout.json` in the user's
-/// settings folder.
+/// it shows, the pieces the board is drawn with and the opening book open - in
+/// `reckless-technology/amphitheater/layout.json` in the user's settings folder.
 
 #include "MainView.h"
 #include "PieceSet.h"
@@ -18,6 +18,7 @@ struct LayoutSettings
     int         log_height  = MainView::kLogDefaultHeight; ///< The engine log's height asked for, in design pixels.
     bool        is_log_open = true;                        ///< Whether the engine log shows.
     std::string pieces{kDefaultPieceSet};                  ///< The pieces' set: View > Pieces, one of kPieceSets.
+    std::string book; ///< The opening book open (File > Open book); empty for none.
 
     /**
      * The settings kept in a file.

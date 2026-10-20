@@ -44,6 +44,10 @@ LayoutSettings LayoutSettings::Load(const std::filesystem::path &file)
     {
         settings.pieces = pieces->AsString();
     }
+    if (const json::Value *book = document->Find("book"); book != nullptr && book->IsString())
+    {
+        settings.book = book->AsString();
+    }
     const json::Value *log = document->Find("engine_log");
     if (log == nullptr || !log->IsObject())
     {
@@ -71,6 +75,7 @@ bool LayoutSettings::Save(const std::filesystem::path &file) const
     document.Set("format", kFormat);
     document.Set("engine_log", std::move(log));
     document.Set("pieces", pieces);
+    document.Set("book", book);
     return reckless::core::WriteJsonFile(file, document);
 }
 

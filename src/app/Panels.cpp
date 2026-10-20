@@ -59,11 +59,29 @@ SectionLabel::SectionLabel(std::string text)
     SetInterceptsMouse(false, false);
 }
 
+void SectionLabel::SetDetail(std::string detail)
+{
+    if (detail != detail_)
+    {
+        detail_ = std::move(detail);
+        Repaint();
+    }
+}
+
 void SectionLabel::Paint(reckless::gfx::Canvas &c)
 {
     c.SetFont(fonts::Label());
     c.SetColor(theme::kInk);
-    c.DrawText(text_, LocalBounds().ToFloat(), Justify::kCentredLeft, true);
+    const reckless::gfx::RectF bounds = LocalBounds().ToFloat();
+    c.DrawText(text_, bounds, Justify::kCentredLeft, true);
+    if (!detail_.empty())
+    {
+        const float left = c.TextWidth(fonts::Label(), text_) + 12.0f;
+        c.SetFont(fonts::Small());
+        c.SetColor(theme::kMuted);
+        c.DrawText(detail_, reckless::gfx::RectF{left, 0.0f, std::max(0.0f, bounds.width() - left), bounds.height()},
+                   Justify::kCentredLeft, true);
+    }
 }
 
 LogHeader::LogHeader()

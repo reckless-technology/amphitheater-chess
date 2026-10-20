@@ -2,14 +2,15 @@
 // draws it - the review images in docs/design/ are made with it.
 //
 //   amphitheater_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines] [tournament]
-//                       [standings] [about] [logfolded] [setup]
+//                       [standings] [about] [logfolded] [setup] [book]
 //
 // The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the board;
 // "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on two
 // engines, the first with options of every type; "tournament" opens Tournament > New tournament on three; "standings"
 // shows Tournament > Standings and crosstable for a double round robin of four after ten games; "about" shows Help >
 // About for an install carrying the five engines the installers pin; "logfolded" folds the engine log away to its
-// header; "setup" opens Edit > Set up position on the position shown. The scale is the device pixels per design pixel,
+// header; "setup" opens Edit > Set up position on the position shown; "book" opens a sample opening book over the
+// sample game, its moves under the card. The scale is the device pixels per design pixel,
 // 1 by default; the size is the window's, in design pixels.
 
 #include "AboutDialog.h"
@@ -85,6 +86,7 @@ int main(int argc, char **argv)
     bool                     is_about      = false;
     bool                     is_log_folded = false;
     bool                     is_setup      = false;
+    bool                     is_book       = false;
     for (int index = 2; index < argc; ++index)
     {
         const std::string argument = argv[index];
@@ -124,6 +126,10 @@ int main(int argc, char **argv)
         {
             is_setup = true;
         }
+        else if (argument == "book")
+        {
+            is_book = true;
+        }
         else
         {
             numbers.push_back(argument);
@@ -154,6 +160,10 @@ int main(int argc, char **argv)
     if (!is_empty)
     {
         amphitheater::app::ShowSample(view);
+        if (is_book)
+        {
+            amphitheater::app::ShowSampleBook(view);
+        }
     }
     view.SetFlipped(is_flipped);
     view.SetLogLayout(view.log_height(), !is_log_folded);

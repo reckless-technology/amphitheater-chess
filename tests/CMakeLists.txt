@@ -79,7 +79,7 @@ if(AMPHITHEATER_GUI)
             app/AnalysisLinesTest.cpp
             app/VariationsTest.cpp
             app/PiecesTest.cpp
-            app/GameAnalysisWindowTest.cpp app/TestSuiteWindowTest.cpp
+            app/GameAnalysisWindowTest.cpp app/TestSuiteWindowTest.cpp app/BookWindowTest.cpp
         LIBRARIES amphitheater_gui reckless_toolkit_test_support)
     target_compile_definitions(amphitheater_window_test PRIVATE AMPHITHEATER_FAKE_ENGINE="$<TARGET_FILE:amphitheater_fake_engine>")
     add_dependencies(amphitheater_window_test amphitheater_fake_engine)

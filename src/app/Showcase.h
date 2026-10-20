@@ -14,4 +14,11 @@ namespace amphitheater::app
  */
 void ShowSample(MainView &view);
 
+/**
+ * An opening book open over the sample: its moves for the sample's position under the card, and faintly on the board
+ * under the engine's arrow.
+ * @param view The view, with the sample shown.
+ */
+void ShowSampleBook(MainView &view);
+
 } // namespace amphitheater::app

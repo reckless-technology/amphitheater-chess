@@ -27,6 +27,7 @@ add_library(amphitheater_gui STATIC
     AnalysisSession.cpp
     BundledEngines.cpp
     BoardView.cpp
+    BookPanel.cpp
     CompetitionDialog.cpp
     CompetitionSession.cpp
     Controls.cpp

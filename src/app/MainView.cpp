@@ -12,7 +12,7 @@ namespace amphitheater::app
 {
 
 MainView::MainView(const PieceSet &pieces)
-    : board_(pieces), moves_label_("Moves"), card_label_("Game"), analysis_label_("Analysis"),
+    : board_(pieces), moves_label_("Moves"), card_label_("Game"), book_label_("Book"), analysis_label_("Analysis"),
       graph_label_("Evaluation")
 {
     SetOpaque(true);
@@ -52,6 +52,10 @@ MainView::MainView(const PieceSet &pieces)
     AddChild(moves_.view());
     AddChild(card_label_);
     AddChild(card_);
+    AddChild(book_label_);
+    AddChild(book_.view());
+    book_label_.SetVisible(false);
+    book_.view().SetVisible(false);
     AddChild(analysis_label_);
     AddChild(analysis_);
     AddChild(graph_label_);
@@ -96,6 +100,12 @@ MainView::MainView(const PieceSet &pieces)
         if (on_variation)
         {
             on_variation(id);
+        }
+    };
+    book_.on_move = [this](chess::Move move) {
+        if (on_book_move)
+        {
+            on_book_move(move);
         }
     };
     graph_.on_select = [this](int ply) {
@@ -174,6 +184,28 @@ void MainView::SetCard(std::vector<CardLine> lines)
 {
     card_.SetLines(std::move(lines));
     Resized();
+}
+
+void MainView::SetBookShown(bool is_shown, const std::string &name)
+{
+    if (is_shown)
+    {
+        book_label_.SetDetail(name);
+    }
+    if (is_shown == is_book_shown_)
+    {
+        return;
+    }
+    is_book_shown_ = is_shown;
+    book_label_.SetVisible(is_shown);
+    book_.view().SetVisible(is_shown);
+    Resized();
+    Repaint();
+}
+
+void MainView::SetBookMoves(std::vector<BookMove> moves)
+{
+    book_.SetMoves(std::move(moves));
 }
 
 void MainView::SetAnalysis(std::vector<EngineBlock> blocks)
@@ -338,8 +370,21 @@ void MainView::Resized()
     }
     const int card_label_y = top + kStripHeight + kGap - 6;
     card_label_.SetBounds({side_left, card_label_y, side_wide, kLabelHeight});
-    const int card_top = card_label_y + kLabelHeight;
-    card_.SetBounds({side_left, card_top, side_wide, std::max(40, plates_y - kGap - card_top)});
+    const int card_top    = card_label_y + kLabelHeight;
+    const int card_bottom = plates_y - kGap;
+    if (!is_book_shown_)
+    {
+        card_.SetBounds({side_left, card_top, side_wide, std::max(40, card_bottom - card_top)});
+        return;
+    }
+    // A book open: the card as tall as its lines, at most half the room, and the book's moves under it.
+    const int room        = std::max(0, card_bottom - card_top);
+    const int card_height = std::clamp(card_.PreferredHeight(side_wide), 40, std::max(40, room / 2));
+    card_.SetBounds({side_left, card_top, side_wide, card_height});
+    const int book_label_y = card_top + card_height + kGap - 6;
+    book_label_.SetBounds({side_left, book_label_y, side_wide, kLabelHeight});
+    const int book_top = book_label_y + kLabelHeight;
+    book_.view().SetBounds({side_left, book_top, side_wide, book_.FittedHeight(card_bottom - book_top)});
 }
 
 void MainView::Paint(reckless::gfx::Canvas &c)

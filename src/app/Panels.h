@@ -15,7 +15,8 @@
 namespace amphitheater::app
 {
 
-/** A section's label over its card: "MOVES", "GAME", "ANALYSIS", in the label font. */
+/** A section's label over its card: "MOVES", "GAME", "ANALYSIS", in the label font, and after it a detail as it is
+    written, in the small face and the muted ink: the book's file. */
 class SectionLabel final : public reckless::view::View
 {
   public:
@@ -28,6 +29,15 @@ class SectionLabel final : public reckless::view::View
         return text_;
     }
 
+    /** @param detail What follows the label, as written; empty for nothing. */
+    void SetDetail(std::string detail);
+
+    /** @return What follows the label. */
+    const std::string &detail() const
+    {
+        return detail_;
+    }
+
     /**
      * The label at the left, centred down.
      * @param c The canvas.
@@ -35,7 +45,8 @@ class SectionLabel final : public reckless::view::View
     void Paint(reckless::gfx::Canvas &c) override;
 
   private:
-    std::string text_; ///< The label, in capitals.
+    std::string text_;   ///< The label, in capitals.
+    std::string detail_; ///< What follows it.
 };
 
 /**

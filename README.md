@@ -51,6 +51,14 @@ one and the game is shorter than its depth (`book=`, `bookdepth=`), and as a mat
 starting position to a number of plies, one line for each pair of colour-swapped games. Book moves are unclocked and
 carry a `{book}` comment in the PGN.
 
+The window opens a book a third way, to read: File > Open book lists the book's moves for the position shown under
+the game's card (`BookPanel`), the heaviest first, each with a bar and the share of the position's weight it holds and
+its weight, and draws the five heaviest faintly on the board in blue, the heavier the clearer, under an engine's
+amber arrow; a move under a twentieth of the weight gets no arrow. A press on a move in the list plays it as a move on
+the board does: on along the line shown, a variation leaving it, or a person's move in a game. While a book is open the
+card takes only the height its lines need. The book open is kept in `layout.json` and opened again at the next
+launch; File > Close book takes it away.
+
 ### Pondering
 
 An engine set to ponder (`ponder`, or `EngineConfig::does_ponder`) has its Ponder option set. After it answers
@@ -324,10 +332,11 @@ finish. Stop abandons the games in progress; the workers finish their moves in t
 `amphitheater_render_main <out.png> [scale] [width height] [view]` draws the window to a PNG with the mockup's state, with
 no window and no display; the view is `flipped`, `empty` (a fresh window), `newgame`, `engines` (the engine manager),
 `tournament` (a new tournament's setup), `standings` (the standings and crosstable), `about` (Help > About, for
-an install carrying the five pinned engines), `logfolded` (the engine log folded away) or `setup` (Edit > Set up
-position on the sample's position). The review images in `docs/design/` are made with it at 1380 x 1120:
-`main-window.png`, `main-window-flipped.png`, `main-window-log-folded.png`, `new-game.png`, `engine-manager.png`,
-`new-tournament.png`, `standings.png`, `about.png` and `position-editor.png`.
+an install carrying the five pinned engines), `logfolded` (the engine log folded away), `setup` (Edit > Set up
+position on the sample's position) or `book` (a sample opening book open over the sample game). The review images in
+`docs/design/` are made with it at 1380 x 1120: `main-window.png`, `main-window-flipped.png`,
+`main-window-log-folded.png`, `new-game.png`, `engine-manager.png`, `new-tournament.png`, `standings.png`,
+`about.png`, `position-editor.png` and `book.png`.
 
 ## The command line
 

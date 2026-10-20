@@ -15,6 +15,7 @@
 #include "WindowSizes.h"
 #include "chess/Game.h"
 #include "chess/GameTree.h"
+#include "chess/PolyglotBook.h"
 
 #include "chess/Pgn.h"
 
@@ -418,7 +419,33 @@ class MainController
      */
     bool OpenTestSuite(const std::string &path);
 
+    /**
+     * Open a Polyglot opening book in place of any open: its moves for the position shown listed under the card and
+     * drawn faintly on the board, and kept in the layout file for the next launch.
+     * @param path The book's file.
+     * @return Whether it was read; the book open before stays open where it was not.
+     */
+    bool OpenBook(const std::string &path);
+
+    /** File > Close book: the book's list and arrows taken away. */
+    void CloseBook();
+
+    /** @return The book's moves for the position shown, the heaviest first; none with no book open. */
+    const std::vector<BookMove> &book_moves() const
+    {
+        return book_moves_;
+    }
+
   private:
+    /**
+     * The book's moves for the position shown, read again where it changed, and handed to the view.
+     * @param shown The position shown.
+     */
+    void RefreshBook(const chess::Position &shown);
+
+    /** @return The book's moves as faint arrows, each as clear as its share; the engines' arrows go over them. */
+    std::vector<BoardArrow> BookArrows() const;
+
     /** The game analysis's positions taken in, and its end, once a frame. */
     void PollGameAnalysis();
 
@@ -483,6 +510,10 @@ class MainController
     EngineCatalogue               catalogue_;         ///< The configured engines.
     std::map<std::string, PieceSet>      piece_sets_; ///< The sets loaded, by id: the board draws with one.
     std::string                          piece_set_{kDefaultPieceSet};    ///< The set the board is drawn with.
+    std::optional<chess::PolyglotBook>   book_;                           ///< The opening book open, if any.
+    std::string                          book_path_;                      ///< Its file, kept in the layout file.
+    std::optional<chess::Position>       book_position_;                  ///< The position its moves were read for.
+    std::vector<BookMove>                book_moves_;                     ///< Its moves there, the heaviest first.
     std::unique_ptr<match::GameAnalyser> review_;                         ///< The game analysis under way.
     std::vector<std::unique_ptr<match::GameAnalyser>>   retired_reviews_; ///< Analyses finishing in the background.
     GameAnalysisChoice                                  review_choice_;   ///< Its engine and what it writes.

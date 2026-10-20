@@ -9,7 +9,11 @@
 namespace amphitheater::app
 {
 
-void ShowSample(MainView &view)
+namespace
+{
+
+/** @return The sample game: twelve moves of a Sicilian. */
+chess::Game SampleGame()
 {
     chess::Game game;
     for (const char *san : {"e4",  "c5",  "Nf3", "d6",  "d4",  "cxd4", "Nxd4",  "Nf6",  "Nc3", "a6", "Be3", "e5",
@@ -17,7 +21,15 @@ void ShowSample(MainView &view)
     {
         game.PlaySan(san);
     }
-    const int ply = game.PlyCount();
+    return game;
+}
+
+} // namespace
+
+void ShowSample(MainView &view)
+{
+    const chess::Game game = SampleGame();
+    const int         ply  = game.PlyCount();
     view.SetBoard(game.CurrentPosition(), game.Moves().back(), false);
     // The Scheveningen's 6...e6 beside the game's 6...e5, as a variation under the sixth move's row.
     view.SetMoves(game.SanMoves(), 1, false, ply, {{11, "(6...e6 7.f3 b5 8.g4 h6 9.Qd2 Nbd7 \xe2\x80\xa6)", 1}});
@@ -98,6 +110,38 @@ void ShowSample(MainView &view)
 
     view.SetStatus(
         {"White to move", "Pawnstar searching", "Zenith pondering 13.Ne2", "Concurrency 1 \xc2\xb7 game 7 of 20"});
+}
+
+void ShowSampleBook(MainView &view)
+{
+    const chess::Game      game     = SampleGame();
+    const chess::Position &position = game.CurrentPosition();
+    std::vector<BookMove>  moves;
+    const int              total = 412 + 233 + 91 + 38;
+    for (const auto &[san, weight] :
+         {std::pair{"Ne2", 412}, std::pair{"Nd5", 233}, std::pair{"gxf6", 91}, std::pair{"Na4", 38}})
+    {
+        const auto move = chess::ParseSan(position, san);
+        if (move)
+        {
+            moves.push_back({*move, san, weight, static_cast<double>(weight) / total});
+        }
+    }
+    std::vector<BoardArrow> arrows;
+    for (const BookMove &move : moves)
+    {
+        if (move.move != moves.front().move) // the engine's best, Ne2, is drawn in amber over it
+        {
+            arrows.push_back(
+                {move.move.From(), move.move.To(),
+                 theme::kSeriesBlue.WithAlpha(0.25f + 0.4f * static_cast<float>(move.share / moves.front().share))});
+        }
+    }
+    std::vector<BoardArrow> drawn = view.board().arrows();
+    arrows.insert(arrows.end(), drawn.begin(), drawn.end());
+    view.SetArrows(std::move(arrows));
+    view.SetBookShown(true, "openings.bin");
+    view.SetBookMoves(std::move(moves));
 }
 
 } // namespace amphitheater::app

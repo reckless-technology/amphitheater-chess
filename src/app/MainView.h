@@ -5,13 +5,15 @@
 /// and below the board, the navigation plates under it - and beside it the moves and the game's card; across the foot
 /// the analysis with the evaluation graph, the engine log under its header and the status bar. The board grows with the
 /// window; the foot keeps its height but for the log's, which a person sets by dragging its header, or folds away to
-/// the header alone by clicking it.
+/// the header alone by clicking it. While an opening book is open, the game's card takes the height its lines need and
+/// the book's moves for the position shown fill the column under it.
 ///
 /// The view shows what it is given and tells what a person does: the controllers (GameController and the rest) hold
 /// the game, the engines and the files, and set what it shows each frame.
 
 #include "AnalysisPanel.h"
 #include "BoardView.h"
+#include "BookPanel.h"
 #include "EngineLog.h"
 #include "EvalGraph.h"
 #include "MovesList.h"
@@ -67,6 +69,7 @@ class MainView final : public reckless::view::View
     std::function<void(chess::Move move)> on_move;       ///< A person's move on the board.
     std::function<void(int ply)>          on_select_ply; ///< A move pressed in the list or on the graph.
     std::function<void(int id)>           on_variation;  ///< A variation pressed in the list: its handle.
+    std::function<void(chess::Move move)> on_book_move;  ///< A move pressed in the book's list.
     /** The engine log folded, opened or made another height by a person: the layout to keep (log_height(),
         is_log_open()). */
     std::function<void()> on_log_layout;
@@ -113,6 +116,22 @@ class MainView final : public reckless::view::View
 
     /** @param lines The game's card. */
     void SetCard(std::vector<CardLine> lines);
+
+    /**
+     * The opening book's list under the card, or none.
+     * @param is_shown Whether a book is open: the list shows, and the card takes only the height its lines need.
+     * @param name The book's name, beside the section's label.
+     */
+    void SetBookShown(bool is_shown, const std::string &name = {});
+
+    /** @param moves The book's moves for the position shown, the heaviest first. */
+    void SetBookMoves(std::vector<BookMove> moves);
+
+    /** @return Whether the book's list shows. */
+    bool is_book_shown() const
+    {
+        return is_book_shown_;
+    }
 
     /** @param blocks The engines' analysis. */
     void SetAnalysis(std::vector<EngineBlock> blocks);
@@ -209,6 +228,18 @@ class MainView final : public reckless::view::View
         return card_;
     }
 
+    /** @return The book's list. */
+    BookPanel &book()
+    {
+        return book_;
+    }
+
+    /** @return The book's label. */
+    SectionLabel &book_label()
+    {
+        return book_label_;
+    }
+
     /** @return The analysis. */
     AnalysisPanel &analysis()
     {
@@ -297,6 +328,9 @@ class MainView final : public reckless::view::View
     MovesList                                   moves_;        ///< The moves.
     SectionLabel                                card_label_;   ///< "GAME".
     GameCard                                    card_;         ///< The game's card.
+    SectionLabel                                book_label_;   ///< "BOOK", the book's name beside it.
+    BookPanel                                   book_;         ///< The book's moves.
+    bool                                        is_book_shown_ = false;           ///< A book is open: its list shows.
     SectionLabel                                analysis_label_;                  ///< "ANALYSIS".
     AnalysisPanel                               analysis_;                        ///< The engines' lines.
     SectionLabel                                graph_label_;                     ///< "EVALUATION".

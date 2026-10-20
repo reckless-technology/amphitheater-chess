@@ -109,10 +109,12 @@ GUI will save with the toolkit's JSON.
   window and the command line never disagree on an option - add an option to the command line, and to the dialog as an
   argument. `PositionEditor` is Edit > Set up position over `chess::BoardSetup`; `GameAnalysisDialog` is Game >
   Analyse the game, which writes `[%eval]` comments, NAGs and the engine's lines into the tree; `TestSuiteDialog` is
-  Engines > Test suite (`amphitheater-cli epd` on the command line). `EngineCatalogue` is the engine list
+  Engines > Test suite (`amphitheater-cli epd` on the command line); `BookPanel` is File > Open book's list of a
+  Polyglot book's moves under the card, drawn faintly on the board too. `EngineCatalogue` is the engine list
   (`reckless-technology/amphitheater/engines.json` in the user's settings folder); `WindowSizes` the View menu's window
   sizes, held by `AppRoot::SetFixedZoom` and kept in `window.json` beside it; `LayoutSettings` the engine log's height
-  and whether it shows (its header, `LogHeader`, folds it and drags it), kept in `layout.json`. `Theme.h` holds the
+  and whether it shows (its header, `LogHeader`, folds it and drags it), the pieces and the book open, kept in
+  `layout.json`. `Theme.h` holds the
   mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
   the render tool and the suite draw. Files here never take a toolkit header's name (`View.h`, `Menu.h`, `Window.h`):
   they are included as `"app/BoardView.h"` from outside the directory.

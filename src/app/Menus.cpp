@@ -107,7 +107,8 @@ reckless::app::MenuBar BuildMenuBar(const MenuState &state)
     reckless::app::MenuBar bar{{
         MenuEntry::Menu("File", {Item("Open PGN...", kOpenPgn, Shortcut::Primary('o')),
                                  Item("Save PGN...", kSavePgn, Shortcut::Primary('s')), MenuEntry::Separator(),
-                                 Item("Quit", kQuit, Shortcut::Primary('q'))}),
+                                 Item("Open book...", kOpenBook), Item("Close book", kCloseBook, {}, state.has_book),
+                                 MenuEntry::Separator(), Item("Quit", kQuit, Shortcut::Primary('q'))}),
         MenuEntry::Menu("Edit", {Item("Copy FEN", kCopyFen, Shortcut::Primary('c')),
                                  Item("Copy PGN", kCopyPgn, Shortcut::Primary('c', true)),
                                  Item("Paste FEN or PGN", kPasteFen, Shortcut::Primary('v')), MenuEntry::Separator(),

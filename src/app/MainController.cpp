@@ -150,7 +150,8 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
         // The variation entered at its first move.
         ShowLineThrough(id, tree_.node(id).ply);
     };
-    view_.on_move = [this](chess::Move move) { BoardMove(move); };
+    view_.on_move      = [this](chess::Move move) { BoardMove(move); };
+    view_.on_book_move = [this](chess::Move move) { BoardMove(move); };
     if (!services_.set_menu_bar)
     {
         // No platform's bar: the window's own, drawn across its top, its shortcuts pressed by whoever drives it.
@@ -160,6 +161,10 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
                                                       std::function<void(int id)>   chosen) {
             menus->Set(bar, std::move(chosen));
         };
+    }
+    if (!layout.book.empty())
+    {
+        OpenBook(layout.book); // the book open at the last launch; the status bar says where it cannot be read
     }
     Refresh();
     RefreshMenuBar();
@@ -346,6 +351,25 @@ void MainController::Command(int command)
         });
         break;
     }
+    case kOpenBook: {
+        reckless::view::FileRequest request;
+        request.title    = "Open a Polyglot opening book";
+        request.patterns = {"*.bin"};
+        services_.choose_file(request, [this](const std::string &path) {
+            if (!path.empty())
+            {
+                OpenBook(path);
+                SaveLayout();
+                Refresh();
+            }
+        });
+        break;
+    }
+    case kCloseBook:
+        CloseBook();
+        SaveLayout();
+        Refresh();
+        break;
     case kSavePgn: {
         reckless::view::FileRequest request;
         request.title     = "Save the game as PGN";
@@ -1158,6 +1182,63 @@ void MainController::UsePieces(const std::string &id)
     view_.SetPieces(at->second);
 }
 
+bool MainController::OpenBook(const std::string &path)
+{
+    auto book = chess::PolyglotBook::Load(path);
+    if (!book)
+    {
+        error_ = "The opening book could not be read: " + book.ErrorMessage();
+        return false;
+    }
+    error_.clear();
+    book_      = std::move(*book);
+    book_path_ = path;
+    book_position_.reset();
+    view_.SetBookShown(true, std::filesystem::path(path).filename().string());
+    RefreshBook(game_.PositionAt(view_ply_));
+    RefreshMenuBar();
+    return true;
+}
+
+void MainController::CloseBook()
+{
+    book_.reset();
+    book_path_.clear();
+    book_position_.reset();
+    book_moves_.clear();
+    view_.SetBookMoves({});
+    view_.SetBookShown(false);
+    RefreshMenuBar();
+}
+
+void MainController::RefreshBook(const chess::Position &shown)
+{
+    if (!book_ || (book_position_ && *book_position_ == shown))
+    {
+        return;
+    }
+    book_position_ = shown;
+    book_moves_    = BookMovesOf(*book_, shown);
+    view_.SetBookMoves(book_moves_);
+}
+
+std::vector<BoardArrow> MainController::BookArrows() const
+{
+    // The five heaviest moves at most, the heaviest the clearest; a move of under one part in twenty left off.
+    constexpr std::size_t   kMostArrows = 5;
+    std::vector<BoardArrow> arrows;
+    for (const BookMove &move : book_moves_)
+    {
+        if (arrows.size() == kMostArrows || move.share < 0.05)
+        {
+            break;
+        }
+        const float clear = 0.25f + 0.4f * static_cast<float>(move.share / book_moves_.front().share);
+        arrows.push_back({move.move.From(), move.move.To(), theme::kSeriesBlue.WithAlpha(clear)});
+    }
+    return arrows;
+}
+
 void MainController::SaveLayout()
 {
     if (files_.layout.empty())
@@ -1168,6 +1249,7 @@ void MainController::SaveLayout()
     layout.log_height  = view_.log_height();
     layout.is_log_open = view_.is_log_open();
     layout.pieces      = piece_set_;
+    layout.book        = book_path_;
     if (!layout.Save(files_.layout))
     {
         error_ = "The window's layout could not be written to " + files_.layout.string();
@@ -1672,6 +1754,9 @@ void MainController::RefreshSearches()
         }
     }
     view_.SetAnalysis(std::move(blocks));
+    RefreshBook(shown);
+    std::vector<BoardArrow> book_arrows = BookArrows();
+    arrows.insert(arrows.begin(), book_arrows.begin(), book_arrows.end());
     view_.SetArrows(std::move(arrows));
     view_.SetStatus(std::move(status));
     if (graph_dirty)
@@ -1708,6 +1793,7 @@ MenuState MainController::Menus() const
     state.is_in_variation   = !IsPlaying() && ShownVariation() != chess::GameTree::kNone;
     state.can_analyse_game  = !catalogue_.engines.empty() && !IsPlaying() && game_.PlyCount() > 0 && !review_;
     state.is_analysing_game = review_ != nullptr;
+    state.has_book          = book_.has_value();
     state.updates_revision  = updates_ ? updates_->revision() : 0;
     if (services_.window_sizes)
     {
