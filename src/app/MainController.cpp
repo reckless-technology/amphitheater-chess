@@ -1106,6 +1106,19 @@ void MainController::RefreshSearches()
                 graph_dirty = true;
             }
         }
+        // The series in the engines' order, whichever answered first, so each engine keeps its place and its colour; a
+        // series from an earlier analysis whose engine is not in this one keeps its place after them.
+        const std::vector<std::string> engines = analysis_->Names();
+        const auto                     order   = [&engines](const EvalSeries &series) {
+            return static_cast<std::size_t>(std::find(engines.begin(), engines.end(), series.name) - engines.begin());
+        };
+        if (!std::is_sorted(analysis_series_.begin(), analysis_series_.end(),
+                            [&](const EvalSeries &a, const EvalSeries &b) { return order(a) < order(b); }))
+        {
+            std::stable_sort(analysis_series_.begin(), analysis_series_.end(),
+                             [&](const EvalSeries &a, const EvalSeries &b) { return order(a) < order(b); });
+            graph_dirty = true;
+        }
         for (const std::string &failure : analysis_->Failures())
         {
             status.push_back(failure);

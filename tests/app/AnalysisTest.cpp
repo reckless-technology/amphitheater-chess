@@ -138,6 +138,26 @@ TEST(Analysis, EachAnalysingEngineHasASeriesOfItsOwnFromWhitesSide)
     rig.controller.Command(kAnalyse);
 }
 
+TEST(Analysis, TheSeriesFollowTheEnginesOrderWhicheverAnswersFirst)
+{
+    // Alpha slow to start, so Beta's score comes first: the graph still lists Alpha first, in the first colour.
+    Rig rig;
+    rig.controller.catalogue().engines = {Fake({"--score", "35", "--slow-start", "500"}, "Alpha"),
+                                          Fake({"--score", "-50"}, "Beta")};
+    chess::Game game;
+    ASSERT_TRUE(game.PlaySan("e4"));
+    rig.controller.ShowGame(game, {});
+    rig.controller.ShowPly(1);
+    rig.controller.Command(kAnalyse);
+    const auto &graph = rig.view.graph();
+    ASSERT_TRUE(rig.FramesUntil([&] { return !graph.series().empty() && graph.series()[0].points[0]; }));
+    ASSERT_TRUE(rig.FramesUntil(
+        [&] { return graph.series().size() == 2 && graph.series()[0].points[0] && graph.series()[1].points[0]; }));
+    EXPECT_EQ(graph.series()[0].name, "Alpha");
+    EXPECT_EQ(graph.series()[1].name, "Beta");
+    rig.controller.Command(kAnalyse);
+}
+
 TEST(Analysis, AnEngineThatWillNotStartIsNamedAndTheRestAnalyse)
 {
     Rig         rig;
