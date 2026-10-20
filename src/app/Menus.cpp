@@ -117,6 +117,7 @@ reckless::app::MenuBar BuildMenuBar(const MenuState &state)
     {
         menu.enabled = !state.is_dialog_open;
     }
+    bar.about_id = kAbout; // the Mac app menu's About opens Help > About, not the system's standard panel
     return bar;
 }
 

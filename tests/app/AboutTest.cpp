@@ -220,4 +220,18 @@ TEST(About, ItsMarkIsTheAppsIconCarriedInTheBinary)
     EXPECT_TRUE(about.has_mark());
 }
 
+TEST(About, TheMacAppMenusAboutItemOpensThisWindow)
+{
+    MainView       view(Pieces());
+    MainController controller(view, ControllerFiles{{}});
+    view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
+    EXPECT_EQ(controller.menu_bar().about_id, kAbout) << "the bar names Help > About for the app menu's item";
+    reckless::app::MenuBarController *menus = controller.own_menus();
+    ASSERT_NE(menus, nullptr);
+    const int command = menus->CommandOfId(controller.menu_bar().about_id);
+    ASSERT_NE(command, 0);
+    ASSERT_TRUE(menus->Choose(command)) << "as the Mac platform chooses it";
+    EXPECT_NE(dynamic_cast<AboutDialog *>(controller.dialog()), nullptr);
+}
+
 } // namespace amphitheater::app

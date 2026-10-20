@@ -198,8 +198,7 @@ Help > About (`AboutDialog`) shows the app's mark - its icon, from the 256-pixel
 and version, the copyright, the terms (free, proprietary, under `EULA.txt`), the engines the install carries with their
 versions and licences (read from `bundled.json`, every engine whose program is there; none in a build tree), where the
 third-party notices are, and recklesstechnology.com as a link to the person's browser. Close, Escape and Return close
-it. On a Mac the app menu's own About item is still the system's standard panel (the bundle's name, version, copyright
-and icon).
+it. On a Mac the app menu's own About item opens the same window (`MenuBar::about_id`).
 
 Game > New game plays a game on the board: either side the person at the window or any configured engine, under a
 time control (a preset or the command line's syntax), from the starting position or the position shown. The game is
