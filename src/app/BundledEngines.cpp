@@ -265,6 +265,7 @@ std::vector<BundledEngine> ReadBundledEngines(const std::filesystem::path &folde
             engine.id      = object.StringOr("id", "");
             engine.name    = object.StringOr("name", "");
             engine.version = object.StringOr("version", "");
+            engine.licence = object.StringOr("licence", "");
             if (engine.id.empty() || engine.version.empty())
             {
                 continue;

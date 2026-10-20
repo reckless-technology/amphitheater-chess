@@ -15,14 +15,14 @@ packaging/engines.json by its tag, each platform's asset and the asset's SHA-256
     python3 tools/bundled_engines.py stage --platform P --out ENGINES_DIR [--cache DIR] [--no-handshake]
                                            [--leave-out-unfit]
         The engines laid out for an installer, ENGINES_DIR/<id>/<file> (executable), and ENGINES_DIR/bundled.json, the
-        manifest the host reads to seed a person's engine list: each engine's name, version, the defaults it is seeded
-        with, the options its handshake declared and its builds, the first whose requirement the CPU meets the one
-        run. The handshake (uci, isready, quit) runs every build this machine can run, so a staged engine that does not
-        answer stops the stage; --no-handshake leaves it out, for a platform other than this machine's. A library an
-        engine's release needs and does not carry - a companion, pinned in the engine's entry with its archive, its
-        own hash and its licence - is put beside every build of it (Zenith's libwinpthread-1.dll on Windows, until
-        its release links it statically); an engine that still imports what a fresh machine lacks stops the stage,
-        or with --leave-out-unfit is left out of it with a warning.
+        manifest the host reads to seed a person's engine list: each engine's name, version, licence, the defaults it
+        is seeded with, the options its handshake declared and its builds, the first whose requirement the CPU meets
+        the one run. The handshake (uci, isready, quit) runs every build this machine can run, so a staged engine
+        that does not answer stops the stage; --no-handshake leaves it out, for a platform other than this machine's.
+        A library an engine's release needs and does not carry - a companion, pinned in the engine's entry with its
+        archive, its own hash and its licence - is put beside every build of it (Zenith's libwinpthread-1.dll on
+        Windows, until its release links it statically); an engine that still imports what a fresh machine lacks
+        stops the stage, or with --leave-out-unfit is left out of it with a warning.
 
     python3 tools/bundled_engines.py smoke ENGINES_DIR
         Every engine of a manifest, from where it lies, answers uci with uciok and isready with readyok, and names its
@@ -240,7 +240,8 @@ def stage(pins, platform_name, out, cache, do_handshake, leave_out_unfit=False):
         if not builds:
             continue
         entry = {"id": engine["id"], "name": engine["name"], "version": engine["version"],
-                 "repository": engine["repository"], "tag": engine["tag"], "engine_name": "", "author": "",
+                 "licence": engine["licence"], "repository": engine["repository"], "tag": engine["tag"],
+                 "engine_name": "", "author": "",
                  "options": engine["options"], "declared": [], "builds": []}
         for build in builds:
             target = out / engine["id"] / build["file"]

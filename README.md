@@ -118,7 +118,7 @@ runtime.
 | `app_smoke` | `RecklessUciHost --smoke` | the app opens its window and draws thirty frames (label `window`: a display is needed) |
 | `packaging` | `tests/packaging/test_bundled_engines.py` | the engines' pins, a hash that differs refused, the stage's layout and manifest, the handshake and the smoke test, the pins' update |
 | `notices` | `tools/third_party_notices.py --check` | `THIRD-PARTY-NOTICES.txt` as the build's fetches and the engines' pins write it |
-| `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings` | `uci_host_render_main` | the window and its dialogs drawn to PNGs with no display |
+| `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings`, `render_about` | `uci_host_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```
 UCI_HOST_TEST_ENGINE=/path/to/engine ctest --preset release -R integration --output-on-failure
@@ -180,6 +180,12 @@ in the user's settings folder; its menu says what the check found, opens a newer
 the clock on and off, and the status bar says UPDATE while a newer release is out. Nothing is downloaded or installed.
 A launch's check (`--smoke`) makes none, and `RECKLESS_UPDATE_CHECK=off` - every CI job sets it - switches it off.
 
+Help > About (`AboutDialog`) shows the app's mark - the black queen on a white square, drawn from the pieces - its name
+and version, the copyright, the terms (free, proprietary, under `EULA.txt`), the engines the install carries with their
+versions and licences (read from `bundled.json`, every engine whose program is there; none in a build tree), where the
+third-party notices are, and recklesstechnology.com as a link to the person's browser. Close, Escape and Return close
+it. On a Mac the app menu's About item opens it too.
+
 Game > New game plays a game on the board: either side the person at the window or any configured engine, under a
 time control (a preset or the command line's syntax), from the starting position or the position shown. The game is
 the core's `GameRunner` on a thread of its own (`PlaySession`): an engine is an `EnginePlayer`, the person a
@@ -229,9 +235,10 @@ finish. Stop abandons the games in progress; the workers finish their moves in t
 
 `uci_host_render_main <out.png> [scale] [width height] [view]` draws the window to a PNG with the mockup's state, with
 no window and no display; the view is `flipped`, `empty` (a fresh window), `newgame`, `engines` (the engine manager),
-`tournament` (a new tournament's setup) or `standings` (the standings and crosstable). The review images in
-`docs/design/` are made with it at 1380 x 1120: `main-window.png`, `main-window-flipped.png`, `new-game.png`,
-`engine-manager.png`, `new-tournament.png` and `standings.png`.
+`tournament` (a new tournament's setup), `standings` (the standings and crosstable) or `about` (Help > About, for
+an install carrying the five pinned engines). The review images in `docs/design/` are made with it at 1380 x 1120:
+`main-window.png`, `main-window-flipped.png`, `new-game.png`, `engine-manager.png`, `new-tournament.png`,
+`standings.png` and `about.png`.
 
 ## The command line
 
@@ -300,7 +307,7 @@ They lie in a folder named `engines`, one folder per engine with `bundled.json` 
 Windows (`{app}\engines\<engine>\`), inside the bundle on macOS (`RecklessUciHost.app/Contents/Resources/engines/`),
 under `/usr/lib/reckless-uci-host/engines/` from the Debian package (whose host is in `/opt/reckless-technology/bin`),
 and beside the binary in the portable Linux zip. The manifest, which `packaging/stage.py` writes as it lays the engines
-out, gives each engine's name, version, seeded options, the options its handshake declared when it was packaged, and
+out, gives each engine's name, version, licence, seeded options, the options its handshake declared when it was packaged, and
 its builds in order, each with what it asks of the CPU; every staged engine answers its handshake before the stage
 ends. A build tree's host carries no engines and seeds nothing.
 

@@ -19,6 +19,7 @@ reckless_module_assets(uci_host_assets
 
 # The window's views and controllers, which the app, the render tool and the window's suite link.
 add_library(uci_host_gui STATIC
+    AboutDialog.cpp
     AnalysisPanel.cpp
     AnalysisSession.cpp
     BundledEngines.cpp

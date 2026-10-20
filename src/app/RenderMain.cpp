@@ -2,14 +2,16 @@
 // it - the review images in docs/design/ are made with it.
 //
 //   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines] [tournament]
-//                       [standings]
+//                       [standings] [about]
 //
 // The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the
 // board; "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on
 // two engines, the first with options of every type; "tournament" opens Tournament > New tournament on three;
-// "standings" shows Tournament > Standings and crosstable for a double round robin of four after ten games. The scale
-// is the device pixels per design pixel, 1 by default; the size is the window's, in design pixels.
+// "standings" shows Tournament > Standings and crosstable for a double round robin of four after ten games; "about"
+// shows Help > About for an install carrying the five engines the installers pin. The scale is the device pixels per
+// design pixel, 1 by default; the size is the window's, in design pixels.
 
+#include "AboutDialog.h"
 #include "Commands.h"
 #include "Faces.h"
 #include "MainController.h"
@@ -18,6 +20,7 @@
 #include "PieceSet.h"
 #include "Showcase.h"
 #include "StandingsDialog.h"
+#include "version/Version.h"
 
 #include "SkiaCanvas.h"
 
@@ -78,6 +81,7 @@ int main(int argc, char **argv)
     bool                     is_engines    = false;
     bool                     is_tournament = false;
     bool                     is_standings  = false;
+    bool                     is_about      = false;
     for (int index = 2; index < argc; ++index)
     {
         const std::string argument = argv[index];
@@ -104,6 +108,10 @@ int main(int argc, char **argv)
         else if (argument == "standings")
         {
             is_standings = true;
+        }
+        else if (argument == "about")
+        {
+            is_about = true;
         }
         else
         {
@@ -197,6 +205,19 @@ int main(int argc, char **argv)
     if (is_standings)
     {
         view.SetOverlay(&standings);
+    }
+    // The five engines the installers carry, at the versions packaging/engines.json pins, as an install's About shows.
+    uci_host::app::AboutInfo about_info;
+    about_info.version = uci_host::VersionText();
+    about_info.engines = {{"Pawnstar", "1.2.0", "GPL-3.0"},
+                          {"Zenith", "2.1.0", "GPL-3.0-or-later"},
+                          {"Pawnstar-Go", "1.2.0", "GPL-3.0"},
+                          {"Pawnstar-RS", "1.2.0", "GPL-3.0"},
+                          {"Stoopid Chess", "3.0.0", "GPL-3.0"}};
+    uci_host::app::AboutDialog about(about_info, pieces);
+    if (is_about)
+    {
+        view.SetOverlay(&about);
     }
 
     reckless::gfx::Image image = reckless::gfx::MakeImage(static_cast<int>(static_cast<float>(width) * scale + 0.5f),

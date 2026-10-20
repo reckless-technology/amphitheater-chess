@@ -53,6 +53,12 @@ class BoardView final : public reckless::view::View
 
     std::function<void(chess::Move move)> on_move; ///< A person's move, legal in the position shown.
 
+    /** @return The pieces it draws with, which the About window draws its queen with too. */
+    const PieceSet &pieces() const
+    {
+        return pieces_;
+    }
+
     /**
      * The position shown, and the move that led to it, which is marked. A selection or a picker is closed.
      * @param position The position.

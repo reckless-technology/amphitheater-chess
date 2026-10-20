@@ -142,6 +142,7 @@ class Fetch(unittest.TestCase):
             self.assertEqual(on_disk, manifest)
             self.assertEqual(on_disk["engines"][0]["builds"], [{"executable": f"toy/{file}", "requires": ""}])
             self.assertEqual(on_disk["engines"][0]["options"], [{"name": "Hash", "value": "64"}])
+            self.assertEqual(on_disk["engines"][0]["licence"], "GPL-3.0", "the About window names it")
         self.assertEqual(be.stage(pins, "linux", self.root / "linux", self.cache, False)["engines"], [],
                          "a platform the engine has no build for carries none of it")
 

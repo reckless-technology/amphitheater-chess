@@ -4,9 +4,9 @@
 ///
 /// The installer lays them out under a folder named engines (in the install folder on Windows and in the portable
 /// Linux archive, in the bundle's Contents/Resources on macOS, /usr/lib/reckless-uci-host/engines from the Debian
-/// package), with bundled.json beside them: each engine's id, name and version, the defaults it is seeded with, the
-/// options its handshake declared when it was packaged, and its builds in order of preference, each with what it asks
-/// of the CPU (tools/bundled_engines.py writes it). At every start the host reads it and seeds the engine list
+/// package), with bundled.json beside them: each engine's id, name, version and licence, the defaults it is seeded
+/// with, the options its handshake declared when it was packaged, and its builds in order of preference, each with what
+/// it asks of the CPU (tools/bundled_engines.py writes it). At every start the host reads it and seeds the engine list
 /// (SeedBundledEngines): an engine new to the list is added with the manifest's defaults, marked bundled; one the list
 /// holds already follows the install to its new path and version with the person's own settings kept; one the person
 /// removed stays removed; the person's own engines are never touched.
@@ -46,6 +46,7 @@ struct BundledEngine
     std::string                                      id;          ///< Its id, the folder it lies in ("pawnstar").
     std::string                                      name;        ///< The name the list shows ("Pawnstar").
     std::string                                      version;     ///< Its release's version ("1.0.0").
+    std::string                                      licence;     ///< Its licence's SPDX id ("GPL-3.0").
     std::string                                      engine_name; ///< The name its handshake gave when packaged.
     std::string                                      author;      ///< The author its handshake gave.
     std::vector<std::pair<std::string, std::string>> options;     ///< The UCI options it is seeded with, in order.

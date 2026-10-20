@@ -1,5 +1,6 @@
 #include "MainController.h"
 
+#include "AboutDialog.h"
 #include "BundledEngines.h"
 #include "Commands.h"
 #include "CompetitionDialog.h"
@@ -11,6 +12,7 @@
 #include "StandingsDialog.h"
 #include "Theme.h"
 #include "match/Openings.h"
+#include "version/Version.h"
 
 #include "AppUpdates.h"
 
@@ -271,6 +273,9 @@ void MainController::Command(int command)
         break;
     case kShowStandings:
         OpenStandings();
+        break;
+    case kAbout:
+        OpenAbout();
         break;
     case kOpenPgn: {
         reckless::view::FileRequest request;
@@ -671,6 +676,25 @@ void MainController::OpenStandings()
         return competition_ ? std::make_pair(competition_->EngineNames(), competition_->Results())
                             : std::make_pair(std::vector<std::string>{}, std::vector<match::GameResultEntry>{});
     });
+    dialog->on_close = [this] { CloseDialog(); };
+    OpenDialog(std::move(dialog));
+}
+
+void MainController::OpenAbout()
+{
+    AboutInfo info;
+    info.version = VersionText();
+    if (!files_.bundled_engines.empty())
+    {
+        // Every engine the install carries whose program is there, whatever this machine's processor runs.
+        constexpr CpuLevels kEveryLevel{true, true, true};
+        for (const BundledEngine &engine : ReadBundledEngines(files_.bundled_engines, kEveryLevel))
+        {
+            info.engines.push_back({engine.name, engine.version, engine.licence});
+        }
+    }
+    auto dialog      = std::make_unique<AboutDialog>(std::move(info), view_.board().pieces());
+    dialog->open_url = services_.open_url;
     dialog->on_close = [this] { CloseDialog(); };
     OpenDialog(std::move(dialog));
 }

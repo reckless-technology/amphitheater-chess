@@ -55,6 +55,8 @@ struct ControllerServices
     std::function<void(const reckless::view::FileRequest &request, std::function<void(const std::string &)> picked)>
                           choose_file;
     std::function<void()> quit; ///< File > Quit.
+    /** Opens a page in the person's browser (Help > About's website); left empty, the link does nothing. */
+    std::function<void(const std::string &url)> open_url;
     /** The menu bar shown, as the platform shows it (AppPlatform::SetMenuBar): `chosen` runs with each entry chosen,
         by its click or its shortcut. The controller sets it again whenever what the menus can do changes. */
     std::function<void(const reckless::app::MenuBar &bar, std::function<void(int id)> chosen)> set_menu_bar;
@@ -320,6 +322,9 @@ class MainController
 
     /** Tournament > Standings and crosstable. */
     void OpenStandings();
+
+    /** Help > About: the app's name, version and terms, and the engines the install carries. */
+    void OpenAbout();
 
     /** The competition's progress taken in, and the game the board follows shown. */
     void PollCompetition();

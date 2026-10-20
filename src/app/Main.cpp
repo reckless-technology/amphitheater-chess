@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     services.read_clipboard  = [&platform] { return platform->ClipboardText(); };
     services.write_clipboard = [&platform](const std::string &text) { return platform->SetClipboardText(text); };
     services.quit            = [&platform] { platform->CallSoon([&platform] { platform->Quit(); }); };
+    services.open_url        = [](const std::string &url) { reckless::window::OpenInBrowser(url); };
     // The menu bar the platform's own - the screen's on a Mac, the window's on Windows - with its shortcuts working
     // whichever view has the keyboard; on Linux, which has none, the platform's bar drawn across the window's top.
     services.set_menu_bar = [&platform](const reckless::app::MenuBar &bar, std::function<void(int id)> chosen) {
