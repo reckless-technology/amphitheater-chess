@@ -411,6 +411,9 @@ class MainController
     /** Engines > Test suite: an EPD file chosen, then the suite's dialog over it. */
     void ChooseTestSuite();
 
+    /** File > Make book from games: its dialog, the book it makes opened. */
+    void OpenMakeBook();
+
   public:
     /**
      * Open a test suite's dialog over a file: its positions listed, ready to run.

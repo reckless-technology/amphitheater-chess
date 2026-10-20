@@ -4,23 +4,14 @@
 #include "Pgn.h"
 
 #include <algorithm>
-#include <cstdint>
-#include <map>
 #include <set>
-#include <utility>
 
 namespace amphitheater::chess
 {
 
-Result<PolyglotBook> BookFromPgn(std::string_view text, int plies, std::vector<std::string> *errors)
+int PgnBookBuilder::Add(std::string_view text, std::vector<std::string> *errors)
 {
     const std::vector<PgnGame> games = ReadPgn(text, errors);
-    if (games.empty())
-    {
-        return Error{"no game could be read"};
-    }
-    // How many games play each move in each position: a position's key and the move as the format packs it.
-    std::map<std::pair<std::uint64_t, std::uint16_t>, int> counts;
     for (const PgnGame &game : games)
     {
         const GameTree                                    tree = GameTree::FromPgn(game);
@@ -30,7 +21,7 @@ Result<PolyglotBook> BookFromPgn(std::string_view text, int plies, std::vector<s
         {
             const GameTree::Node &node = tree.node(waiting.back());
             waiting.pop_back();
-            if (node.ply >= plies)
+            if (node.ply >= plies_)
             {
                 continue;
             }
@@ -43,18 +34,44 @@ Result<PolyglotBook> BookFromPgn(std::string_view text, int plies, std::vector<s
         }
         for (const auto &move : played)
         {
-            ++counts[move];
+            ++counts_[move];
         }
     }
-    if (counts.empty())
+    games_ += static_cast<long long>(games.size());
+    return static_cast<int>(games.size());
+}
+
+std::vector<PolyglotEntry> PgnBookBuilder::Entries(int least_games) const
+{
+    long long most = 0;
+    for (const auto &[move, count] : counts_)
     {
-        return Error{"its games have no moves"};
+        most = std::max(most, count);
     }
     std::vector<PolyglotEntry> entries;
-    entries.reserve(counts.size());
-    for (const auto &[move, count] : counts)
+    for (const auto &[move, count] : counts_)
     {
-        entries.push_back({move.first, move.second, static_cast<std::uint16_t>(std::min(count, 65535)), 0});
+        if (count < least_games)
+        {
+            continue;
+        }
+        const long long weight = most <= 65535 ? count : std::max(1LL, count * 65535 / most);
+        entries.push_back({move.first, move.second, static_cast<std::uint16_t>(weight), 0});
+    }
+    return entries;
+}
+
+Result<PolyglotBook> BookFromPgn(std::string_view text, int plies, std::vector<std::string> *errors)
+{
+    PgnBookBuilder builder(plies);
+    if (builder.Add(text, errors) == 0)
+    {
+        return Error{"no game could be read"};
+    }
+    std::vector<PolyglotEntry> entries = builder.Entries();
+    if (entries.empty())
+    {
+        return Error{"its games have no moves"};
     }
     return PolyglotBook::FromBytes(PolyglotBook::Encode(std::move(entries)));
 }

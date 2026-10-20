@@ -746,6 +746,9 @@ Usage:
                           [-multipv <n>]
   amphitheater-cli epd        -engine <keys> -file <suite.epd> [-time <s>] [-depth <n>]
                           a test suite: each position's bm or am against the engine's move (1 s each by default)
+  amphitheater-cli makebook   -games <file.pgn|folder|archive.zip> -out <book.bin> [-moves <n>] [-least <n>]
+                          a Polyglot book of the games' first n moves of each side (7 by default), each move
+                          weighted by the games that play it; moves played in fewer than -least games left out
   amphitheater-cli --version | --help
 
 Engine keys (-engine for one engine, -each for every engine, the engine's own winning):
@@ -1278,6 +1281,105 @@ Result<EpdOptions> ParseEpdArguments(const std::vector<std::string> &arguments)
     return options;
 }
 
+Result<match::BookMakerSettings> ParseMakeBookArguments(const std::vector<std::string> &arguments)
+{
+    match::BookMakerSettings settings;
+    ArgumentReader           reader(arguments);
+    while (!reader.AtEnd())
+    {
+        const std::string &argument = reader.Next();
+        if (!IsOptionName(argument))
+        {
+            return Error{"unexpected '" + argument + "'"};
+        }
+        const std::string name  = OptionName(argument);
+        const auto        value = reader.Value(name);
+        if (!value)
+        {
+            return Error{value.ErrorMessage()};
+        }
+        if (name == "games")
+        {
+            settings.games = *value;
+        }
+        else if (name == "out")
+        {
+            settings.out = *value;
+        }
+        else if (name == "moves" || name == "least")
+        {
+            const auto number = ParseNumber(*value, "-" + name, 1);
+            if (!number)
+            {
+                return Error{number.ErrorMessage()};
+            }
+            if (*number > 200)
+            {
+                return Error{"-" + name + " takes at most 200, not " + *value};
+            }
+            (name == "moves" ? settings.moves_per_side : settings.least_games) = static_cast<int>(*number);
+        }
+        else
+        {
+            return Error{"unknown option '" + argument + "'"};
+        }
+    }
+    if (settings.games.empty())
+    {
+        return Error{"makebook needs -games <file.pgn|folder|archive.zip>"};
+    }
+    if (settings.out.empty())
+    {
+        return Error{"makebook needs -out <book.bin>"};
+    }
+    return settings;
+}
+
+namespace
+{
+
+/**
+ * Run "makebook": a book made from a library of games, its progress a line a file, and what it made at the end.
+ * @param arguments The arguments after the subcommand.
+ * @param out Where the progress and the summary go.
+ * @param err Where errors and warnings go.
+ * @param stop When set, the making stops and nothing is written; may be null.
+ * @return 0 when it was made, 1 when it was not, 2 for wrong arguments.
+ */
+int RunMakeBook(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err,
+                const std::atomic<bool> *stop)
+{
+    const auto settings = ParseMakeBookArguments(arguments);
+    if (!settings)
+    {
+        err << "amphitheater-cli: " << settings.ErrorMessage() << '\n';
+        return 2;
+    }
+    std::string shown;
+    const auto  made = match::MakeBook(*settings, [&](const match::BookMakerProgress &progress) {
+        if (progress.source != shown)
+        {
+            shown = progress.source;
+            out << '[' << progress.sources_done + 1 << '/' << progress.sources_total << "] " << shown << '\n';
+        }
+        return stop == nullptr || !stop->load();
+    });
+    if (!made)
+    {
+        err << "amphitheater-cli: " << made.ErrorMessage() << '\n';
+        return 1;
+    }
+    for (const std::string &problem : made->problems)
+    {
+        err << "amphitheater-cli: " << problem << '\n';
+    }
+    out << "Wrote " << settings->out << ": " << made->moves << " moves in " << made->positions << " positions from "
+        << made->games << " games in " << made->sources << (made->sources == 1 ? " file" : " files") << '\n';
+    return 0;
+}
+
+} // namespace
+
 int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err,
            const std::atomic<bool> *stop)
 {
@@ -1313,6 +1415,10 @@ int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::os
     if (command == "epd")
     {
         return RunEpd(rest, out, err, stop);
+    }
+    if (command == "makebook")
+    {
+        return RunMakeBook(rest, out, err, stop);
     }
     err << "amphitheater-cli: unknown command '" << command << "'\n\n" << UsageText();
     return 2;

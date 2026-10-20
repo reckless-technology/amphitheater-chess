@@ -44,6 +44,7 @@ add_library(amphitheater_gui STATIC
     LayoutSettings.cpp
     MainController.cpp
     MainView.cpp
+    MakeBookDialog.cpp
     Menus.cpp
     MovesList.cpp
     NewGameDialog.cpp

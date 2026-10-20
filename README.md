@@ -65,6 +65,16 @@ opens it, and File > Built-in book opens it again. File > Open book takes a pers
 or a PGN file, read as a book of its games' openings (`chess/PgnBook.h`) - every move each game and each of its
 variations plays in its first 40 plies, weighted by the number of games that play it in that position.
 
+A book can be made from a library of games, a quicker way to one than self-play for whoever has a collection of good
+games (`match::BookMaker`): File > Make book from games, or `amphitheater-cli makebook`, reads every game of a PGN file,
+of a zip archive's PGN files, or of a folder's PGN files and archives and those of the folders under it, and takes each
+game's first moves of each side - seven by default - as book moves, each weighted by the number of games that play it
+in its position (scaled down alike where the most passes the format's 65,535). A move played in fewer games than asked
+is left out, so a large library's one-off moves can be kept from the book. The book is written as a Polyglot `.bin`
+and, in the window, opened. Archives are read by the host's own zip reader and DEFLATE decoder (`match/ZipArchive.h`,
+`match/Inflate.h`): stored and deflated entries; Zip64 archives and encrypted entries are refused. The window's file
+chooser picks files, so a folder is chosen by any PGN file in it, or typed.
+
 ### Pondering
 
 An engine set to ponder (`ponder`, or `EngineConfig::does_ponder`) has its Ponder option set. After it answers
@@ -340,10 +350,10 @@ finish. Stop abandons the games in progress; the workers finish their moves in t
 no window and no display; the view is `flipped`, `empty` (a fresh window), `newgame`, `engines` (the engine manager),
 `tournament` (a new tournament's setup), `standings` (the standings and crosstable), `about` (Help > About, for
 an install carrying the five pinned engines), `logfolded` (the engine log folded away), `setup` (Edit > Set up
-position on the sample's position) or `book` (a sample opening book open over the sample game). The review images in
-`docs/design/` are made with it at 1380 x 1120: `main-window.png`, `main-window-flipped.png`,
-`main-window-log-folded.png`, `new-game.png`, `engine-manager.png`, `new-tournament.png`, `standings.png`,
-`about.png`, `position-editor.png` and `book.png`.
+position on the sample's position), `book` (a sample opening book open over the sample game) or `makebook` (File >
+Make book from games). The review images in `docs/design/` are made with it at 1380 x 1120: `main-window.png`,
+`main-window-flipped.png`, `main-window-log-folded.png`, `new-game.png`, `engine-manager.png`, `new-tournament.png`,
+`standings.png`, `about.png`, `position-editor.png`, `book.png` and `make-book.png`.
 
 ## The command line
 
@@ -361,6 +371,7 @@ amphitheater-cli perft startpos 6
 amphitheater-cli perft "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1" 4 -divide
 amphitheater-cli analyse -engine cmd=./engine -fen startpos -moves e2e4 e7e5 -time 10
 amphitheater-cli epd -engine cmd=./engine -file suite.epd -time 0.5
+amphitheater-cli makebook -games ./classical-games -out classical.bin -moves 7 -least 2
 ```
 
 Engines take `cmd=`, `name=`, `dir=`, `arg=` (repeatable), `option.<name>=<value>`, their own `tc=`, `st=`,
@@ -372,7 +383,10 @@ difference with its 95 % margin, the likelihood of superiority and the draw rati
 (points, then Sonneborn-Berger) and a crosstable. `amphitheater-cli --help` has the whole syntax. Ctrl+C stops a match,
 abandoning the games in progress. `epd` runs an EPD test suite as Engines > Test suite does, for `-time` seconds (one
 by default) or to `-depth` on each position, printing a line a position - its number, name, the engine's move and
-whether it solved it - and the score at the end, `Solved 12 of 20 (60.0 %)`.
+whether it solved it - and the score at the end, `Solved 12 of 20 (60.0 %)`. `makebook` makes an opening book from
+a library of games, as File > Make book from games does: `-games` a PGN file, a zip archive or a folder, `-out` the
+`.bin` to write, `-moves` the moves of each side (7 by default) and `-least` the fewest games a move is kept for (1);
+it prints each file as it reads it and what it made at the end.
 
 Every score the command line writes is from White's side: each PGN move's comment, `{+0.35/18 1.2s}` (White better,
 by the score its mover's engine reported, depth 18, 1.2 seconds), `{-0.35/18 1.2s}` (Black better), `{+M5/20 0.4s}`

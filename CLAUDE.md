@@ -78,7 +78,8 @@ GUI will save with the toolkit's JSON.
   Polyglot book (`BookSettings`), `GameRecord` with its PGN and per-move comments `{+0.35/18 1.2s}` - the score from
   White's side, `MoveNote::WhiteScore` - and `{book}`), `Openings` (EPD, PGN, a Polyglot book walked to a depth), `GameAnalysis` (an engine over every
   position of a game on its own thread; each move judged by the winning chances it cost), `TestSuite` (an EPD suite's
-  `bm`/`am` positions, run against an engine on its own thread),
+  `bm`/`am` positions, run against an engine on its own thread), `BookMaker` (a Polyglot book from a library of games:
+  a PGN, a folder, a zip archive read by its own `ZipArchive` and `Inflate`),
   `Schedule` (circle method), `Statistics` (Elo with a 95 % margin from the trinomial variance, LOS, standings with
   Sonneborn-Berger, crosstable), `Tournament` (worker threads, each with its own engines; events in a queue).
 - **Scores:** an engine's UCI score is from the side to move in the position it searches; everything the host shows
@@ -112,7 +113,8 @@ GUI will save with the toolkit's JSON.
   Analyse the game, which writes `[%eval]` comments, NAGs and the engine's lines into the tree; `TestSuiteDialog` is
   Engines > Test suite (`amphitheater-cli epd` on the command line); `BookPanel` is File > Open book's list of a
   Polyglot or PGN book's moves under the card, drawn faintly on the board too, Zenith's own book built in
-  (`assets/books`). `EngineCatalogue` is the engine list
+  (`assets/books`); `MakeBookDialog` is File > Make book from games (`amphitheater-cli makebook` on the command
+  line). `EngineCatalogue` is the engine list
   (`reckless-technology/amphitheater/engines.json` in the user's settings folder); `WindowSizes` the View menu's window
   sizes, held by `AppRoot::SetFixedZoom` and kept in `window.json` beside it; `LayoutSettings` the engine log's height
   and whether it shows (its header, `LogHeader`, folds it and drags it), the pieces and the book open, kept in

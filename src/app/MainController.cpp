@@ -10,6 +10,7 @@
 #include "GameFiles.h"
 #include "GamePickerDialog.h"
 #include "LayoutSettings.h"
+#include "MakeBookDialog.h"
 #include "NewGameDialog.h"
 #include "PositionEditor.h"
 #include "StandingsDialog.h"
@@ -370,6 +371,9 @@ void MainController::Command(int command)
         });
         break;
     }
+    case kMakeBook:
+        OpenMakeBook();
+        break;
     case kUseBuiltInBook:
         OpenBook(std::string(kBuiltInBook));
         SaveLayout();
@@ -918,6 +922,24 @@ void MainController::OpenStandings()
                             : std::make_pair(std::vector<std::string>{}, std::vector<match::GameResultEntry>{});
     });
     dialog->on_close = [this] { CloseDialog(); };
+    OpenDialog(std::move(dialog));
+}
+
+void MainController::OpenMakeBook()
+{
+    auto dialog = std::make_unique<MakeBookDialog>(
+        [this](const reckless::view::FileRequest &request, std::function<void(const std::string &)> chosen) {
+            if (services_.choose_file)
+            {
+                services_.choose_file(request, std::move(chosen));
+            }
+        });
+    dialog->on_close = [this] { CloseDialog(); };
+    dialog->on_made  = [this](const std::string &book) {
+        OpenBook(book);
+        SaveLayout();
+        Refresh();
+    };
     OpenDialog(std::move(dialog));
 }
 

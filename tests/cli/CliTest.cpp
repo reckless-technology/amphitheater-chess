@@ -405,5 +405,29 @@ TEST(Cli, AnEpdSuiteIsRunAgainstAnEngineAndScored)
     EXPECT_NE(RunWith({"--help"}).out.find("amphitheater-cli epd"), std::string::npos);
 }
 
+TEST(Cli, MakeBookWritesABookOfALibrarysOpeningsAndSaysWhatItMade)
+{
+    const std::string library = (std::filesystem::path(AMPHITHEATER_TEST_DATA_DIR) / "library" / "folder").string();
+    const auto        book    = TempFile("amphitheater_cli_made.bin");
+    std::filesystem::remove(book);
+    const auto run = RunWith({"makebook", "-games", library, "-out", book.string(), "-moves", "1"});
+    EXPECT_EQ(run.code, 0) << run.err;
+    EXPECT_NE(run.out.find("[1/4] "), std::string::npos) << run.out;
+    EXPECT_NE(run.out.find(": 7 moves in 4 positions from 5 games in 4 files"), std::string::npos) << run.out;
+    const auto read = chess::PolyglotBook::Load(book.string());
+    ASSERT_TRUE(read) << read.ErrorMessage();
+    EXPECT_EQ(read->Moves(chess::Position::Start()).size(), 3u);
+
+    const auto least = ParseMakeBookArguments({"-games", library, "-out", "x.bin", "-least", "3"});
+    ASSERT_TRUE(least);
+    EXPECT_EQ(least->least_games, 3);
+    EXPECT_EQ(least->moves_per_side, 7) << "seven moves of each side by default";
+    EXPECT_EQ(RunWith({"makebook", "-out", book.string()}).code, 2) << "no games";
+    EXPECT_EQ(RunWith({"makebook", "-games", library}).code, 2) << "no file to write";
+    EXPECT_EQ(RunWith({"makebook", "-games", library, "-out", book.string(), "-moves", "0"}).code, 2);
+    EXPECT_EQ(RunWith({"makebook", "-games", "no-such-folder", "-out", book.string()}).code, 1);
+    EXPECT_NE(RunWith({"--help"}).out.find("amphitheater-cli makebook"), std::string::npos);
+}
+
 } // namespace
 } // namespace amphitheater::cli

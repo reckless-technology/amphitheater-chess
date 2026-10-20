@@ -13,6 +13,7 @@
 /// UsageText has the whole syntax.
 
 #include "chess/Result.h"
+#include "match/BookMaker.h"
 #include "match/Tournament.h"
 #include "uci/EngineConfig.h"
 #include "version/Version.h"
@@ -80,6 +81,13 @@ struct EpdOptions
  * @return The options, or what is wrong with them.
  */
 Result<EpdOptions> ParseEpdArguments(const std::vector<std::string> &arguments);
+
+/**
+ * Read the arguments of "makebook": an opening book made from a library of games.
+ * @param arguments The arguments after the subcommand.
+ * @return The settings, or what is wrong with them.
+ */
+Result<match::BookMakerSettings> ParseMakeBookArguments(const std::vector<std::string> &arguments);
 
 /**
  * Run the command line.
