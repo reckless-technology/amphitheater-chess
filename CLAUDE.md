@@ -97,7 +97,8 @@ GUI will save with the toolkit's JSON.
   (`CompetitionDialog`) writes uci-host-cli's arguments and reads them with `cli::ParseTournamentArguments`, so the
   window and the command line never disagree on an option - add an option to the command line, and to the dialog as an
   argument. `EngineCatalogue` is the engine list (`reckless-technology/uci-host/engines.json`
-  in the user's settings folder). `Theme.h` holds the
+  in the user's settings folder); `WindowSizes` the View menu's window sizes, held by `AppRoot::SetFixedZoom` and kept
+  in `window.json` beside it. `Theme.h` holds the
   mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
   the render tool and the suite draw. Files here never take a toolkit header's name (`View.h`, `Menu.h`, `Window.h`):
   they are included as `"app/BoardView.h"` from outside the directory.

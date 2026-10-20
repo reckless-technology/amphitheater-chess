@@ -37,7 +37,14 @@ enum Command : int
     kStopTournament,      ///< Tournament > Stop the tournament.
     kShowStandings,       ///< Tournament > Standings and crosstable.
 
-    kClearLog = 700, ///< View > Clear the engine log.
+    kClearLog     = 700, ///< View > Clear the engine log.
+    kWindowSize50 = 710, ///< View > 50%: the window at half the layout's design size.
+    kWindowSize75,       ///< View > 75%.
+    kWindowSize100,      ///< View > 100%: the design size.
+    kWindowSize125,      ///< View > 125%.
+    kWindowSize150,      ///< View > 150%.
+    kWindowLarger,       ///< View > Larger: the next size up.
+    kWindowSmaller,      ///< View > Smaller: the next size down.
 
     kAbout         = 800,   ///< Help > About Reckless UCI Host.
     kWatchGameBase = 10000, ///< Match and Tournament > Watch game n: this plus the game's number.

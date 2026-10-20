@@ -2,6 +2,10 @@
 
 #include "Commands.h"
 
+#include <cstddef>
+#include <string>
+#include <vector>
+
 namespace uci_host::app
 {
 
@@ -49,6 +53,34 @@ MenuEntry WatchItems(const MenuState &state)
     return entry;
 }
 
+/**
+ * The View menu: the board and the log, then the window's sizes - each ticked while it is the size drawn and dim where
+ * the window's screen does not take it - and a step up and down through them.
+ * @param state What is possible now.
+ * @return The menu's entries.
+ */
+std::vector<MenuEntry> ViewItems(const MenuState &state)
+{
+    const WindowSizeMenu  &sizes = state.window_sizes;
+    std::vector<MenuEntry> items{Item("Flip the board", kFlip, Shortcut::Plain(U'f')),
+                                 Item("Clear the engine log", kClearLog), MenuEntry::Separator()};
+    for (std::size_t index = 0; index < kWindowSizes.size(); ++index)
+    {
+        const int percent = kWindowSizes[index];
+        items.push_back(Item(std::to_string(percent) + "%", kWindowSize50 + static_cast<int>(index),
+                             percent == 100 ? Shortcut::Primary('0') : Shortcut{}, sizes.fits[index],
+                             sizes.in_force == percent));
+    }
+    items.push_back(MenuEntry::Separator());
+    MenuEntry larger = Item("Larger", kWindowLarger, Shortcut::Primary('='), sizes.larger != 0);
+    // The plus key - Shift with = - and the keypad's plus choose it too.
+    larger.other_shortcuts = {Shortcut::Primary('=', true), Shortcut::Primary('+')};
+    MenuEntry smaller      = Item("Smaller", kWindowSmaller, Shortcut::Primary('-'), sizes.smaller != 0);
+    items.push_back(std::move(larger));
+    items.push_back(std::move(smaller));
+    return items;
+}
+
 } // namespace
 
 reckless::app::MenuBar BuildMenuBar(const MenuState &state)
@@ -78,8 +110,7 @@ reckless::app::MenuBar BuildMenuBar(const MenuState &state)
                         {Item("New tournament...", kNewTournament, {}, !is_competing),
                          Item("Stop the tournament", kStopTournament, {}, state.is_tournament_running),
                          Item("Standings and crosstable", kShowStandings, {}, state.has_standings), WatchItems(state)}),
-        MenuEntry::Menu(
-            "View", {Item("Flip the board", kFlip, Shortcut::Plain(U'f')), Item("Clear the engine log", kClearLog)}),
+        MenuEntry::Menu("View", ViewItems(state)),
         MenuEntry::Menu("Help", {Item("About Reckless UCI Host", kAbout)}),
     }};
     for (MenuEntry &menu : bar.menus)
