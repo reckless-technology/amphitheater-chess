@@ -201,11 +201,11 @@ namespace
 /** @return The log's look: the monospaced face on the darkest colour, no stripes, no header. */
 reckless::view::ListView::Style LogStyle()
 {
-    auto style          = reckless::panel::ListViewStyle(theme::Lists(), fonts::Mono());
+    auto style          = reckless::panel::ListViewStyle(theme::Lists(), fonts::Log());
     style.background    = theme::kBoardEdge;
     style.stripe        = reckless::gfx::Color();
     style.header_height = 0;
-    style.row_height    = 25;
+    style.row_height    = 23;
     style.padding       = 12;
     return style;
 }

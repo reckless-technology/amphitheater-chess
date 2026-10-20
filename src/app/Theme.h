@@ -101,6 +101,14 @@ inline Font Mono()
     return Font(16.0f).WithFamily(FontFamily::kMonospace);
 }
 
+/** @return The engine log's lines: the monospaced family a little smaller than Mono(), at 14.75 its digits stand
+            9.75 px tall, the height of the serif's digits at 18 px, so the log reads at the analysis lines' depth
+            figures' size; the monospaced face's digits are taller than the serif's at one font height. */
+inline Font Log()
+{
+    return Font(14.75f).WithFamily(FontFamily::kMonospace);
+}
+
 /** @return A clock's face: the monospaced family, large. */
 inline Font Clock()
 {
