@@ -240,6 +240,28 @@ TEST(GameRunner, ResignationAdjudication)
     EXPECT_EQ(record.ToPgn().Tag("Termination"), "adjudication");
 }
 
+TEST(GameRunner, ResignationGoesByEachEnginesOwnView)
+{
+    // Black's engine is winning by its own word (+10.00 for Black), White's agrees (-10.00 for White): White resigns,
+    // and the comments read -10.00 throughout, from White's side.
+    EnginePlayer white(Fake({"--score", "-1000"}), Control("10"));
+    EnginePlayer black(Fake({"--score", "1000"}), Control("10"));
+    auto         settings                     = Settings("10");
+    settings.adjudication.resign.is_enabled   = true;
+    settings.adjudication.resign.move_count   = 3;
+    settings.adjudication.resign.score        = 600;
+    settings.adjudication.resign.is_two_sided = true;
+    const auto record                         = GameRunner(white, black, settings).Play();
+    EXPECT_EQ(record.game.GetOutcome().termination, chess::Termination::kResignation);
+    EXPECT_EQ(record.game.GetOutcome().result, chess::GameResult::kBlackWins);
+    EXPECT_EQ(record.game.GetOutcome().description, "White resigns");
+    EXPECT_EQ(record.game.PlyCount(), 7) << "White's fourth losing score, after Black's third winning one";
+    for (const MoveNote &note : record.notes)
+    {
+        EXPECT_EQ(note.Comment().substr(0, 6), "-10.00");
+    }
+}
+
 TEST(GameRunner, TwoSidedResignationNeedsTheOpponentToAgree)
 {
     EnginePlayer white(Fake({"--score", "0"}), Control("10"));
@@ -276,8 +298,37 @@ TEST(GameRunner, MateScoresInComments)
     settings.adjudication.max_moves = 1;
     const auto record               = GameRunner(white, black, settings).Play();
     ASSERT_EQ(record.notes.size(), 2u);
-    EXPECT_EQ(record.notes[0].Comment().substr(0, 5), "+M3/2");
-    EXPECT_EQ(record.notes[1].Comment().substr(0, 5), "-M2/2");
+    EXPECT_EQ(record.notes[0].Comment().substr(0, 5), "+M3/2") << "White says it mates in 3: White mates";
+    EXPECT_EQ(record.notes[1].Comment().substr(0, 5), "+M2/2") << "Black says it is mated in 2: White mates";
+}
+
+TEST(GameRunner, CommentsAreFromWhitesSideWhicheverSideMoved)
+{
+    // Both engines say they stand a pawn better, each from its own side: White is +1.00 at White's moves and -1.00 at
+    // Black's, in the notes and in the PGN alike.
+    for (const int own : {100, -100})
+    {
+        EnginePlayer white(Fake({"--score", std::to_string(own)}), Control("10"));
+        EnginePlayer black(Fake({"--score", std::to_string(own)}), Control("10"));
+        auto         settings           = Settings("10");
+        settings.adjudication.max_moves = 3;
+        const auto record               = GameRunner(white, black, settings).Play();
+        ASSERT_EQ(record.notes.size(), 6u);
+        const std::string white_text = own > 0 ? "+1.00/2" : "-1.00/2";
+        const std::string black_text = own > 0 ? "-1.00/2" : "+1.00/2";
+        for (std::size_t ply = 0; ply < record.notes.size(); ++ply)
+        {
+            const MoveNote &note = record.notes[ply];
+            EXPECT_EQ(note.mover, ply % 2 == 0 ? chess::kWhite : chess::kBlack);
+            ASSERT_TRUE(note.score);
+            EXPECT_EQ(note.score->value, own) << "the note keeps the engine's own word, as adjudication judges it";
+            EXPECT_EQ(note.WhiteScore()->value, ply % 2 == 0 ? own : -own);
+            EXPECT_EQ(note.Comment().substr(0, 7), ply % 2 == 0 ? white_text : black_text) << "ply " << ply + 1;
+        }
+        const std::string pgn = chess::WritePgn(record.ToPgn());
+        EXPECT_NE(pgn.find("{" + white_text), std::string::npos) << pgn;
+        EXPECT_NE(pgn.find("{" + black_text), std::string::npos) << pgn;
+    }
 }
 
 TEST(GameRunner, DifferentTimeControlsAreRecordedForEachSide)
@@ -423,6 +474,14 @@ TEST(MoveNote, CommentFormats)
     EXPECT_EQ(note.Comment(), "+0.35/18 1.2s");
     note.score = uci::Score{uci::Score::Kind::kMate, -3, false, false};
     EXPECT_EQ(note.Comment(), "-M3/18 1.2s");
+
+    // Black's move: its engine's own score turned to White's side.
+    note.mover = chess::kBlack;
+    EXPECT_EQ(note.Comment(), "+M3/18 1.2s") << "Black mated in 3: White mates";
+    note.score = uci::Score{uci::Score::Kind::kCentipawns, 35, false, false};
+    EXPECT_EQ(note.Comment(), "-0.35/18 1.2s");
+    note.score = uci::Score{uci::Score::Kind::kMate, 4, false, false};
+    EXPECT_EQ(note.Comment(), "-M4/18 1.2s") << "Black mates in 4";
 }
 
 TEST(Adjudicator, MateScoresOutweighMaterial)
@@ -448,6 +507,35 @@ TEST(Adjudicator, AMoveWithNoScoreBreaksARun)
     const auto outcome = adjudicator.Judge(game, chess::kWhite, losing);
     ASSERT_TRUE(outcome);
     EXPECT_EQ(outcome->description, "White resigns");
+}
+
+TEST(Adjudicator, JudgesEachSideByItsOwnScore)
+{
+    // Black's engine reports -9.00 from its own side - Black is losing - which from White's side would read +9.00. The
+    // adjudicator takes the engine's own word: Black resigns, White wins.
+    AdjudicationSettings settings;
+    settings.resign.is_enabled = true;
+    settings.resign.move_count = 2;
+    settings.resign.score      = 600;
+    Adjudicator      adjudicator(settings);
+    chess::Game      game;
+    const uci::Score losing{uci::Score::Kind::kCentipawns, -900, false, false};
+    const uci::Score winning{uci::Score::Kind::kCentipawns, 900, false, false};
+    EXPECT_FALSE(adjudicator.Judge(game, chess::kWhite, winning));
+    EXPECT_FALSE(adjudicator.Judge(game, chess::kBlack, losing));
+    EXPECT_FALSE(adjudicator.Judge(game, chess::kWhite, winning)) << "White is winning: White never resigns";
+    const auto outcome = adjudicator.Judge(game, chess::kBlack, losing);
+    ASSERT_TRUE(outcome);
+    EXPECT_EQ(outcome->result, chess::GameResult::kWhiteWins);
+    EXPECT_EQ(outcome->description, "Black resigns");
+
+    // A mate against Black, in Black's own words (mated in 3), counts as losing too.
+    Adjudicator      mated(settings);
+    const uci::Score mated_in_three{uci::Score::Kind::kMate, -3, false, false};
+    EXPECT_FALSE(mated.Judge(game, chess::kBlack, mated_in_three));
+    const auto resigned = mated.Judge(game, chess::kBlack, mated_in_three);
+    ASSERT_TRUE(resigned);
+    EXPECT_EQ(resigned->description, "Black resigns");
 }
 
 } // namespace

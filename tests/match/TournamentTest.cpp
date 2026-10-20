@@ -307,7 +307,7 @@ TEST(Tournament, ARoundRobinPlaysEveryGameInParallelAndReportsEach)
     std::filesystem::remove(settings.pgn_path);
     std::mutex logged_mutex;
     int        logged      = 0;
-    settings.engine_logger = [&](int, const std::string &, uci::LineDirection, std::string_view) {
+    settings.engine_logger = [&](int, chess::Color, const std::string &, uci::LineDirection, std::string_view) {
         std::lock_guard lock(logged_mutex);
         ++logged;
     };

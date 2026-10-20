@@ -287,6 +287,18 @@ class MainController
     /** @return The graph's caption: the move shown and White's score after it, "12...b4  +0.42". */
     std::string EvalCaption() const;
 
+    /** Every series held to the game's length: a move cut takes its scores with it, a new move has none yet. */
+    void FitSeries();
+
+    /**
+     * @return The series the graph draws: the analysing engines' while Analyse runs, else the game's engines' (or,
+     *         with none, what an analysis left).
+     */
+    const std::vector<EvalSeries> &GraphSeries() const;
+
+    /** The graph set from the series, the position shown and the caption. */
+    void ShowEval();
+
     /** The strips' names, details and clocks. */
     void RefreshStrips();
 
@@ -357,26 +369,28 @@ class MainController
     std::string                   file_name_;  ///< The file the game shown was opened from or saved to; empty for none.
     EngineReaper                  reaper_; ///< Engines being quit off the window's thread; outlives the sessions below.
     ControllerFiles               files_;  ///< Where it keeps things.
-    EngineCatalogue               catalogue_;                      ///< The configured engines.
-    chess::Game                   game_;                           ///< The game shown.
-    GameInfo                      info_;                           ///< What the card says of it.
-    std::vector<std::optional<double>>        evals_;              ///< White's score after each ply, as known.
-    int                                       view_ply_   = 0;     ///< The position shown.
-    bool                                      is_flipped_ = false; ///< Black at the bottom.
-    std::unique_ptr<PlaySession>              play_;               ///< The game on the board.
-    int                                       play_version_ = -1;  ///< Its snapshot's version last taken in.
-    PlaySnapshot                              snapshot_;           ///< Its snapshot as last taken in.
-    std::vector<std::unique_ptr<PlaySession>> retiring_;           ///< Stopped games finishing their threads.
-    std::map<std::string, SearchTracker>      trackers_;           ///< The playing engines' searches, by name.
-    std::unique_ptr<AnalysisSession>          analysis_;           ///< The engines analysing the position shown.
-    std::unique_ptr<CompetitionSession>       competition_;        ///< The match or the tournament.
-    bool is_following_competition_ = false;                        ///< The board follows the competition's games.
-    int  watched_                  = 0; ///< The game a person asked to follow; 0 for the lowest in progress.
-    int  watched_shown_            = 0; ///< The game the board shows.
-    std::map<std::string, SearchTracker>      competition_trackers_; ///< The followed game's engines' searches.
-    std::unique_ptr<DialogFrame>              dialog_;               ///< The dialog over the window.
-    std::vector<std::unique_ptr<DialogFrame>> closed_dialogs_;       ///< Closed, to be destroyed next frame.
-    std::string                               error_;                ///< The last thing that went wrong.
+    EngineCatalogue               catalogue_;       ///< The configured engines.
+    chess::Game                   game_;            ///< The game shown.
+    GameInfo                      info_;            ///< What the card says of it.
+    std::vector<EvalSeries>       game_series_;     ///< The game's engines' scores, from White's side, as known.
+    std::vector<EvalSeries>       analysis_series_; ///< Each analysing engine's scores for the positions it analysed.
+    std::vector<EvalSeries> opening_series_;     ///< The scores a game on the board was started with, from a take-back.
+    int                     view_ply_   = 0;     ///< The position shown.
+    bool                    is_flipped_ = false; ///< Black at the bottom.
+    std::unique_ptr<PlaySession>              play_;                ///< The game on the board.
+    int                                       play_version_ = -1;   ///< Its snapshot's version last taken in.
+    PlaySnapshot                              snapshot_;            ///< Its snapshot as last taken in.
+    std::vector<std::unique_ptr<PlaySession>> retiring_;            ///< Stopped games finishing their threads.
+    std::map<int, SearchTracker>              trackers_;            ///< The playing engines' searches, by side.
+    std::unique_ptr<AnalysisSession>          analysis_;            ///< The engines analysing the position shown.
+    std::unique_ptr<CompetitionSession>       competition_;         ///< The match or the tournament.
+    bool                         is_following_competition_ = false; ///< The board follows the competition's games.
+    int                          watched_ = 0; ///< The game a person asked to follow; 0 for the lowest in progress.
+    int                          watched_shown_ = 0;           ///< The game the board shows.
+    std::map<int, SearchTracker> competition_trackers_;        ///< The followed game's engines' searches, by side.
+    std::unique_ptr<DialogFrame> dialog_;                      ///< The dialog over the window.
+    std::vector<std::unique_ptr<DialogFrame>> closed_dialogs_; ///< Closed, to be destroyed next frame.
+    std::string                               error_;          ///< The last thing that went wrong.
 };
 
 } // namespace uci_host::app

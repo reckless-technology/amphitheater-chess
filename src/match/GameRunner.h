@@ -59,16 +59,25 @@ struct GameSettings
     std::string          round = "?";          ///< PGN's Round.
 };
 
-/** What was said about one move, for its PGN comment. */
+/**
+ * What was said about one move, for its PGN comment. The score is kept as the mover's engine reported it, from the
+ * mover's own side (the side to move in the position it searched), which is what adjudication judges; everything shown
+ * or written - the comment, the evaluation graph - takes it from White's side (WhiteScore).
+ */
 struct MoveNote
 {
-    std::optional<uci::Score> score;           ///< The mover's score, from its side.
-    std::optional<int>        depth;           ///< The depth it reached.
-    chess::Milliseconds       elapsed;         ///< How long it took.
-    bool                      is_book = false; ///< Whether it was an opening move, played for the side.
+    std::optional<uci::Score> score;                   ///< The mover's score, from its own side.
+    std::optional<int>        depth;                   ///< The depth it reached.
+    chess::Milliseconds       elapsed;                 ///< How long it took.
+    bool                      is_book = false;         ///< Whether it was an opening move, played for the side.
+    chess::Color              mover   = chess::kWhite; ///< The side that made the move.
+
+    /** @return The score from White's side (+ White is better, - Black is), when there is one. */
+    std::optional<uci::Score> WhiteScore() const;
 
     /**
-     * The comment: "+0.35/18 1.2s", a mate as "+M5" or "-M3", "book" for an opening move.
+     * The comment, its score from White's side whichever side moved: "+0.35/18 1.2s" (White better), "-0.35/18 1.2s"
+     * (Black better), a mate as "+M5" (White mates) or "-M3" (Black mates), "book" for an opening move.
      * @return The text.
      */
     std::string Comment() const;

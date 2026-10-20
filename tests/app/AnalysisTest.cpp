@@ -94,13 +94,48 @@ TEST(Analysis, TheEnginesThinkAboutThePositionShownAndFollowItThroughTheGame)
 
     rig.controller.ShowPly(1);
     ASSERT_TRUE(rig.FramesUntil([&] { return rig.BestScore() == "-0.35"; })) << "Black to move: White's side";
-    ASSERT_TRUE(rig.FramesUntil([&] { return rig.view.graph().scores().size() == 2 && rig.view.graph().scores()[0]; }));
-    EXPECT_DOUBLE_EQ(*rig.view.graph().scores()[0], -0.35);
+    const auto &graph = rig.view.graph();
+    ASSERT_TRUE(rig.FramesUntil([&] { return graph.series().size() == 1 && graph.series()[0].points[0]; }));
+    EXPECT_EQ(graph.series()[0].name, "Fake");
+    EXPECT_DOUBLE_EQ(graph.series()[0].points[0]->pawns, -0.35) << "Black to move, +0.35 for Black: White's -0.35";
 
     rig.controller.Command(kAnalyse);
     EXPECT_EQ(rig.controller.analysis(), nullptr);
     EXPECT_FALSE(rig.view.Plate(kAnalyse)->on());
     EXPECT_TRUE(rig.view.analysis().blocks().empty());
+}
+
+TEST(Analysis, EachAnalysingEngineHasASeriesOfItsOwnFromWhitesSide)
+{
+    Rig rig;
+    rig.controller.catalogue().engines = {Fake({"--score", "35"}, "Alpha"), Fake({"--score", "-50"}, "Beta")};
+    chess::Game game;
+    for (const char *san : {"e4", "e5", "Nf3"})
+    {
+        ASSERT_TRUE(game.PlaySan(san));
+    }
+    rig.controller.ShowGame(game, {});
+    rig.controller.ShowPly(1);
+    rig.controller.Command(kAnalyse);
+    const auto &graph  = rig.view.graph();
+    const auto  has_at = [&](std::size_t ply) {
+        return graph.series().size() == 2 && graph.series()[0].points.size() > ply &&
+               graph.series()[1].points.size() > ply && graph.series()[0].points[ply] && graph.series()[1].points[ply];
+    };
+    ASSERT_TRUE(rig.FramesUntil([&] { return has_at(0); }));
+    EXPECT_EQ(graph.series()[0].name, "Alpha");
+    EXPECT_EQ(graph.series()[1].name, "Beta");
+    // Black to move after 1.e4: each engine's own score turned to White's side.
+    EXPECT_DOUBLE_EQ(graph.series()[0].points[0]->pawns, -0.35);
+    EXPECT_DOUBLE_EQ(graph.series()[1].points[0]->pawns, 0.50);
+
+    rig.controller.ShowPly(2);
+    ASSERT_TRUE(rig.FramesUntil([&] { return has_at(1); }));
+    EXPECT_DOUBLE_EQ(graph.series()[0].points[1]->pawns, 0.35) << "White to move: unchanged";
+    EXPECT_DOUBLE_EQ(graph.series()[1].points[1]->pawns, -0.50);
+    EXPECT_EQ(graph.caption(), "1...e5  +0.35") << "the first engine's word in the caption";
+    EXPECT_TRUE(graph.series()[0].points[0]) << "what was analysed before stays";
+    rig.controller.Command(kAnalyse);
 }
 
 TEST(Analysis, AnEngineThatWillNotStartIsNamedAndTheRestAnalyse)

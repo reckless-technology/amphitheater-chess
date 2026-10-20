@@ -76,10 +76,11 @@ struct PlaySettings
 /** A line an engine exchanged during the game. */
 struct PlayLogLine
 {
-    std::string                           engine;    ///< The engine's name.
-    uci::LineDirection                    direction; ///< Which way it went.
-    std::string                           text;      ///< The line.
-    std::chrono::steady_clock::time_point at;        ///< When.
+    std::string                           engine; ///< The engine's name, its side after it when both sides share one.
+    chess::Color                          side = chess::kWhite; ///< The side the engine plays.
+    uci::LineDirection                    direction;            ///< Which way it went.
+    std::string                           text;                 ///< The line.
+    std::chrono::steady_clock::time_point at;                   ///< When.
 };
 
 /** The game as it stands, for the window. */

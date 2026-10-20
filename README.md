@@ -151,6 +151,16 @@ at the design size, held to its screen. The moves
 and the log are a whole number of rows tall, so a list kept on the move shown or the newest line never leaves part of a
 row at its top. The last move lights both its squares, each shade in its own tint of the accent.
 
+**Scores are from White's side everywhere the host shows or writes one**: + means White is better, - means Black is,
+whichever engine reported it and whichever side it plays. UCI has an engine report its score from the side to move in
+the position it searches, so the host turns each one (`uci::WhitesView`): a score with Black to move changes sign, a
+mate in n for Black becomes "#-n", and a bound swaps with the sign - a lower bound on Black's score is an upper bound on
+White's, shown before the score as "<" (at most) or ">" (at least). A ponder search's side to move is the one in the
+position after the expected reply, which the host sent it. This holds for the analysis panel's lines, the evaluation
+graph, the PGN comments and the command line's analysis; the engine log is the exchange byte for byte, the engines' own
+words untouched. Adjudication alone judges each engine by its own score, as its settings are written: a side resigns
+when its engine has said at most -score of its own position.
+
 The pieces are the Staunton SVGs, carried inside the binary and drawn by the toolkit's SVG reader at whatever size the
 squares are. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
 promotion.
@@ -204,8 +214,21 @@ engine where none is marked - in infinite mode on the position the board shows, 
 offers MultiPV (`AnalysisSession`). Each engine is started on a worker thread - its process, its handshake, MultiPV and
 UCI_AnalyseMode - then handed to the window's thread, which polls its events once a frame and never waits: stepping to
 another position stops the search under way and starts the next when its "bestmove" comes. The panel shows each
-engine's block, the board the first engine's best move as an amber arrow, and the graph the first engine's score for
-each position analysed. Engines are quit on worker threads too (`EngineReaper`), so the window never waits on one.
+engine's block, the board the first engine's best move as an amber arrow, and the graph a series for each engine, its
+score for each position analysed. Engines are quit on worker threads too (`EngineReaper`), so the window never waits on
+one.
+
+The evaluation graph (`EvalGraph`, its data in `Evaluations.h`) draws each engine's scores as a series of its own, all
+from White's side on one scale with the zero line: in a game between engines White's engine's score at each of its
+moves and Black's at each of its, so the two interleave ply by ply, the first in amber and the second in blue, a legend
+naming each in its colour; a game against a person shows the engine's series alone, Analyse one series per analysing
+engine (in the order amber, blue, violet, green), and a game opened from a PGN the series its comments give - the
+host's own comments a series per side, named by the White and Black tags, or `[%eval]` commands one series of the whole
+game. The scale is one pawn, or the largest score's whole pawns up to ten; a mate is held at the scale's edge and marked
+there by a small triangle pointing off it. The caption gives the move shown and its score ("12...b4  -0.27", "#5").
+When two copies of one engine play each other, each side's lines, block and series carry its side after its name -
+"Pawnstar (White)" - and each side's search is followed on its own, so neither copy's scores are read against the
+other's positions.
 
 Engines > Manage engines keeps the engine list: Add... chooses a program and runs its handshake on a worker thread,
 which fills the engine's name, author and every option it declares; Detect runs it again. The selected engine's
@@ -218,7 +241,8 @@ folder (`%APPDATA%` on Windows, `~/Library/Application Support` on macOS, `~/.co
 File > Open PGN shows a file's game, or lists a file's many games - number, players, result, event, date, length - to
 pick one from (a game that cannot be read is skipped and counted); a `.pgn` named on the command line opens with the
 window. File > Save PGN writes the game shown: the game as it was read, its tags, comments and variations whole, while
-its moves are unchanged; a game played on the board as the core records it, each move's score, depth and time as its
+its moves are unchanged; a game played on the board as the core records it, each move's score (from White's side),
+depth and time as its
 comment; anything else with the Seven Tag Roster from what the card knows. Edit > Copy FEN and Copy PGN put the
 position shown or the game on the clipboard; Paste FEN or PGN takes a position, a game, or a list of games to pick
 from. The window reads and writes the clipboard through the toolkit's app platform.
@@ -266,6 +290,12 @@ A match prints each game as it ends and the score after it - wins, losses, draws
 difference with its 95 % margin, the likelihood of superiority and the draw ratio; a tournament ends with its standings
 (points, then Sonneborn-Berger) and a crosstable. `uci-host-cli --help` has the whole syntax. Ctrl+C stops a match,
 abandoning the games in progress.
+
+Every score the command line writes is from White's side: each PGN move's comment, `{+0.35/18 1.2s}` (White better,
+by the score its mover's engine reported, depth 18, 1.2 seconds), `{-0.35/18 1.2s}` (Black better), `{+M5/20 0.4s}`
+(White mates in 5) or `{-M3/20 0.4s}` (Black mates in 3), and `{book}` for a book move; and `analyse`'s lines,
+`score -0.40` or `score #-2`, with `lowerbound` or `upperbound` after a bound, from White's side too. `-debug` prints
+the engines' lines exactly as they went, their scores their own.
 
 ## Versions
 

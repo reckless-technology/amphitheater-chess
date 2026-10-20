@@ -69,10 +69,14 @@ GUI will save with the toolkit's JSON.
   options, isready, searches, ponder, quit-then-kill), `EngineConfig`, `Utf8Arguments`.
 - `src/match/` (`uci_host_match`): `Player`/`CallbackPlayer`/`EnginePlayer`, `GameRunner` (clocks with a margin,
   flag falls - a draw when the opponent cannot mate - illegal moves, crashes, stalls, `Adjudicator`, each side's own
-  Polyglot book (`BookSettings`), `GameRecord` with its PGN and per-move comments `{+0.35/18 1.2s}`, `{book}`),
-  `Openings` (EPD, PGN, a Polyglot book walked to a depth), `Schedule` (circle method), `Statistics` (Elo with a 95 %
-  margin from the trinomial variance, LOS, standings with Sonneborn-Berger, crosstable), `Tournament` (worker threads,
-  each with its own engines; events in a queue).
+  Polyglot book (`BookSettings`), `GameRecord` with its PGN and per-move comments `{+0.35/18 1.2s}` - the score from
+  White's side, `MoveNote::WhiteScore` - and `{book}`), `Openings` (EPD, PGN, a Polyglot book walked to a depth),
+  `Schedule` (circle method), `Statistics` (Elo with a 95 % margin from the trinomial variance, LOS, standings with
+  Sonneborn-Berger, crosstable), `Tournament` (worker threads, each with its own engines; events in a queue).
+- **Scores:** an engine's UCI score is from the side to move in the position it searches; everything the host shows
+  or writes turns it to White's side first (`uci::WhitesView`; `EvalPointOf`, `WhiteScoreText` in the window), the
+  sign and the bounds flipped with Black to move. `MoveNote::score` keeps the engine's own word, which `Adjudicator`
+  judges; the engine log is never rewritten.
 - **Pondering** lives in `EnginePlayer`, driven by `Player::MoveMade`, which the runner calls on both players after
   every move with the clocks charged: the engine that has just moved starts "go ponder" on its own ponder move, and
   its next `RequestMove` sends "ponderhit" (its clock from then) or "stop" (the answer thrown away, the wait charged).

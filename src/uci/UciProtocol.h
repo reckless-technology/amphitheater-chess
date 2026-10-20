@@ -5,6 +5,7 @@
 /// The parsers never fail on what an engine writes: a field they cannot read is left unset and the line's other
 /// fields still read, since an engine that prints one malformed number should not lose its whole line.
 
+#include "chess/ChessTypes.h"
 #include "chess/Result.h"
 #include "chess/TimeControl.h"
 
@@ -68,7 +69,11 @@ struct EngineOption
  */
 Result<EngineOption> ParseOptionLine(std::string_view line);
 
-/** A score in an "info" line. */
+/**
+ * A score in an "info" line. As UCI defines it, an engine's score is from the point of view of the side to move in
+ * the position it searches: positive when that side is better, whichever colour it is. Everything the host shows or
+ * records turns it to White's point of view first (WhitesView).
+ */
 struct Score
 {
     /** What the value counts. */
@@ -91,6 +96,27 @@ struct Score
 
     bool operator==(const Score &) const = default; ///< Scores are equal when every field is.
 };
+
+/**
+ * A score turned from the side to move's point of view, as an engine reports it, to White's: + when White is better,
+ * - when Black is. With White to move the score is unchanged; with Black to move its value changes sign - a mate in n
+ * for Black becomes mate in -n, Black mating - and its bounds swap, since a lower bound on Black's score is an upper
+ * bound on White's. A mate in 0 (the side to move is mated, as some engines say of a mated position) keeps its value 0.
+ * The turn is its own inverse: applied to a White's-view score with Black to move, it gives Black's view back.
+ * @param score The score, from the side to move's point of view.
+ * @param side_to_move The side to move in the position searched.
+ * @return The score from White's point of view.
+ */
+Score WhitesView(const Score &score, chess::Color side_to_move);
+
+/**
+ * A score from White's point of view as a person reads it: "+0.35" in pawns, "#5" or "#-3" for a mate, each with
+ * " lowerbound" or " upperbound" after it when it is a bound.
+ * @param score The score, from the side to move's point of view.
+ * @param side_to_move The side to move in the position searched.
+ * @return The text.
+ */
+std::string WhiteScoreWords(const Score &score, chess::Color side_to_move);
 
 /** Every field UCI defines for an "info" line; a field the line leaves out is unset. */
 struct SearchInfo

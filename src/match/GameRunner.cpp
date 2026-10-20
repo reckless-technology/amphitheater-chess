@@ -85,6 +85,12 @@ std::string PgnDate(std::chrono::system_clock::time_point when)
 
 } // namespace
 
+std::optional<uci::Score> MoveNote::WhiteScore() const
+{
+    // The mover was the side to move in the position its engine searched.
+    return score ? std::optional<uci::Score>(uci::WhitesView(*score, mover)) : std::nullopt;
+}
+
 std::string MoveNote::Comment() const
 {
     if (is_book)
@@ -92,15 +98,15 @@ std::string MoveNote::Comment() const
         return "book";
     }
     std::string text;
-    if (score)
+    if (const auto white = WhiteScore())
     {
-        if (score->kind == uci::Score::Kind::kMate)
+        if (white->kind == uci::Score::Kind::kMate)
         {
-            text = (score->value >= 0 ? "+M" : "-M") + std::to_string(std::abs(score->value));
+            text = (white->value >= 0 ? "+M" : "-M") + std::to_string(std::abs(white->value));
         }
         else
         {
-            text = score->ToString();
+            text = white->ToString();
         }
         if (depth)
         {
@@ -195,6 +201,7 @@ GameRecord GameRunner::Play(const std::function<void(const GameProgress &)> &on_
         }
         MoveNote note;
         note.is_book = true;
+        note.mover   = chess::EnemyOf(game.CurrentPosition().SideToMove());
         record.notes.push_back(note);
     }
 
@@ -245,6 +252,7 @@ GameRecord GameRunner::Play(const std::function<void(const GameProgress &)> &on_
                 game.Play(*book_move);
                 MoveNote note;
                 note.is_book = true;
+                note.mover   = side;
                 record.notes.push_back(note);
                 if (on_move)
                 {
@@ -304,6 +312,7 @@ GameRecord GameRunner::Play(const std::function<void(const GameProgress &)> &on_
         }
         MoveNote note;
         note.score   = reply.info.score;
+        note.mover   = side;
         note.depth   = reply.info.depth;
         note.elapsed = reply.elapsed;
         game.Play(*move);

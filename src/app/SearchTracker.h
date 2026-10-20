@@ -4,6 +4,7 @@
 /// each multi-PV rank - depth, score from White's side, and the line in SAN - with the figures of its search.
 
 #include "AnalysisPanel.h"
+#include "Evaluations.h"
 #include "chess/Move.h"
 #include "chess/Position.h"
 #include "uci/UciProtocol.h"
@@ -29,7 +30,9 @@ namespace uci_host::app
 std::string PvToSan(const chess::Position &position, const std::vector<std::string> &pv, std::size_t most = 0);
 
 /**
- * A score from White's side, as the window writes it: "+0.42", "-1.10", "#5", "#-3".
+ * A score from White's side, as the window writes it: "+0.42", "-1.10", "#5" (White mates), "#-3" (Black mates); a
+ * bound marked before it from White's side, ">+0.42" for at least, "<-1.10" for at most (a lower bound on Black's
+ * score is an upper bound on White's).
  * @param score The score, from the side to move's point of view.
  * @param side_to_move Whose point of view that is.
  * @return The text.
@@ -43,6 +46,16 @@ std::string WhiteScoreText(const uci::Score &score, chess::Color side_to_move);
  * @return The pawns.
  */
 double WhitePawns(const uci::Score &score, chess::Color side_to_move);
+
+/**
+ * The name an engine's lines and block go under in a game: its own, or with its side after it - "Pawnstar (White)" -
+ * when its opponent has the same name, so two copies of one engine are told apart.
+ * @param name The engine's name.
+ * @param opponent Its opponent's name.
+ * @param side The side it plays.
+ * @return The label.
+ */
+std::string EngineLabel(const std::string &name, const std::string &opponent, chess::Color side);
 
 /**
  * A count of nodes as a person reads it: "812 n", "6.4 kn", "11.2 Mn", "1.05 Gn".
@@ -124,6 +137,9 @@ class SearchTracker
 
     /** @return The best line's score from White's side as text, when there is one. */
     std::optional<std::string> BestScoreText() const;
+
+    /** @return The best line's score from White's side as the graph takes it, when there is one. */
+    std::optional<EvalPoint> BestEvalPoint() const;
 
     /**
      * The engine's block for the analysis panel.

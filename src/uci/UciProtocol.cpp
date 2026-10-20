@@ -247,6 +247,25 @@ std::string Score::ToString() const
     return text;
 }
 
+Score WhitesView(const Score &score, chess::Color side_to_move)
+{
+    if (side_to_move == chess::kWhite)
+    {
+        return score;
+    }
+    Score turned          = score;
+    turned.value          = -score.value;
+    turned.is_lower_bound = score.is_upper_bound;
+    turned.is_upper_bound = score.is_lower_bound;
+    return turned;
+}
+
+std::string WhiteScoreWords(const Score &score, chess::Color side_to_move)
+{
+    const Score white = WhitesView(score, side_to_move);
+    return white.ToString() + (white.is_lower_bound ? " lowerbound" : white.is_upper_bound ? " upperbound" : "");
+}
+
 SearchInfo ParseInfoLine(std::string_view line)
 {
     SearchInfo info;

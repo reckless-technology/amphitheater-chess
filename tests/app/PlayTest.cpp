@@ -187,6 +187,60 @@ TEST(Play, AnEngineGameEndsAndTheResultIsShown)
     EXPECT_GE(rig.controller.game().PlyCount(), 4);
 }
 
+TEST(Play, AnEngineGameGraphsEachEnginesScoresAtItsOwnMovesFromWhitesSide)
+{
+    // Two copies of one engine, each saying it stands a pawn better from its own side (then a pawn worse): White's
+    // series is +1.00 at White's moves, Black's -1.00 at Black's, and the two copies are told apart by their sides -
+    // their lines, their blocks and their series never mixed. The second time round they ponder.
+    for (const int own : {100, -100})
+    {
+        Rig          rig;
+        PlaySettings settings;
+        settings.white.is_human = false;
+        settings.white.engine   = Fake({"--score", std::to_string(own), "--ponder-move", "--think", "5"});
+        settings.black.is_human = false;
+        settings.black.engine   = Fake({"--score", std::to_string(own), "--ponder-move", "--seed", "5"});
+        settings.white.engine.config.does_ponder = own < 0;
+        settings.black.engine.config.does_ponder = own < 0;
+        settings.time_control                    = *chess::TimeControl::Parse("10+0.1");
+        rig.controller.StartGame(settings);
+        const std::string white_text = own > 0 ? "+1.00" : "-1.00";
+        const std::string black_text = own > 0 ? "-1.00" : "+1.00";
+        const auto       &blocks     = rig.view.analysis().blocks();
+        ASSERT_TRUE(rig.FramesUntil([&] {
+            return rig.controller.game().PlyCount() >= 8 && blocks.size() == 2 && !blocks[0].lines.empty() &&
+                   !blocks[1].lines.empty();
+        }));
+        EXPECT_EQ(blocks[0].name, "Fake (White)");
+        EXPECT_EQ(blocks[1].name, "Fake (Black)");
+        // Whatever position each last searched (its own move, or a ponder on the reply), its score is its own side's
+        // turned to White's: White's engine reads White's way and Black's the other.
+        EXPECT_EQ(blocks[0].lines[0].score, white_text);
+        EXPECT_EQ(blocks[1].lines[0].score, black_text);
+        rig.controller.Command(kStopGame);
+        ASSERT_TRUE(rig.FramesUntil([&] { return rig.controller.game().PlyCount() == rig.view.graph().ply_count(); }));
+
+        const EvalGraph &graph = rig.view.graph();
+        ASSERT_EQ(graph.series().size(), 2u);
+        EXPECT_EQ(graph.series()[0].name, "Fake (White)");
+        EXPECT_EQ(graph.series()[1].name, "Fake (Black)");
+        const double pawns = own / 100.0;
+        for (int ply = 0; ply < graph.ply_count(); ++ply)
+        {
+            const bool  is_white = ply % 2 == 0;
+            const auto &mine     = graph.series()[is_white ? 0 : 1].points[static_cast<std::size_t>(ply)];
+            const auto &theirs   = graph.series()[is_white ? 1 : 0].points[static_cast<std::size_t>(ply)];
+            ASSERT_TRUE(mine.has_value()) << "ply " << ply + 1;
+            EXPECT_DOUBLE_EQ(mine->pawns, is_white ? pawns : -pawns) << "ply " << ply + 1;
+            EXPECT_FALSE(theirs.has_value()) << "each series at its own engine's plies alone";
+        }
+        rig.controller.ShowPly(1);
+        EXPECT_EQ(graph.caption(), "1." + rig.controller.game().San(0) + "  " + white_text);
+        rig.controller.ShowPly(2);
+        EXPECT_EQ(graph.caption(), "1..." + rig.controller.game().San(1) + "  " + black_text);
+    }
+}
+
 TEST(Play, WithNoGamePlayedAMoveOnTheBoardTakesTheGameOnFromThePositionShown)
 {
     Rig         rig;

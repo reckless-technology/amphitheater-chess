@@ -39,8 +39,11 @@ struct TournamentEngine
     int                                        book_depth = 0; ///< Book moves only before this game ply; 0 no limit.
 };
 
-/** Receives an engine's lines during a tournament, on the worker thread playing the game. */
-using TournamentEngineLogger = std::function<void(int game_number, const std::string &engine,
+/**
+ * Receives an engine's lines during a tournament, on the worker thread playing the game: the game, the side the engine
+ * plays in it (which tells two copies of one engine apart), its name, the direction and the line as it went.
+ */
+using TournamentEngineLogger = std::function<void(int game_number, chess::Color side, const std::string &engine,
                                                   uci::LineDirection direction, std::string_view line)>;
 
 /** How a tournament is to be played. */

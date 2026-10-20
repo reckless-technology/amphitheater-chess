@@ -389,12 +389,24 @@ TEST(Panels, ClocksShowTenthsUnderAnHourAndSecondsOverIt)
 
 TEST(EvalGraph, TheScaleGrowsWithTheLargestScoreAndAPressPicksAPly)
 {
+    const auto points = [](std::initializer_list<std::optional<double>> pawns) {
+        std::vector<std::optional<EvalPoint>> made;
+        for (const auto &value : pawns)
+        {
+            made.push_back(value ? std::optional<EvalPoint>(EvalPoint{*value, std::nullopt}) : std::nullopt);
+        }
+        return made;
+    };
     EvalGraph graph;
     graph.SetBounds({0, 0, 300, 160});
-    graph.SetScores({0.3, -0.2, std::nullopt, 0.5}, 2, "");
+    graph.SetSeries({{"A", points({0.3, -0.2, std::nullopt, 0.5})}}, 4, 2, "");
     EXPECT_DOUBLE_EQ(graph.Scale(), 1.0);
-    graph.SetScores({0.3, -2.4, 40.0}, 1, "");
-    EXPECT_DOUBLE_EQ(graph.Scale(), 10.0) << "held to ten pawns";
+    graph.SetSeries({{"A", points({0.3, std::nullopt, 40.0})}, {"B", points({std::nullopt, -2.4, std::nullopt})}}, 3, 1,
+                    "");
+    EXPECT_DOUBLE_EQ(graph.Scale(), 10.0) << "held to ten pawns, over every series";
+    graph.SetSeries({{"A", points({0.3, std::nullopt})}, {"B", {std::nullopt, EvalPoint{-kMatePawns, -2}}}}, 2, 2, "");
+    EXPECT_DOUBLE_EQ(graph.Scale(), 1.0) << "a mate sets no scale: it is held at the edge";
+    graph.SetSeries({{"A", points({0.3, -2.4, 4.0})}}, 3, 1, "");
     std::optional<int> chosen;
     graph.on_select = [&](int ply) { chosen = ply; };
     graph.MouseDown(At({290.0f, 50.0f}));

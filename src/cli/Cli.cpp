@@ -419,7 +419,7 @@ int RunTournament(const std::vector<std::string> &arguments, bool is_match, std:
     std::mutex log_mutex;
     if (options->is_debug)
     {
-        options->settings.engine_logger = [&err, &log_mutex](int game, const std::string &engine,
+        options->settings.engine_logger = [&err, &log_mutex](int game, chess::Color, const std::string &engine,
                                                              uci::LineDirection direction, std::string_view line) {
             std::lock_guard lock(log_mutex);
             err << game << ' ' << engine << (direction == uci::LineDirection::kToEngine ? " < " : " > ") << line
@@ -592,7 +592,7 @@ int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std
                 {
                     out << " line " << *info.multipv;
                 }
-                out << " score " << info.score->ToString();
+                out << " score " << uci::WhiteScoreWords(*info.score, position.SideToMove());
                 if (info.nodes)
                 {
                     out << " nodes " << *info.nodes;
@@ -680,6 +680,9 @@ Match and tournament options:
   -stall <s>            how long to wait for a move with no clock (default 60)
   -event <name>         PGN's Event     -site <name>   PGN's Site
   -debug                print every line exchanged with the engines on standard error
+
+Scores are from White's side (+ White is better, - Black is): analyse's lines and the PGN comments ({+0.35/18 1.2s},
+{-M3/20 0.4s}) alike, whichever side the engine plays or the position has to move.
 )";
 }
 

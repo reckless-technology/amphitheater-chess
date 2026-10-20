@@ -155,9 +155,9 @@ void MainView::SetAnalysing(bool is_analysing)
     }
 }
 
-void MainView::SetEval(std::vector<std::optional<double>> scores, int current_ply, std::string caption)
+void MainView::SetEval(std::vector<EvalSeries> series, int ply_count, int current_ply, std::string caption)
 {
-    graph_.SetScores(std::move(scores), current_ply, std::move(caption));
+    graph_.SetSeries(std::move(series), ply_count, current_ply, std::move(caption));
 }
 
 void MainView::SetStatus(std::vector<std::string> items)

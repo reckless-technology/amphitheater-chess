@@ -11,9 +11,6 @@ namespace uci_host::app
 namespace
 {
 
-/** What a mate counts as on the graph, in pawns: past any scale it draws. */
-constexpr double kMatePawns = 100.0;
-
 /** What a "position" command names. */
 struct SentPosition
 {
@@ -115,24 +112,19 @@ std::string PvToSan(const chess::Position &position, const std::vector<std::stri
 
 std::string WhiteScoreText(const uci::Score &score, chess::Color side_to_move)
 {
-    const int value = side_to_move == chess::kWhite ? score.value : -score.value;
-    if (score.kind == uci::Score::Kind::kMate)
-    {
-        return "#" + std::to_string(value);
-    }
-    char text[32];
-    std::snprintf(text, sizeof text, "%+.2f", value / 100.0);
-    return text;
+    const uci::Score white = uci::WhitesView(score, side_to_move);
+    const char      *bound = white.is_lower_bound ? ">" : white.is_upper_bound ? "<" : "";
+    return bound + EvalText(EvalPointOf(score, side_to_move));
 }
 
 double WhitePawns(const uci::Score &score, chess::Color side_to_move)
 {
-    const double sign = side_to_move == chess::kWhite ? 1.0 : -1.0;
-    if (score.kind == uci::Score::Kind::kMate)
-    {
-        return sign * (score.value >= 0 ? kMatePawns : -kMatePawns);
-    }
-    return sign * score.value / 100.0;
+    return EvalPointOf(score, side_to_move).pawns;
+}
+
+std::string EngineLabel(const std::string &name, const std::string &opponent, chess::Color side)
+{
+    return name == opponent ? name + (side == chess::kWhite ? " (White)" : " (Black)") : name;
 }
 
 std::string NodesText(std::int64_t nodes)
@@ -290,6 +282,16 @@ std::optional<std::string> SearchTracker::BestScoreText() const
         return std::nullopt;
     }
     return WhiteScoreText(*best->second.score, position_.SideToMove());
+}
+
+std::optional<EvalPoint> SearchTracker::BestEvalPoint() const
+{
+    const auto best = lines_.find(1);
+    if (best == lines_.end() || !best->second.score)
+    {
+        return std::nullopt;
+    }
+    return EvalPointOf(*best->second.score, position_.SideToMove());
 }
 
 EngineBlock SearchTracker::Block(TimePoint now, std::size_t most_lines) const

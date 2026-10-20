@@ -4,6 +4,8 @@
 #include "chess/Game.h"
 #include "chess/Notation.h"
 
+#include <iterator>
+
 namespace uci_host::app
 {
 
@@ -62,13 +64,18 @@ void ShowSample(MainView &view)
     view.SetAnalysis({pawnstar, zenith});
     view.SetAnalysing(true);
 
-    std::vector<std::optional<double>> scores;
-    for (const double value : {0.22, 0.31, 0.28, 0.30, 0.25, 0.33, 0.30, 0.36, 0.31, 0.40, 0.35, 0.29,
-                               0.31, 0.27, 0.34, 0.30, 0.38, 0.33, 0.36, 0.30, 0.44, 0.37, 0.46, 0.42})
+    // Each engine's own scores at its own moves, from White's side, after the book's six plies: Pawnstar a little more
+    // pleased with White than Zenith is.
+    EvalSeries   pawnstar_scores{"Pawnstar 2.1", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
+    EvalSeries   zenith_scores{"Zenith 0.9", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
+    const double white_view[] = {0.28, 0.33, 0.36, 0.40, 0.31, 0.34, 0.38, 0.36, 0.44};
+    const double black_view[] = {0.18, 0.12, 0.21, 0.06, -0.08, 0.04, -0.15, -0.21, -0.27};
+    for (std::size_t move = 0; move < std::size(white_view); ++move)
     {
-        scores.emplace_back(value);
+        pawnstar_scores.points[6 + 2 * move] = EvalPoint{white_view[move], std::nullopt};
+        zenith_scores.points[7 + 2 * move]   = EvalPoint{black_view[move], std::nullopt};
     }
-    view.SetEval(std::move(scores), ply, "12...b4  +0.42");
+    view.SetEval({pawnstar_scores, zenith_scores}, ply, ply, "12...b4  -0.27");
 
     EngineLog &log = view.log();
     log.Add("Pawnstar", LogDirection::kToEngine,

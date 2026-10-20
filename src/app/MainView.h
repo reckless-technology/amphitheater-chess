@@ -108,11 +108,12 @@ class MainView final : public reckless::view::View
 
     /**
      * The evaluation graph.
-     * @param scores White's score after each ply, in pawns.
+     * @param series Each engine's scores along the game, from White's point of view.
+     * @param ply_count The game's length in plies.
      * @param current_ply The position shown.
      * @param caption The move shown and its score.
      */
-    void SetEval(std::vector<std::optional<double>> scores, int current_ply, std::string caption);
+    void SetEval(std::vector<EvalSeries> series, int ply_count, int current_ply, std::string caption);
 
     /** @param items The status bar's phrases. */
     void SetStatus(std::vector<std::string> items);

@@ -82,7 +82,7 @@ void Tournament::Work()
 {
     std::map<int, std::unique_ptr<EnginePlayer>> players;
     std::map<int, bool>                          has_warned;
-    const auto                                   player_for = [&](int engine, int game_number) {
+    const auto                                   player_for = [&](int engine, int game_number, chess::Color side) {
         auto &player = players[engine];
         if (!player)
         {
@@ -92,8 +92,8 @@ void Tournament::Work()
         if (settings_.engine_logger)
         {
             EnginePlayer *self = player.get();
-            player->SetLogger([this, game_number, self](uci::LineDirection direction, std::string_view line) {
-                settings_.engine_logger(game_number, self->Name(), direction, line);
+            player->SetLogger([this, game_number, side, self](uci::LineDirection direction, std::string_view line) {
+                settings_.engine_logger(game_number, side, self->Name(), direction, line);
             });
         }
         return player.get();
@@ -107,8 +107,8 @@ void Tournament::Work()
             break;
         }
         const ScheduledGame &scheduled = schedule_[index];
-        EnginePlayer        &white     = *player_for(scheduled.white, scheduled.number);
-        EnginePlayer        &black     = *player_for(scheduled.black, scheduled.number);
+        EnginePlayer        &white     = *player_for(scheduled.white, scheduled.number, chess::kWhite);
+        EnginePlayer        &black     = *player_for(scheduled.black, scheduled.number, chess::kBlack);
 
         GameSettings game;
         if (settings_.opening_book)

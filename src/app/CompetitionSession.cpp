@@ -32,14 +32,14 @@ CompetitionSession::CompetitionSession(match::TournamentSettings settings, bool 
     auto lock                   = log_lock_;
     auto log                    = log_;
     auto previous               = settings_.engine_logger;
-    settings_.engine_logger = [lock, log, previous](int game, const std::string &engine, uci::LineDirection direction,
-                                                    std::string_view line) {
+    settings_.engine_logger     = [lock, log, previous](int game, chess::Color side, const std::string &engine,
+                                                        uci::LineDirection direction, std::string_view line) {
         if (previous)
         {
-            previous(game, engine, direction, line);
+            previous(game, side, engine, direction, line);
         }
         const std::lock_guard<std::mutex> guard(*lock);
-        log->push_back({game, engine, direction, std::string(line), Clock::now()});
+        log->push_back({game, engine, side, direction, std::string(line), Clock::now()});
     };
     tournament_         = std::make_unique<match::Tournament>(settings_);
     const Status status = tournament_->Start();
@@ -108,7 +108,8 @@ bool CompetitionSession::Poll()
         case match::TournamentEvent::Kind::kWarning: {
             warnings_.push_back(event->message);
             const std::lock_guard<std::mutex> guard(*log_lock_);
-            log_->push_back({0, "Tournament", uci::LineDirection::kFromEngineError, event->message, Clock::now()});
+            log_->push_back(
+                {0, "Tournament", chess::kWhite, uci::LineDirection::kFromEngineError, event->message, Clock::now()});
             break;
         }
         case match::TournamentEvent::Kind::kFinished:

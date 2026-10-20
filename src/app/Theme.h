@@ -19,26 +19,28 @@ namespace uci_host::app::theme
 
 using reckless::gfx::Color;
 
-inline constexpr Color kWindow{0xff29282cu};   ///< The window's colour, behind the columns.
-inline constexpr Color kPanel{0xff1b1a1du};    ///< A card, a list, a strip: one step darker.
-inline constexpr Color kRow{0xff222125u};      ///< Every other row of a list.
-inline constexpr Color kRule{0xff3b3936u};     ///< The rules and the frames round a card.
-inline constexpr Color kInk{0xffe8dec8u};      ///< The text.
-inline constexpr Color kMuted{0xff9c9483u};    ///< Secondary text: a caption, a move number, the coordinates.
-inline constexpr Color kFaint{0xff5f5a52u};    ///< A hint, a disabled item.
-inline constexpr Color kAmber{0xffe2a23eu};    ///< The accent: the running clock, the best line's arrow, a lit plate.
-inline constexpr Color kAmberDim{0xff6e5428u}; ///< The accent at rest: a plate's edge.
-inline constexpr Color kSelect{0xff5d4423u};   ///< The move shown, the best line, the menu under the pointer.
-inline constexpr Color kPlus{0xff86c9a2u};     ///< A score for White.
-inline constexpr Color kMinus{0xffe2705fu};    ///< A score for Black, an error.
-inline constexpr Color kLightSquare{0xffecdab8u}; ///< The light squares.
-inline constexpr Color kDarkSquare{0xff9d7553u};  ///< The dark squares.
-inline constexpr Color kBoardEdge{0xff121113u};   ///< The board's frame, a stopped clock's face, the log's background.
-inline constexpr Color kTitleBar{0xff19181bu};    ///< The status bar.
-inline constexpr Color kPlate{0xff232125u};       ///< A button's plate.
-inline constexpr Color kLogText{0xffc9c0abu};     ///< An engine's line in the log.
-inline constexpr Color kWhiteSide{0xfff3ead6u};   ///< White's side dot.
-inline constexpr Color kBlackSide{0xff141210u};   ///< Black's side dot.
+inline constexpr Color kWindow{0xff29282cu};     ///< The window's colour, behind the columns.
+inline constexpr Color kPanel{0xff1b1a1du};      ///< A card, a list, a strip: one step darker.
+inline constexpr Color kRow{0xff222125u};        ///< Every other row of a list.
+inline constexpr Color kRule{0xff3b3936u};       ///< The rules and the frames round a card.
+inline constexpr Color kInk{0xffe8dec8u};        ///< The text.
+inline constexpr Color kMuted{0xff9c9483u};      ///< Secondary text: a caption, a move number, the coordinates.
+inline constexpr Color kFaint{0xff5f5a52u};      ///< A hint, a disabled item.
+inline constexpr Color kAmber{0xffe2a23eu};      ///< The accent: the running clock, the best line's arrow, a lit plate.
+inline constexpr Color kAmberDim{0xff6e5428u};   ///< The accent at rest: a plate's edge.
+inline constexpr Color kSelect{0xff5d4423u};     ///< The move shown, the best line, the menu under the pointer.
+inline constexpr Color kPlus{0xff86c9a2u};       ///< A score for White.
+inline constexpr Color kMinus{0xffe2705fu};      ///< A score for Black, an error.
+inline constexpr Color kSeriesBlue{0xff5bb3dcu}; ///< The evaluation graph's second series, cool beside the amber.
+inline constexpr Color kSeriesViolet{0xffb996e2u}; ///< Its third series (a third analysing engine).
+inline constexpr Color kLightSquare{0xffecdab8u};  ///< The light squares.
+inline constexpr Color kDarkSquare{0xff9d7553u};   ///< The dark squares.
+inline constexpr Color kBoardEdge{0xff121113u};    ///< The board's frame, a stopped clock's face, the log's background.
+inline constexpr Color kTitleBar{0xff19181bu};     ///< The status bar.
+inline constexpr Color kPlate{0xff232125u};        ///< A button's plate.
+inline constexpr Color kLogText{0xffc9c0abu};      ///< An engine's line in the log.
+inline constexpr Color kWhiteSide{0xfff3ead6u};    ///< White's side dot.
+inline constexpr Color kBlackSide{0xff141210u};    ///< Black's side dot.
 inline constexpr Color kLastMoveLight{0xffe8c285u}; ///< The last move on a light square: the accent at 42 %.
 inline constexpr Color kLastMoveDark{0xffcd9444u};  ///< On a dark square: at 70 %, where 42 % barely shows.
 

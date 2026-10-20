@@ -58,6 +58,35 @@ TEST(UciProtocol, ParsesMateScoresAndBounds)
     EXPECT_EQ(score.ToString(), "-1.20");
 }
 
+TEST(UciProtocol, ScoresTurnToWhitesSide)
+{
+    const Score plus{Score::Kind::kCentipawns, 35, false, false};
+    EXPECT_EQ(WhitesView(plus, chess::kWhite), plus) << "White to move: White's side already";
+    EXPECT_EQ(WhitesView(plus, chess::kBlack).value, -35) << "Black to move and better: Black is ahead";
+    EXPECT_EQ(WhiteScoreWords(plus, chess::kBlack), "-0.35");
+    EXPECT_EQ(WhiteScoreWords({Score::Kind::kCentipawns, -120, false, false}, chess::kBlack), "+1.20");
+
+    // Mates: the side to move mating is White mating with White to move and Black mating with Black to move.
+    const Score mates{Score::Kind::kMate, 4, false, false};
+    const Score mated{Score::Kind::kMate, -2, false, false};
+    EXPECT_EQ(WhiteScoreWords(mates, chess::kWhite), "#4");
+    EXPECT_EQ(WhiteScoreWords(mates, chess::kBlack), "#-4");
+    EXPECT_EQ(WhiteScoreWords(mated, chess::kWhite), "#-2");
+    EXPECT_EQ(WhiteScoreWords(mated, chess::kBlack), "#2");
+    EXPECT_EQ(WhitesView(mates, chess::kBlack).kind, Score::Kind::kMate);
+
+    // Bounds swap with the sign for Black, and stay for White.
+    const Score lower{Score::Kind::kCentipawns, 50, true, false};
+    const Score upper{Score::Kind::kMate, -5, false, true};
+    EXPECT_EQ(WhiteScoreWords(lower, chess::kWhite), "+0.50 lowerbound");
+    EXPECT_EQ(WhiteScoreWords(lower, chess::kBlack), "-0.50 upperbound") << "Black at least +0.50: White at most -0.50";
+    EXPECT_EQ(WhiteScoreWords(upper, chess::kBlack), "#5 lowerbound");
+    const Score turned = WhitesView(lower, chess::kBlack);
+    EXPECT_FALSE(turned.is_lower_bound);
+    EXPECT_TRUE(turned.is_upper_bound);
+    EXPECT_EQ(WhitesView(turned, chess::kBlack), lower) << "the turn is its own inverse";
+}
+
 TEST(UciProtocol, PvEndsAtTheNextKeyword)
 {
     const auto info = ParseInfoLine("info pv e2e4 e7e5 depth 5 string hello   world");

@@ -259,6 +259,19 @@ TEST(Cli, Analyse)
     EXPECT_NE(run.out.find("Position: 4k3/8/8/8/8/8/8/R3K3 w - - 0 1"), std::string::npos) << run.out;
 }
 
+TEST(Cli, AnalysesScoresAreFromWhitesSide)
+{
+    // The engine says +0.40 for the side to move: with Black to move (after 1.e4) that is White's -0.40, and a mate
+    // in 2 for Black is #-2. The -debug lines stay the engine's own words.
+    auto run = RunWith({"analyse", "-engine", kFake, "arg=--score", "arg=40", "-moves", "e2e4", "-depth", "1"});
+    EXPECT_EQ(run.code, 0) << run.err;
+    EXPECT_NE(run.out.find(" score -0.40 "), std::string::npos) << run.out;
+    run = RunWith({"analyse", "-engine", kFake, "arg=--score", "arg=40", "-depth", "1"});
+    EXPECT_NE(run.out.find(" score +0.40 "), std::string::npos) << run.out;
+    run = RunWith({"analyse", "-engine", kFake, "arg=--mate", "arg=2", "-moves", "e2e4", "-depth", "1"});
+    EXPECT_NE(run.out.find(" score #-2 "), std::string::npos) << run.out;
+}
+
 TEST(Cli, AnalyseReportsWhatGoesWrong)
 {
     EXPECT_EQ(RunWith({"analyse", "-fen", "startpos"}).code, 2);

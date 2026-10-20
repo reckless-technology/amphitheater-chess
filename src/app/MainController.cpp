@@ -188,7 +188,8 @@ void MainController::ShowGame(chess::Game game, GameInfo info)
     source_pgn_.reset();
     file_name_.clear();
     view_ply_ = game_.PlyCount();
-    evals_.assign(static_cast<std::size_t>(game_.PlyCount()), std::nullopt);
+    game_series_.clear();
+    analysis_series_.clear(); // another game: what an analysis said was of the last one
     view_.board().SetBanner({}, {});
     Refresh();
 }
@@ -349,7 +350,7 @@ void MainController::BoardMove(chess::Move move)
         {
             // Shown at once; the game's own record replaces it as the runner takes the move.
             game_.Play(move);
-            evals_.resize(static_cast<std::size_t>(game_.PlyCount()));
+            FitSeries();
             view_ply_ = game_.PlyCount();
             Refresh();
         }
@@ -366,7 +367,7 @@ void MainController::BoardMove(chess::Move move)
         return;
     }
     game_ = std::move(next);
-    evals_.resize(static_cast<std::size_t>(game_.PlyCount()));
+    FitSeries();
     view_ply_ = game_.PlyCount();
     view_.board().SetBanner({}, {});
     Refresh();
@@ -393,13 +394,11 @@ void MainController::StartGame(PlaySettings settings)
     {
         start.PlayUci(move);
     }
-    std::vector<std::optional<double>> kept(
-        evals_.begin(),
-        evals_.begin() + std::min<std::ptrdiff_t>(start.PlyCount(), static_cast<std::ptrdiff_t>(evals_.size())));
-    game_  = start;
-    evals_ = std::move(kept);
-    evals_.resize(static_cast<std::size_t>(game_.PlyCount()));
-    view_ply_ = game_.PlyCount();
+    // A game resumed from the one shown (a take-back) keeps the scores its opening moves had.
+    game_ = start;
+    FitSeries();
+    opening_series_ = game_series_;
+    view_ply_       = game_.PlyCount();
 
     info_               = GameInfo{};
     info_.white         = settings.white.Name();
@@ -460,7 +459,7 @@ void MainController::TakeBack()
         if (game_.PlyCount() > 0)
         {
             game_.Undo();
-            evals_.resize(static_cast<std::size_t>(game_.PlyCount()));
+            FitSeries();
             view_ply_ = game_.PlyCount();
             view_.board().SetBanner({}, {});
             Refresh();
@@ -552,7 +551,9 @@ void MainController::SetAnalysing(bool is_on)
 void MainController::ShowPgnGame(const chess::PgnGame &game)
 {
     ShowGame(game.ToGame(), InfoFromPgn(game));
-    source_pgn_ = game;
+    source_pgn_  = game;
+    game_series_ = SeriesOfPgn(game); // the scores its comments give, from White's side
+    Refresh();
 }
 
 void MainController::OpenPgn(const std::string &path)
@@ -753,33 +754,40 @@ void MainController::PollCompetition()
     {
         shown = live.begin()->first;
     }
+    if (shown != watched_shown_)
+    {
+        competition_trackers_.clear(); // before the new game's lines are fed, so none of them is lost
+    }
     for (const CompetitionLogLine &line : competition_->DrainLog())
     {
         if (line.game_number != 0 && (!is_following_competition_ || line.game_number != shown))
         {
             continue;
         }
+        // Each side's lines under its own name - with its side after it when two copies of one engine play - and
+        // into its own side's tracker, so one engine's positions never read the other's scores.
+        std::string label = line.engine;
+        if (const auto game = live.find(line.game_number); game != live.end())
+        {
+            const LiveGame &one = game->second;
+            label = EngineLabel(line.engine, line.side == chess::kWhite ? one.black_name : one.white_name, line.side);
+        }
         const bool is_to_engine = line.direction == uci::LineDirection::kToEngine;
-        view_.log().Add(line.engine,
+        view_.log().Add(label,
                         is_to_engine                                        ? LogDirection::kToEngine
                         : line.direction == uci::LineDirection::kFromEngine ? LogDirection::kFromEngine
                                                                             : LogDirection::kError,
                         line.text);
         if (line.game_number != 0)
         {
-            competition_trackers_.try_emplace(line.engine, line.engine)
-                .first->second.Feed(is_to_engine, line.text, line.at);
+            competition_trackers_.try_emplace(line.side, label).first->second.Feed(is_to_engine, line.text, line.at);
         }
     }
     if (!is_following_competition_ || (!is_changed && shown == watched_shown_))
     {
         return;
     }
-    if (shown != watched_shown_)
-    {
-        competition_trackers_.clear();
-        watched_shown_ = shown;
-    }
+    watched_shown_     = shown;
     const int total    = competition_->total_games();
     info_              = GameInfo{};
     info_.score        = competition_->ScoreText();
@@ -790,19 +798,16 @@ void MainController::PollCompetition()
         const LiveGame &game = live.at(shown);
         info_.white          = game.white_name;
         info_.black          = game.black_name;
-        info_.white_details  = "White Â· engine";
-        info_.black_details  = "Black Â· engine";
+        info_.white_details  = "White \xc2\xb7 engine";
+        info_.black_details  = "Black \xc2\xb7 engine";
         info_.event          = std::string(kind) + ", game " + std::to_string(shown) + " of " + std::to_string(total);
         const bool was_following = view_ply_ >= game_.PlyCount();
         game_                    = game.game ? *game.game : chess::Game{};
-        evals_.assign(static_cast<std::size_t>(game_.PlyCount()), std::nullopt);
-        for (std::size_t ply = 0; ply < game.notes.size() && ply < evals_.size(); ++ply)
-        {
-            if (const auto &score = game.notes[ply].score)
-            {
-                evals_[ply] = WhitePawns(*score, game_.PositionAt(static_cast<int>(ply)).SideToMove());
-            }
-        }
+        game_series_             = SeriesOfNotes(game.notes, static_cast<std::size_t>(game_.PlyCount()),
+                                                 {EngineLabel(game.white_name, game.black_name, chess::kWhite),
+                                                  EngineLabel(game.black_name, game.white_name, chess::kBlack)},
+                                                 {true, true});
+        FitSeries();
         if (was_following || view_ply_ > game_.PlyCount())
         {
             view_ply_ = game_.PlyCount();
@@ -816,7 +821,11 @@ void MainController::PollCompetition()
         info_.black        = record->black_name;
         info_.event        = std::string(kind) + (competition_->IsFinished() ? ", finished" : "");
         game_              = record->game;
-        evals_.assign(static_cast<std::size_t>(game_.PlyCount()), std::nullopt);
+        game_series_       = SeriesOfNotes(record->notes, static_cast<std::size_t>(game_.PlyCount()),
+                                           {EngineLabel(record->white_name, record->black_name, chess::kWhite),
+                                            EngineLabel(record->black_name, record->white_name, chess::kBlack)},
+                                           {true, true});
+        FitSeries();
         view_ply_   = game_.PlyCount();
         source_pgn_ = record->ToPgn();
         if (competition_->IsFinished())
@@ -956,7 +965,8 @@ void MainController::PollPlay()
                         : line.direction == uci::LineDirection::kFromEngine ? LogDirection::kFromEngine
                                                                             : LogDirection::kError,
                         line.text);
-        auto tracker = trackers_.try_emplace(line.engine, line.engine).first;
+        // Each side's lines into its own tracker: two copies of one engine never share the positions they search.
+        auto tracker = trackers_.try_emplace(line.side, line.engine).first;
         tracker->second.Feed(is_to_engine, line.text, line.at);
     }
     const int version = play_->Version();
@@ -964,18 +974,34 @@ void MainController::PollPlay()
     {
         return;
     }
-    play_version_            = version;
-    const bool was_following = view_ply_ >= game_.PlyCount();
-    snapshot_                = play_->Snapshot();
-    game_                    = snapshot_.game;
-    evals_.resize(static_cast<std::size_t>(game_.PlyCount()));
-    for (std::size_t ply = 0; ply < snapshot_.notes.size() && ply < evals_.size(); ++ply)
+    play_version_                = version;
+    const bool was_following     = view_ply_ >= game_.PlyCount();
+    snapshot_                    = play_->Snapshot();
+    game_                        = snapshot_.game;
+    const PlaySettings &settings = play_->settings();
+    game_series_ = SeriesOfNotes(snapshot_.notes, static_cast<std::size_t>(game_.PlyCount()),
+                                 {EngineLabel(settings.white.Name(), settings.black.Name(), chess::kWhite),
+                                  EngineLabel(settings.black.Name(), settings.white.Name(), chess::kBlack)},
+                                 {!settings.white.is_human, !settings.black.is_human});
+    // A resumed game's opening moves keep the scores they had before it was resumed.
+    for (EvalSeries &series : game_series_)
     {
-        if (const auto &score = snapshot_.notes[ply].score)
+        for (const EvalSeries &before : opening_series_)
         {
-            evals_[ply] = WhitePawns(*score, game_.PositionAt(static_cast<int>(ply)).SideToMove());
+            if (before.name != series.name)
+            {
+                continue;
+            }
+            for (std::size_t ply = 0; ply < before.points.size() && ply < series.points.size(); ++ply)
+            {
+                if (!series.points[ply])
+                {
+                    series.points[ply] = before.points[ply];
+                }
+            }
         }
     }
+    FitSeries();
     if (was_following || view_ply_ > game_.PlyCount())
     {
         view_ply_ = game_.PlyCount();
@@ -1059,16 +1085,25 @@ void MainController::RefreshSearches()
                     arrows.push_back({best->From(), best->To(), theme::kAmber.WithAlpha(0.85f)});
                 }
             }
-            // The first engine's word on the position shown is the graph's for it.
-            if (const auto pawns = tracker->BestWhitePawns();
-                pawns && view_ply_ > 0 && blocks.size() == 1 && view_ply_ <= static_cast<int>(evals_.size()))
+            // Each engine's word on the position shown is its own series' point for it, from White's side.
+            const auto point = tracker->BestEvalPoint();
+            if (!point || view_ply_ <= 0)
             {
-                auto &slot = evals_[static_cast<std::size_t>(view_ply_ - 1)];
-                if (slot != pawns)
-                {
-                    slot        = pawns;
-                    graph_dirty = true;
-                }
+                continue;
+            }
+            auto series = std::find_if(analysis_series_.begin(), analysis_series_.end(),
+                                       [&](const EvalSeries &one) { return one.name == tracker->name(); });
+            if (series == analysis_series_.end())
+            {
+                analysis_series_.push_back({tracker->name(), {}});
+                series = analysis_series_.end() - 1;
+            }
+            series->points.resize(static_cast<std::size_t>(game_.PlyCount()));
+            auto &slot = series->points[static_cast<std::size_t>(view_ply_ - 1)];
+            if (slot != point)
+            {
+                slot        = point;
+                graph_dirty = true;
             }
         }
         for (const std::string &failure : analysis_->Failures())
@@ -1076,20 +1111,29 @@ void MainController::RefreshSearches()
             status.push_back(failure);
         }
     }
-    for (const SideSpec *side : play_
-                                    ? std::vector<const SideSpec *>{&play_->settings().white, &play_->settings().black}
-                                    : std::vector<const SideSpec *>{})
+    // The game's engines, White's first: a game on the board, or the competition's game the board follows.
+    std::vector<const SearchTracker *> playing;
+    if (play_)
     {
-        if (side->is_human)
+        for (const auto &[side, tracker] : trackers_)
         {
-            continue;
+            const SideSpec &spec = side == chess::kWhite ? play_->settings().white : play_->settings().black;
+            if (!spec.is_human)
+            {
+                playing.push_back(&tracker);
+            }
         }
-        const auto found = trackers_.find(side->engine.DisplayName());
-        if (found == trackers_.end())
+    }
+    else if (is_following_competition_)
+    {
+        for (const auto &[side, tracker] : competition_trackers_)
         {
-            continue;
+            playing.push_back(&tracker);
         }
-        const SearchTracker &tracker = found->second;
+    }
+    for (const SearchTracker *found : playing)
+    {
+        const SearchTracker &tracker = *found;
         blocks.push_back(tracker.Block(now, 3));
         if (tracker.IsSearching())
         {
@@ -1128,7 +1172,7 @@ void MainController::RefreshSearches()
     view_.SetStatus(std::move(status));
     if (graph_dirty)
     {
-        view_.SetEval(evals_, view_ply_, EvalCaption());
+        ShowEval();
     }
 }
 
@@ -1228,7 +1272,7 @@ void MainController::Refresh()
     card.push_back({"FEN", position.ToFen(), true});
     view_.SetCard(std::move(card));
 
-    view_.SetEval(evals_, view_ply_, EvalCaption());
+    ShowEval();
     RefreshSearches();
 }
 
@@ -1241,13 +1285,44 @@ std::string MainController::EvalCaption() const
     const chess::Position &before  = game_.PositionAt(view_ply_ - 1);
     std::string            caption = std::to_string(before.FullmoveNumber()) +
                                      (before.SideToMove() == chess::kWhite ? "." : "...") + game_.San(view_ply_ - 1);
-    if (view_ply_ <= static_cast<int>(evals_.size()) && evals_[static_cast<std::size_t>(view_ply_ - 1)])
+    // The first series with a score for the move: in a game between engines, the mover's engine's.
+    const std::size_t index = static_cast<std::size_t>(view_ply_ - 1);
+    for (const EvalSeries &series : GraphSeries())
     {
-        char text[32];
-        std::snprintf(text, sizeof text, "  %+.2f", *evals_[static_cast<std::size_t>(view_ply_ - 1)]);
-        caption += text;
+        if (index < series.points.size() && series.points[index])
+        {
+            caption += "  " + EvalText(*series.points[index]);
+            break;
+        }
     }
     return caption;
+}
+
+void MainController::FitSeries()
+{
+    const std::size_t count = static_cast<std::size_t>(game_.PlyCount());
+    for (auto *list : {&game_series_, &analysis_series_})
+    {
+        for (EvalSeries &series : *list)
+        {
+            series.points.resize(count);
+        }
+    }
+}
+
+const std::vector<EvalSeries> &MainController::GraphSeries() const
+{
+    if (analysis_ || game_series_.empty())
+    {
+        return analysis_series_;
+    }
+    return game_series_;
+}
+
+void MainController::ShowEval()
+{
+    FitSeries();
+    view_.SetEval(GraphSeries(), game_.PlyCount(), view_ply_, EvalCaption());
 }
 
 } // namespace uci_host::app

@@ -1,5 +1,7 @@
 #include "PlaySession.h"
 
+#include "SearchTracker.h"
+
 #include "chess/Notation.h"
 #include "chess/PolyglotBook.h"
 #include "match/EnginePlayer.h"
@@ -147,11 +149,13 @@ void PlaySession::Run()
             const chess::TimeControl &own = side == &settings_.white
                                                 ? settings_.white_resumed.value_or(settings_.time_control)
                                                 : settings_.black_resumed.value_or(settings_.time_control);
-            auto engine      = std::make_unique<match::EnginePlayer>(side->engine.config, ControlOf(own, side->engine));
-            std::string name = side->engine.DisplayName();
-            engine->SetLogger([this, name](uci::LineDirection direction, std::string_view line) {
+            auto engine = std::make_unique<match::EnginePlayer>(side->engine.config, ControlOf(own, side->engine));
+            const chess::Color colour = side == &settings_.white ? chess::kWhite : chess::kBlack;
+            const SideSpec    &other  = side == &settings_.white ? settings_.black : settings_.white;
+            std::string        name   = EngineLabel(side->engine.DisplayName(), other.Name(), colour);
+            engine->SetLogger([this, name, colour](uci::LineDirection direction, std::string_view line) {
                 const std::lock_guard<std::mutex> lock(mutex_);
-                log_.push_back({name, direction, std::string(line), Clock::now()});
+                log_.push_back({name, colour, direction, std::string(line), Clock::now()});
             });
             players.push_back(std::move(engine));
         }

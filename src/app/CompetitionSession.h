@@ -35,11 +35,12 @@ struct LiveGame
 /** A line an engine of the competition exchanged. */
 struct CompetitionLogLine
 {
-    int                                   game_number = 0; ///< The game it was in.
-    std::string                           engine;          ///< The engine's name.
-    uci::LineDirection                    direction;       ///< Which way it went.
-    std::string                           text;            ///< The line.
-    std::chrono::steady_clock::time_point at;              ///< When.
+    int                                   game_number = 0;      ///< The game it was in.
+    std::string                           engine;               ///< The engine's name.
+    chess::Color                          side = chess::kWhite; ///< The side it plays in that game.
+    uci::LineDirection                    direction;            ///< Which way it went.
+    std::string                           text;                 ///< The line.
+    std::chrono::steady_clock::time_point at;                   ///< When.
 };
 
 /** A match or a tournament, played on the core's worker threads, followed from the window's thread. */
