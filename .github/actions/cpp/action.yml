@@ -59,11 +59,27 @@ runs:
           jobs=$(sysctl -n hw.ncpu)
           echo "$(uname -m), $jobs cores, macOS $(sw_vers -productVersion); $(clang --version | head -1)"
         fi
-        # The packaging scripts' and the suites' Python: a venv of the runner's own Python, kept, with the packages the
-        # icon's and the pieces' checks render with (tools/requirements.txt). The build needs none: the icon and the
-        # pieces are committed.
-        venv="$RUNNER_TOOL_CACHE/reckless-amphitheater-python"
-        [ -x "$venv/bin/python" ] || python3 -m venv "$venv"
+        # The packaging scripts' and the suites' Python: a venv of the runner's newest Python 3.10 or later (the oldest
+        # tools/requirements.txt's wheels are built for; macOS's own python3 is older), kept per version, with the
+        # packages the icon's and the pieces' checks render with. On macOS Homebrew's Python is installed where there
+        # is none. The build needs none: the icon and the pieces are committed.
+        is_recent() { "$1" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2> /dev/null; }
+        find_python() {
+          base=""
+          for candidate in python3.14 python3.13 python3.12 python3.11 python3.10 /opt/homebrew/bin/python3 python3; do
+            if command -v "$candidate" > /dev/null && is_recent "$candidate"; then base=$(command -v "$candidate"); return; fi
+          done
+        }
+        find_python
+        if [ -z "$base" ] && [ "$(uname -s)" = "Darwin" ] && command -v brew > /dev/null; then
+          echo "the runner has no Python 3.10 or later - installing Homebrew's python@3.13"
+          brew install --quiet python@3.13
+          find_python
+        fi
+        if [ -z "$base" ]; then echo "::error::the runner has no Python 3.10 or later for the suites' scripts"; exit 1; fi
+        version=$("$base" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
+        venv="$RUNNER_TOOL_CACHE/reckless-amphitheater-python-$version"
+        [ -x "$venv/bin/python" ] || "$base" -m venv "$venv"
         "$venv/bin/python" -m pip install --quiet --disable-pip-version-check -r tools/requirements.txt
         "$venv/bin/python" -c "import resvg_py, PIL, svgelements, pathops"
         echo "python=$venv/bin/python" >> "$GITHUB_OUTPUT"
@@ -103,7 +119,12 @@ runs:
         # The packaging scripts' and the suites' Python: a venv of the runner's machine-wide Python, kept, with the
         # packages the icon's and the pieces' checks render with (tools/requirements.txt). The build needs none: the
         # icon and the pieces are committed.
-        $venv = Join-Path $env:RUNNER_TOOL_CACHE 'reckless-amphitheater-python'
+        # Python 3.10 or later, the oldest tools/requirements.txt's wheels are built for; the venv is kept per version.
+        $version = & python -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")'
+        if ($LASTEXITCODE -ne 0 -or [version]$version -lt [version]'3.10') {
+          throw "The runner's Python is $version; the suites' scripts need 3.10 or later"
+        }
+        $venv = Join-Path $env:RUNNER_TOOL_CACHE "reckless-amphitheater-python-$version"
         $python = Join-Path $venv 'Scripts/python.exe'
         if (-not (Test-Path $python)) {
           python -m venv $venv
