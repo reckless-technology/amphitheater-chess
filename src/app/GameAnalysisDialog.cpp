@@ -1,7 +1,8 @@
 #include "GameAnalysisDialog.h"
 
-#include <charconv>
+#include <cctype>
 #include <cmath>
+#include <cstdlib>
 
 namespace amphitheater::app
 {
@@ -15,9 +16,14 @@ namespace
  */
 std::optional<double> NumberOf(const std::string &text)
 {
-    double     value  = 0.0;
-    const auto parsed = std::from_chars(text.data(), text.data() + text.size(), value);
-    if (parsed.ec != std::errc() || parsed.ptr != text.data() + text.size() || !std::isfinite(value))
+    // strtod rather than from_chars, whose floating-point form macOS has only from 26.
+    if (text.empty() || std::isspace(static_cast<unsigned char>(text.front())) != 0)
+    {
+        return std::nullopt;
+    }
+    char        *end   = nullptr;
+    const double value = std::strtod(text.c_str(), &end);
+    if (end != text.c_str() + text.size() || !std::isfinite(value))
     {
         return std::nullopt;
     }
