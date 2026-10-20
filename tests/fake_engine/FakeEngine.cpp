@@ -3,6 +3,7 @@
 //   --name NAME            the name it gives (id name)
 //   --think MS             how long each search takes, unless stopped (default 0)
 //   --score CP             the score it reports (default: the material balance, from the side to move)
+//   --scores CP,CP,...     the score each search reports in turn, the last kept for every search after
 //   --mate N               report "score mate N" instead
 //   --crash-at N           exit with code 3 when the Nth "go" arrives (counting from 1, across games)
 //   --hang-at N            stop answering anything when the Nth "go" arrives
@@ -27,6 +28,7 @@
 #include "chess/Position.h"
 #include "uci/Utf8Arguments.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -58,6 +60,7 @@ struct Script
     int                think_ms = 0;
     std::optional<int> score;
     std::optional<int> mate;
+    std::vector<int>   scores;
     int                crash_at                 = 0;
     int                hang_at                  = 0;
     int                illegal_at               = 0;
@@ -272,6 +275,14 @@ int main(int argc, char **argv)
         {
             script.score = std::atoi(value().c_str());
         }
+        else if (argument == "--scores")
+        {
+            std::stringstream list(value());
+            for (std::string item; std::getline(list, item, ',');)
+            {
+                script.scores.push_back(std::atoi(item.c_str()));
+            }
+        }
         else if (argument == "--mate")
         {
             script.mate = std::atoi(value().c_str());
@@ -473,11 +484,15 @@ int main(int argc, char **argv)
                     search_moves.push_back(word);
                 }
             }
-            const Move        move     = ChooseMove(position, search_moves, script.seed);
-            const auto        start    = std::chrono::steady_clock::now();
-            const int         material = Material(position);
-            const std::string score    = script.mate ? "mate " + std::to_string(*script.mate)
-                                                     : "cp " + std::to_string(script.score.value_or(material));
+            const Move move     = ChooseMove(position, search_moves, script.seed);
+            const auto start    = std::chrono::steady_clock::now();
+            const int  material = Material(position);
+            const int  scripted =
+                script.scores.empty()
+                    ? script.score.value_or(material)
+                    : script.scores[std::min(static_cast<std::size_t>(go_count - 1), script.scores.size() - 1)];
+            const std::string score =
+                script.mate ? "mate " + std::to_string(*script.mate) : "cp " + std::to_string(scripted);
             if (script.is_garbage)
             {
                 Say("info depth banana score cp");
