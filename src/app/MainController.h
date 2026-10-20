@@ -6,6 +6,7 @@
 #include "AnalysisSession.h"
 #include "CompetitionSession.h"
 #include "EngineCatalogue.h"
+#include "GameAnalysisDialog.h"
 #include "MainView.h"
 #include "Menus.h"
 #include "PlaySession.h"
@@ -305,6 +306,19 @@ class MainController
         return own_menus_.get();
     }
 
+    /**
+     * Analyse the line shown: an engine over every position of it, each position's score written on the move that led
+     * to it, each move that cost its mover marked, the engine's line added where a move was a mistake or a blunder.
+     * @param choice The engine, its search and what to write.
+     */
+    void StartGameAnalysis(const GameAnalysisChoice &choice);
+
+    /** @return Whether the game analysis is under way. */
+    bool IsAnalysingGame() const
+    {
+        return review_ != nullptr;
+    }
+
     /** @return The last thing that went wrong, as the status bar says it; empty for nothing. */
     const std::string &last_error() const
     {
@@ -390,6 +404,22 @@ class MainController
     /** Edit > Set up position: the position shown on a board to edit, shown in its place when it is set up. */
     void OpenPositionEditor();
 
+    /** Game > Analyse the game: its dialog. */
+    void OpenGameAnalysis();
+
+    /** The game analysis's positions taken in, and its end, once a frame. */
+    void PollGameAnalysis();
+
+    /**
+     * One position's analysis written into the game: its score on the move that led to it, the move judged against
+     * the position before it, and the engine's line beside a mistake or a blunder.
+     * @param analysis The position's analysis.
+     */
+    void ApplyGameAnalysis(const match::PositionAnalysis &analysis);
+
+    /** The game analysis set aside to finish its search in the background: the game it analyses changed. */
+    void RetireGameAnalysis();
+
     /** The engine log's layout as the view has it, and the pieces' set, kept in the layout file, where there is one. */
     void SaveLayout();
 
@@ -440,10 +470,17 @@ class MainController
     ControllerFiles               files_;  ///< Where it keeps things.
     EngineCatalogue               catalogue_;         ///< The configured engines.
     std::map<std::string, PieceSet>      piece_sets_; ///< The sets loaded, by id: the board draws with one.
-    std::string                          piece_set_{kDefaultPieceSet}; ///< The set the board is drawn with.
-    chess::Game                          game_;                        ///< The line shown, as a game.
-    chess::GameTree                      tree_;                        ///< The game shown with its variations.
-    std::vector<chess::GameTree::NodeId> line_;                        ///< The line shown, as the tree's nodes.
+    std::string                          piece_set_{kDefaultPieceSet};    ///< The set the board is drawn with.
+    std::unique_ptr<match::GameAnalyser> review_;                         ///< The game analysis under way.
+    std::vector<std::unique_ptr<match::GameAnalyser>>   retired_reviews_; ///< Analyses finishing in the background.
+    GameAnalysisChoice                                  review_choice_;   ///< Its engine and what it writes.
+    std::vector<chess::GameTree::NodeId>                review_line_;     ///< The line it analyses.
+    std::vector<std::optional<match::PositionAnalysis>> review_done_;     ///< Each position's analysis, as it comes.
+    std::array<int, 3>                   review_counts_{}; ///< The inaccuracies, mistakes and blunders it found.
+    std::string                          review_summary_;  ///< What the last analysis found, for the status bar.
+    chess::Game                          game_;            ///< The line shown, as a game.
+    chess::GameTree                      tree_;            ///< The game shown with its variations.
+    std::vector<chess::GameTree::NodeId> line_;            ///< The line shown, as the tree's nodes.
     chess::Outcome main_outcome_; ///< How the main line ended, by its record or its play where the rules do not say.
     GameInfo       info_;         ///< What the card says of it.
     std::vector<EvalSeries> game_series_;        ///< The game's engines' scores, from White's side, as known.

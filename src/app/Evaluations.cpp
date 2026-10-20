@@ -141,6 +141,17 @@ std::string EvalText(const EvalPoint &point)
     return text;
 }
 
+std::string EvalCommand(const EvalPoint &point)
+{
+    if (point.mate)
+    {
+        return *point.mate == 0 ? std::string() : "[%eval #" + std::to_string(*point.mate) + "]";
+    }
+    char text[48];
+    std::snprintf(text, sizeof text, "[%%eval %.2f]", point.pawns);
+    return text;
+}
+
 std::vector<EvalSeries> SeriesOfNotes(const std::vector<match::MoveNote> &notes, std::size_t ply_count,
                                       const std::array<std::string, 2> &names, const std::array<bool, 2> &is_engine)
 {

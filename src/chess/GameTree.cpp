@@ -130,6 +130,16 @@ void GameTree::Remove(NodeId id)
     siblings.erase(std::remove(siblings.begin(), siblings.end(), id), siblings.end());
 }
 
+void GameTree::SetComment(NodeId id, std::string comment)
+{
+    nodes_[static_cast<std::size_t>(id)].comment = std::move(comment);
+}
+
+void GameTree::SetNags(NodeId id, std::vector<int> nags)
+{
+    nodes_[static_cast<std::size_t>(id)].nags = std::move(nags);
+}
+
 void GameTree::Annotate(NodeId id, const PgnMove &move)
 {
     Node &target          = nodes_[static_cast<std::size_t>(id)];

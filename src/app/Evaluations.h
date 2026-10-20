@@ -55,6 +55,14 @@ EvalPoint EvalPointOf(const uci::Score &score, chess::Color side_to_move);
 std::string EvalText(const EvalPoint &point);
 
 /**
+ * A point as a PGN comment's [%eval] command, as EvalPointOfComment reads it back: "[%eval 0.35]", "[%eval -1.20]",
+ * "[%eval #3]", "[%eval #-2]".
+ * @param point The point; a mate in 0 has no command.
+ * @return The command; empty for a mate in 0.
+ */
+std::string EvalCommand(const EvalPoint &point);
+
+/**
  * A game's series from its moves' notes: one for each side an engine played, White's first, each holding the scores
  * its engine gave with its own moves - at its own plies, so the two interleave - from White's point of view.
  * @param notes The game's notes, one per move.

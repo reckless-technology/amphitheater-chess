@@ -35,6 +35,7 @@ add_library(amphitheater_gui STATIC
     EngineManagerDialog.cpp
     EvalGraph.cpp
     Evaluations.cpp
+    GameAnalysisDialog.cpp
     GameFiles.cpp
     GamePickerDialog.cpp
     LayoutSettings.cpp

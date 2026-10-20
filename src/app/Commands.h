@@ -30,6 +30,8 @@ enum Command : int
     kAnalyse,          ///< Engines > Analyse: the selected engines think about the position shown.
     kPromoteVariation, ///< Game > Promote variation: the variation shown made its line's main continuation.
     kDeleteVariation,  ///< Game > Delete variation: the variation shown taken off the game.
+    kAnalyseGame,      ///< Game > Analyse the game...: an engine over every position of the line shown.
+    kStopGameAnalysis, ///< Game > Stop the game analysis.
 
     kEngineManager = 400, ///< Engines > Manage engines...: add, remove and configure engines.
 

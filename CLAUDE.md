@@ -75,7 +75,8 @@ GUI will save with the toolkit's JSON.
 - `src/match/` (`amphitheater_match`): `Player`/`CallbackPlayer`/`EnginePlayer`, `GameRunner` (clocks with a margin,
   flag falls - a draw when the opponent cannot mate - illegal moves, crashes, stalls, `Adjudicator`, each side's own
   Polyglot book (`BookSettings`), `GameRecord` with its PGN and per-move comments `{+0.35/18 1.2s}` - the score from
-  White's side, `MoveNote::WhiteScore` - and `{book}`), `Openings` (EPD, PGN, a Polyglot book walked to a depth),
+  White's side, `MoveNote::WhiteScore` - and `{book}`), `Openings` (EPD, PGN, a Polyglot book walked to a depth), `GameAnalysis` (an engine over every
+  position of a game on its own thread; each move judged by the winning chances it cost),
   `Schedule` (circle method), `Statistics` (Elo with a 95 % margin from the trinomial variance, LOS, standings with
   Sonneborn-Berger, crosstable), `Tournament` (worker threads, each with its own engines; events in a queue).
 - **Scores:** an engine's UCI score is from the side to move in the position it searches; everything the host shows
@@ -105,7 +106,8 @@ GUI will save with the toolkit's JSON.
   tournament is a `CompetitionSession` over `match::Tournament` with `does_report_moves` on; its dialog
   (`CompetitionDialog`) writes amphitheater-cli's arguments and reads them with `cli::ParseTournamentArguments`, so the
   window and the command line never disagree on an option - add an option to the command line, and to the dialog as an
-  argument. `PositionEditor` is Edit > Set up position over `chess::BoardSetup`. `EngineCatalogue` is the engine list
+  argument. `PositionEditor` is Edit > Set up position over `chess::BoardSetup`; `GameAnalysisDialog` is Game >
+  Analyse the game, which writes `[%eval]` comments, NAGs and the engine's lines into the tree. `EngineCatalogue` is the engine list
   (`reckless-technology/amphitheater/engines.json` in the user's settings folder); `WindowSizes` the View menu's window
   sizes, held by `AppRoot::SetFixedZoom` and kept in `window.json` beside it; `LayoutSettings` the engine log's height
   and whether it shows (its header, `LogHeader`, folds it and drags it), kept in `layout.json`. `Theme.h` holds the

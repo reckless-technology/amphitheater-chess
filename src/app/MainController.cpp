@@ -6,6 +6,7 @@
 #include "CompetitionDialog.h"
 #include "Controls.h"
 #include "EngineManagerDialog.h"
+#include "GameAnalysisDialog.h"
 #include "GameFiles.h"
 #include "GamePickerDialog.h"
 #include "LayoutSettings.h"
@@ -13,6 +14,7 @@
 #include "PositionEditor.h"
 #include "StandingsDialog.h"
 #include "Theme.h"
+#include "chess/Notation.h"
 #include "match/Openings.h"
 #include "version/Version.h"
 
@@ -236,6 +238,15 @@ void MainController::Command(int command)
     case kClearLog:
         view_.log().Clear();
         break;
+    case kAnalyseGame:
+        OpenGameAnalysis();
+        break;
+    case kStopGameAnalysis:
+        if (review_)
+        {
+            review_->Stop();
+        }
+        break;
     case kPromoteVariation:
         if (const chess::GameTree::NodeId variation = ShownVariation();
             variation != chess::GameTree::kNone && !IsPlaying())
@@ -432,6 +443,7 @@ bool MainController::LineMatchesGame() const
 
 void MainController::MirrorGame()
 {
+    RetireGameAnalysis(); // its nodes are the old tree's
     // A record's PGN where it is the game's - its comments, its NAGs and its variations kept - else the moves alone.
     tree_ = chess::GameTree::FromGame(game_);
     if (source_pgn_)
@@ -871,6 +883,186 @@ void MainController::OpenStandings()
     OpenDialog(std::move(dialog));
 }
 
+void MainController::OpenGameAnalysis()
+{
+    if (catalogue_.engines.empty() || IsPlaying() || game_.PlyCount() == 0)
+    {
+        return;
+    }
+    auto dialog      = std::make_unique<GameAnalysisDialog>(catalogue_.engines);
+    dialog->on_close = [this] { CloseDialog(); };
+    dialog->on_start = [this](const GameAnalysisChoice &choice) {
+        const GameAnalysisChoice chosen = choice; // the dialog goes with the close
+        CloseDialog();
+        StartGameAnalysis(chosen);
+    };
+    OpenDialog(std::move(dialog));
+}
+
+void MainController::StartGameAnalysis(const GameAnalysisChoice &choice)
+{
+    if (IsPlaying())
+    {
+        return;
+    }
+    RetireGameAnalysis();
+    SetAnalysing(false); // one engine at a time over the board's positions
+    review_choice_ = choice;
+    review_line_   = line_;
+    review_done_.assign(line_.size() + 1, std::nullopt);
+    review_counts_ = {};
+    review_summary_.clear();
+    review_ = std::make_unique<match::GameAnalyser>(choice.settings, game_.StartPosition(), game_.UciMoves());
+    review_->Start();
+    error_.clear();
+    Refresh();
+}
+
+void MainController::RetireGameAnalysis()
+{
+    if (review_)
+    {
+        review_->Stop();
+        retired_reviews_.push_back(std::move(review_));
+    }
+}
+
+void MainController::PollGameAnalysis()
+{
+    std::erase_if(retired_reviews_, [](const auto &retired) { return retired->IsFinished(); });
+    if (!review_)
+    {
+        return;
+    }
+    bool has_news = false;
+    while (const auto analysis = review_->Next())
+    {
+        ApplyGameAnalysis(*analysis);
+        has_news = true;
+    }
+    if (review_->IsFinished())
+    {
+        // Every position taken in: what it found, or why it ended early.
+        while (const auto analysis = review_->Next())
+        {
+            ApplyGameAnalysis(*analysis);
+        }
+        const std::string failure = review_->Failure();
+        const auto        plural  = [](int count, const char *one, const char *many) {
+            return std::to_string(count) + " " + (count == 1 ? one : many);
+        };
+        review_summary_ = failure.empty() ? "Game analysed by " + review_choice_.engine_name + ": " +
+                                                plural(review_counts_[2], "blunder", "blunders") + ", " +
+                                                plural(review_counts_[1], "mistake", "mistakes") + ", " +
+                                                plural(review_counts_[0], "inaccuracy", "inaccuracies")
+                                          : "The game analysis stopped: " + failure;
+        review_.reset();
+        has_news = true;
+        RefreshMenuBar();
+    }
+    if (has_news)
+    {
+        // The graph: the engine's score after each move of the line it analysed, where the line shown still runs.
+        EvalSeries series{review_choice_.engine_name,
+                          std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(game_.PlyCount()))};
+        for (std::size_t ply = 1; ply < review_done_.size() && ply <= line_.size() && ply <= review_line_.size(); ++ply)
+        {
+            if (line_[ply - 1] != review_line_[ply - 1])
+            {
+                break;
+            }
+            if (const auto &position = review_done_[ply]; position && position->score)
+            {
+                series.points[ply - 1] = EvalPointOf(*position->score, position->side_to_move);
+            }
+        }
+        game_series_ = {std::move(series)};
+        Refresh();
+    }
+}
+
+void MainController::ApplyGameAnalysis(const match::PositionAnalysis &analysis)
+{
+    const auto ply = static_cast<std::size_t>(analysis.ply);
+    if (ply >= review_done_.size())
+    {
+        return;
+    }
+    review_done_[ply] = analysis;
+    if (ply == 0 || !analysis.score)
+    {
+        return;
+    }
+    // The score on the move that led to the position, as the [%eval] command a PGN carries it in.
+    const chess::GameTree::NodeId node    = review_line_[ply - 1];
+    std::string                   comment = tree_.node(node).comment;
+    if (const std::size_t at = comment.find("[%eval"); at != std::string::npos)
+    {
+        const std::size_t end = comment.find(']', at);
+        comment.erase(at, end == std::string::npos ? std::string::npos : end - at + 1);
+        while (!comment.empty() && comment.front() == ' ')
+        {
+            comment.erase(comment.begin());
+        }
+    }
+    const std::string command = EvalCommand(EvalPointOf(*analysis.score, analysis.side_to_move));
+    if (!command.empty())
+    {
+        comment = command + (comment.empty() ? "" : " " + comment);
+    }
+    tree_.SetComment(node, comment);
+
+    // The move judged against the engine's best in the position before it.
+    const auto &before = review_done_[ply - 1];
+    if (!before)
+    {
+        return;
+    }
+    const auto quality = match::JudgeMove(*before, analysis);
+    if (!quality || *quality == match::MoveQuality::kGood)
+    {
+        return;
+    }
+    ++review_counts_[static_cast<std::size_t>(*quality) - 1];
+    if (review_choice_.does_mark_moves)
+    {
+        std::vector<int> nags = tree_.node(node).nags;
+        std::erase_if(nags, [](int nag) { return nag >= 1 && nag <= 6; }); // the move's own glyph replaced
+        nags.insert(nags.begin(), match::NagOf(*quality));
+        tree_.SetNags(node, std::move(nags));
+    }
+    // The engine's line beside a mistake or a blunder, where it would have played another move.
+    if (review_choice_.does_add_lines && *quality >= match::MoveQuality::kMistake && !before->pv.empty())
+    {
+        const chess::GameTree::NodeId parent   = tree_.node(node).parent;
+        chess::Position               position = tree_.node(parent).position;
+        const auto                    first    = chess::ParseUciMove(position, before->pv.front());
+        if (first && !(*first == tree_.node(node).move))
+        {
+            constexpr std::size_t   kMostPlies = 8;
+            chess::GameTree::NodeId at         = parent;
+            for (std::size_t index = 0; index < before->pv.size() && index < kMostPlies; ++index)
+            {
+                const auto move = chess::ParseUciMove(tree_.node(at).position, before->pv[index]);
+                if (!move)
+                {
+                    break;
+                }
+                const chess::GameTree::NodeId next = tree_.Add(at, *move);
+                if (next == chess::GameTree::kNone)
+                {
+                    break;
+                }
+                if (at == parent && before->score)
+                {
+                    tree_.SetComment(next, EvalCommand(EvalPointOf(*before->score, before->side_to_move)));
+                }
+                at = next;
+            }
+        }
+    }
+}
+
 void MainController::OpenPositionEditor()
 {
     auto dialog =
@@ -1160,6 +1352,7 @@ void MainController::Frame(double seconds)
     }
     PollPlay();
     PollCompetition();
+    PollGameAnalysis();
     if (analysis_)
     {
         analysis_->SetPosition(game_, view_ply_);
@@ -1401,6 +1594,20 @@ void MainController::RefreshSearches()
     {
         status.push_back(chess::ResultText(game_.GetOutcome().result) + "  " + game_.GetOutcome().description);
     }
+    if (review_)
+    {
+        int done = 0;
+        for (const auto &position : review_done_)
+        {
+            done += position ? 1 : 0;
+        }
+        status.push_back("Analysing the game with " + review_choice_.engine_name + ": " + std::to_string(done) +
+                         " of " + std::to_string(review_done_.size()) + " positions");
+    }
+    else if (!review_summary_.empty())
+    {
+        status.push_back(review_summary_);
+    }
     if (!error_.empty())
     {
         status.push_back(error_);
@@ -1444,11 +1651,13 @@ void MainController::RefreshMenuBar()
 MenuState MainController::Menus() const
 {
     MenuState state;
-    state.is_dialog_open   = dialog_ != nullptr;
-    state.is_log_open      = view_.is_log_open();
-    state.piece_set        = piece_set_;
-    state.is_in_variation  = !IsPlaying() && ShownVariation() != chess::GameTree::kNone;
-    state.updates_revision = updates_ ? updates_->revision() : 0;
+    state.is_dialog_open    = dialog_ != nullptr;
+    state.is_log_open       = view_.is_log_open();
+    state.piece_set         = piece_set_;
+    state.is_in_variation   = !IsPlaying() && ShownVariation() != chess::GameTree::kNone;
+    state.can_analyse_game  = !catalogue_.engines.empty() && !IsPlaying() && game_.PlyCount() > 0 && !review_;
+    state.is_analysing_game = review_ != nullptr;
+    state.updates_revision  = updates_ ? updates_->revision() : 0;
     if (services_.window_sizes)
     {
         state.window_sizes = services_.window_sizes();
@@ -1498,7 +1707,21 @@ void MainController::Refresh()
     view_.SetBoard(position, last, IsPersonToMove() || (!IsPlaying() && position.GenerateLegalMoves().size() > 0));
     view_.SetFlipped(is_flipped_);
     const chess::Position &start = game_.StartPosition();
-    view_.SetMoves(game_.SanMoves(), start.FullmoveNumber(), start.SideToMove() == chess::kBlack, view_ply_,
+    // The moves in SAN, each with the glyph its NAGs give it - an analysis's "??" among them.
+    std::vector<std::string> sans = game_.SanMoves();
+    for (std::size_t index = 0; index < sans.size() && index < line_.size(); ++index)
+    {
+        for (const int nag : tree_.node(line_[index]).nags)
+        {
+            constexpr const char *kGlyphs[] = {"", "!", "?", "!!", "??", "!?", "?!"};
+            if (nag >= 1 && nag <= 6)
+            {
+                sans[index] += kGlyphs[nag];
+                break;
+            }
+        }
+    }
+    view_.SetMoves(std::move(sans), start.FullmoveNumber(), start.SideToMove() == chess::kBlack, view_ply_,
                    LineVariations());
     RefreshStrips();
 

@@ -131,6 +131,20 @@ class GameTree
     PgnLine ToPgnLine() const;
 
     /**
+     * Set the comment after a node's move.
+     * @param id The node.
+     * @param comment The comment; empty for none.
+     */
+    void SetComment(NodeId id, std::string comment);
+
+    /**
+     * Set a node's NAGs.
+     * @param id The node.
+     * @param nags The numeric annotation glyphs, in order.
+     */
+    void SetNags(NodeId id, std::vector<int> nags);
+
+    /**
      * Keep the comments and the NAGs of a PGN move on a node.
      * @param id The node.
      * @param move The PGN move.

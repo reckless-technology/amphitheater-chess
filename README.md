@@ -250,6 +250,17 @@ before, so the block shows how its thought has gone (`SearchTracker`, which keep
 its rows alike among the blocks, as many whole lines each as its height leaves after their headers: five for one engine
 alone, two each for the two engines of a game.
 
+Game > Analyse the game goes over the line shown with one engine (`match::GameAnalyser`, on a thread of its own): every
+position in turn, for the seconds a move or the depth chosen, a position the game ends in scored by the rules. Each
+position's score is written on the move that led to it as the [%eval] command a PGN comment carries - so the graph
+draws it, Save PGN keeps it and the file opened again shows it - and each move is judged by what it cost its mover in
+winning chances, on the curve lichess publishes (2 / (1 + e^(-0.00368208 cp)) - 1, a mate a win): more than 0.1 is an
+inaccuracy, marked ?!, more than 0.2 a mistake (?) and more than 0.3 a blunder (??), the glyph shown beside the move in
+the moves list. Where a move was a mistake or a blunder and the engine would have played another, its line, eight
+plies at most, is added as a variation with its score. The status bar counts the positions done, and then what the
+analysis found; Game > Stop the game analysis ends it after the position under way. Analyse stops while it runs, and a
+game opened or played in its place sets it aside.
+
 The evaluation graph (`EvalGraph`, its data in `Evaluations.h`) draws each engine's scores as a series of its own, all
 from White's side on one scale with the zero line: in a game between engines White's engine's score at each of its
 moves and Black's at each of its, so the two interleave ply by ply, the first in amber and the second in blue, a legend
