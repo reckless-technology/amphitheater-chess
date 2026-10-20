@@ -226,10 +226,12 @@ TEST(BookWindow, AFirstLaunchOpensTheBuiltInBookAndASuiteKeepingNoLayoutOpensNon
     EXPECT_TRUE(view.is_book_shown());
     EXPECT_EQ(controller.book_path(), kBuiltInBook);
     EXPECT_EQ(view.book_label().detail(), "Zenith's, built in");
-    EXPECT_EQ(Sans(controller), (std::vector<std::string>{"e4", "c4"})) << "Zenith's own first moves";
+    EXPECT_EQ(Sans(controller), (std::vector<std::string>{"e4", "c4", "d4"})) << "the heaviest first";
+    const BookMove &d4 = controller.book_moves()[2];
+    EXPECT_NEAR(d4.share, 0.2, 0.01) << "1.d4 about a fifth of the first moves";
     ASSERT_TRUE(controller.Paste("1. d4 *"));
     controller.Frame(0.0);
-    EXPECT_FALSE(Sans(controller).empty()) << "it answers 1.d4, which it does not play";
+    EXPECT_FALSE(Sans(controller).empty()) << "Zenith's lines go on after it";
 }
 
 TEST(BookWindow, BuiltInBookOpensZenithsBookAndIsTickedWhileItIsOpen)

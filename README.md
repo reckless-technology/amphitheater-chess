@@ -59,9 +59,11 @@ the board does: on along the line shown, a variation leaving it, or a person's m
 card takes only the height its lines need. The book open is kept in `layout.json` and opened again at the next
 launch; File > Close book takes it away.
 
-The window carries a book of its own, Zenith's (`assets/books`, embedded as `books/zenith.bin`): about 14,000
-positions built entirely from Zenith's self-play, with replies to openings Zenith does not choose itself. A first launch
-opens it, and File > Built-in book opens it again. File > Open book takes a person's own book too: a Polyglot `.bin`,
+The window carries a book of its own (`assets/books`, embedded as `books/built-in.bin`): Zenith's, about 14,000
+positions built entirely from Zenith's self-play, with replies to openings Zenith does not choose itself, and 1.d4
+added as a first move (`assets/books/make_book.py`) - Zenith's lines after it were there already - so the book opens
+1.e4, 1.c4 and 1.d4, the last about a fifth of the time. A first launch opens it, and File > Built-in book opens it
+again. File > Open book takes a person's own book too: a Polyglot `.bin`,
 or a PGN file, read as a book of its games' openings (`chess/PgnBook.h`) - every move each game and each of its
 variations plays in its first 40 plies, weighted by the number of games that play it in that position.
 
@@ -144,6 +146,7 @@ runtime.
 | `notices` | `tools/third_party_notices.py --check` | `THIRD-PARTY-NOTICES.txt` as the build's fetches and the engines' pins write it |
 | `icon` | `tools/make_icon.py --check` | the committed icon as the script renders it from the artwork; skipped where the Python lacks Pillow or resvg-py |
 | `pieces_cburnett` | `assets/pieces/cburnett/convert_pieces.py --check` | the committed cburnett pieces as the script writes them from the Commons originals; skipped where the Python lacks svgelements or skia-pathops |
+| `book` | `assets/books/make_book.py --check` | the built-in book as the script writes it from Zenith's, with 1.d4 added |
 | `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings`, `render_about` | `amphitheater_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```

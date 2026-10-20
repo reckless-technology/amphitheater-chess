@@ -4,8 +4,8 @@
 # The files the binary carries (the toolkit's reckless_module_assets): the series' serif, the knob and the company mark,
 # the monospaced family the engines' output and the FEN are set in, the app's icon for a Linux window (its 256-pixel
 # render, icon-256.png, which Main.cpp hands the platform as _NET_WM_ICON and Help > About draws as its mark), the
-# pieces of each set, by the names pieces/<set>/<piece>.svg, and the built-in opening book, Zenith's own
-# (assets/books), by the name books/zenith.bin.
+# pieces of each set, by the names pieces/<set>/<piece>.svg, and the built-in opening book, Zenith's own with 1.d4
+# added (assets/books), by the name books/built-in.bin.
 reckless_monospace_font_files(amphitheater_monospace)
 set(amphitheater_pieces "")
 foreach(colour w b)
@@ -20,7 +20,7 @@ reckless_module_assets(amphitheater_assets
     ${amphitheater_monospace}
     ${amphitheater_pieces}
     "icon-256.png=${PROJECT_SOURCE_DIR}/assets/icon/png/icon-256.png"
-    "books/zenith.bin=${PROJECT_SOURCE_DIR}/assets/books/zenith-book-r4.bin")
+    "books/built-in.bin=${PROJECT_SOURCE_DIR}/assets/books/amphitheater-book.bin")
 
 # The window's views and controllers, which the app, the render tool and the window's suite link.
 add_library(amphitheater_gui STATIC

@@ -116,6 +116,8 @@ if(Python3_Interpreter_FOUND)
     add_test(NAME pieces_cburnett
              COMMAND Python3::Interpreter -I "${PROJECT_SOURCE_DIR}/assets/pieces/cburnett/convert_pieces.py" --check)
     set_tests_properties(pieces_cburnett PROPERTIES SKIP_RETURN_CODE 77)
+    # The built-in book as assets/books/make_book.py writes it from Zenith's: no package needed.
+    add_test(NAME book COMMAND Python3::Interpreter -I "${PROJECT_SOURCE_DIR}/assets/books/make_book.py" --check)
 endif()
 
 # THIRD-PARTY-NOTICES.txt as tools/third_party_notices.py writes it from this tree's fetches and the engines' pins.

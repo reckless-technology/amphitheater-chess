@@ -1226,7 +1226,7 @@ Result<chess::PolyglotBook> ReadBook(const std::string &path)
 {
     if (path == kBuiltInBook)
     {
-        const auto bytes = reckless::embedded::Find("books/zenith.bin");
+        const auto bytes = reckless::embedded::Find("books/built-in.bin");
         if (bytes.empty())
         {
             return Error{"this build carries no built-in book"};
