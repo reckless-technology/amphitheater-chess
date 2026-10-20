@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 /** One game in the schedule. */
@@ -50,4 +50,4 @@ std::vector<std::vector<std::pair<int, int>>> CirclePairings(int engines);
  */
 std::vector<ScheduledGame> MakeSchedule(const ScheduleSettings &settings);
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** What an engine's handshake told: its name, its author, its options; or why it failed. */
@@ -314,4 +314,4 @@ class EngineManagerDialog final : public DialogFrame
     std::string                             adding_path_;      ///< A new engine's program.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

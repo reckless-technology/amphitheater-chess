@@ -7,7 +7,7 @@
             "name": "CLI: perft (start position, depth 5)",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/src/cli/uci-host-cli",
+            "program": "${workspaceFolder}/build/debug/src/cli/amphitheater-cli",
             "args": ["perft", "startpos", "5"],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build: debug"
@@ -16,9 +16,9 @@
             "name": "CLI: a match of fake engines",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/src/cli/uci-host-cli",
-            "args": ["match", "-engine", "cmd=${workspaceFolder}/build/debug/tests/uci_host_fake_engine", "name=A",
-                     "-engine", "cmd=${workspaceFolder}/build/debug/tests/uci_host_fake_engine", "name=B",
+            "program": "${workspaceFolder}/build/debug/src/cli/amphitheater-cli",
+            "args": ["match", "-engine", "cmd=${workspaceFolder}/build/debug/tests/amphitheater_fake_engine", "name=A",
+                     "-engine", "cmd=${workspaceFolder}/build/debug/tests/amphitheater_fake_engine", "name=B",
                      "-each", "tc=10+0.1", "-games", "4", "-maxmoves", "40"],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build: debug"
@@ -27,7 +27,7 @@
             "name": "Suite: chess",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/tests/uci_host_chess_test",
+            "program": "${workspaceFolder}/build/debug/tests/amphitheater_chess_test",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build: debug"
         },
@@ -35,7 +35,7 @@
             "name": "Suite: match",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/tests/uci_host_match_test",
+            "program": "${workspaceFolder}/build/debug/tests/amphitheater_match_test",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build: debug"
         },
@@ -43,7 +43,7 @@
             "name": "Windows CLI: perft (start position, depth 5)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/src/cli/uci-host-cli.exe",
+            "program": "${workspaceFolder}/build/debug/src/cli/amphitheater-cli.exe",
             "args": ["perft", "startpos", "5"],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build: debug"
@@ -52,9 +52,9 @@
             "name": "Windows CLI: a match of fake engines",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/src/cli/uci-host-cli.exe",
-            "args": ["match", "-engine", "cmd=${workspaceFolder}/build/debug/tests/uci_host_fake_engine.exe", "name=A",
-                     "-engine", "cmd=${workspaceFolder}/build/debug/tests/uci_host_fake_engine.exe", "name=B",
+            "program": "${workspaceFolder}/build/debug/src/cli/amphitheater-cli.exe",
+            "args": ["match", "-engine", "cmd=${workspaceFolder}/build/debug/tests/amphitheater_fake_engine.exe", "name=A",
+                     "-engine", "cmd=${workspaceFolder}/build/debug/tests/amphitheater_fake_engine.exe", "name=B",
                      "-each", "tc=10+0.1", "-games", "4", "-maxmoves", "40"],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build: debug"
@@ -63,7 +63,7 @@
             "name": "Windows suite: match",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/tests/uci_host_match_test.exe",
+            "program": "${workspaceFolder}/build/debug/tests/amphitheater_match_test.exe",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build: debug"
         }

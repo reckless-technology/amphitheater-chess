@@ -8,7 +8,7 @@
 #   pwsh -File packaging\windows\test-installer.ps1 -DistDir dist -Version 1.0.3 [-Python python] [-IconFile x.ico]
 #
 # The test build has an id, a name and a folder of its own and never reuses a previous install's folder, so it never
-# meets a real install of Reckless UCI Host on the machine.
+# meets a real install of Reckless Amphitheater on the machine.
 param(
     [Parameter(Mandatory = $true)] [string] $DistDir,
     [Parameter(Mandatory = $true)] [string] $Version,
@@ -18,10 +18,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $dist = (Resolve-Path $DistDir).Path
-$work = Join-Path ([IO.Path]::GetTempPath()) "uci-host-installer-test-$PID"
+$work = Join-Path ([IO.Path]::GetTempPath()) "amphitheater-installer-test-$PID"
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $work
 $root = Join-Path $work 'Reckless Technology'
-$app = Join-Path $root 'UCI Host'
+$app = Join-Path $root 'Amphitheater'
 New-Item -ItemType Directory -Force -Path (Join-Path $root 'IR Capture') | Out-Null
 Set-Content -Path (Join-Path $root 'IR Capture\RecklessIRCapture.exe') -Value 'a sibling product'
 function Fail([string] $why) { throw "test-installer.ps1: $why" }
@@ -30,7 +30,7 @@ try {
     $arguments = @{ DistDir = $dist; Version = $Version; OutDir = (Join-Path $work 'out'); TestRoot = $root; Fetch = $true }
     if ($IconFile) { $arguments.IconFile = $IconFile }
     & (Join-Path $PSScriptRoot 'make-installer.ps1') @arguments
-    $setup = Join-Path $work "out\reckless-uci-host-$Version-win64-setup-test.exe"
+    $setup = Join-Path $work "out\reckless-amphitheater-$Version-win64-setup-test.exe"
     function Install() {
         $p = Start-Process -FilePath $setup -Wait -PassThru -ArgumentList @(
             '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/NOICONS', "/LOG=`"$work\install.log`"")

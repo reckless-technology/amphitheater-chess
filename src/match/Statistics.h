@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 /** Wins, draws and losses from one side's view. */
@@ -135,4 +135,4 @@ std::string FormatCrosstable(const std::vector<std::string> &names, const std::v
  */
 std::string FormatMatchScore(const std::string &first, const std::string &second, const ScoreLine &score);
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

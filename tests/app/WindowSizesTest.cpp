@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -266,7 +266,7 @@ TEST(WindowSizes, TheShortcutsStepThroughTheSizesAndStopAtTheEnds)
 
 TEST(WindowSizes, TheSizeChosenIsKeptAndALaunchOpensAtIt)
 {
-    const std::filesystem::path file = reckless::test::ScratchPath("uci-host-window-sizes") / "window.json";
+    const std::filesystem::path file = reckless::test::ScratchPath("amphitheater-window-sizes") / "window.json";
     EXPECT_EQ(WindowSizes::Load(file), std::nullopt) << "no file";
     {
         WindowRig rig(file);
@@ -300,4 +300,4 @@ TEST(WindowSizes, TheSizeChosenIsKeptAndALaunchOpensAtIt)
     EXPECT_EQ(rig.sizes.InForce(), 100);
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

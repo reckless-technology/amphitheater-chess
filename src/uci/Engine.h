@@ -24,7 +24,7 @@
 #include <string_view>
 #include <vector>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 /** Which way a logged line went. */
@@ -271,4 +271,4 @@ class Engine
     bool                          has_told_exit_ = false; ///< Whether kExited has been returned.
 };
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

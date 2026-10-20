@@ -1,4 +1,4 @@
-// uci_host_fake_engine: a UCI engine for the tests, whose behaviour its arguments script.
+// amphitheater_fake_engine: a UCI engine for the tests, whose behaviour its arguments script.
 //
 //   --name NAME            the name it gives (id name)
 //   --think MS             how long each search takes, unless stopped (default 0)
@@ -50,7 +50,7 @@
 namespace
 {
 
-using namespace uci_host::chess;
+using namespace amphitheater::chess;
 
 struct Script
 {
@@ -240,7 +240,7 @@ int main(int argc, char **argv)
     _setmode(_fileno(stdout), _O_BINARY); // LF line endings, as a POSIX engine writes them.
 #endif
     Script                   script;
-    std::vector<std::string> arguments = uci_host::Utf8Arguments(argc, argv);
+    std::vector<std::string> arguments = amphitheater::Utf8Arguments(argc, argv);
     arguments.erase(arguments.begin());
     for (std::size_t index = 0; index < arguments.size(); ++index)
     {

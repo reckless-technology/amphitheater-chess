@@ -8,7 +8,7 @@
 #include <fstream>
 #include <string>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 namespace
 {
@@ -146,7 +146,7 @@ TEST(Notation, ParsesAndRefusesUci)
 
 TEST(Notation, EveryLegalMoveOfThePerftSuiteRoundTrips)
 {
-    std::ifstream file(std::string(UCI_HOST_TEST_DATA_DIR) + "/standard-perft.epd");
+    std::ifstream file(std::string(AMPHITHEATER_TEST_DATA_DIR) + "/standard-perft.epd");
     std::string   line;
     int           moves = 0;
     while (std::getline(file, line))
@@ -180,4 +180,4 @@ TEST(Notation, EveryLegalMoveOfThePerftSuiteRoundTrips)
 }
 
 } // namespace
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

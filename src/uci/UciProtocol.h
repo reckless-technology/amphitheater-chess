@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 /**
@@ -199,4 +199,4 @@ std::string FormatPosition(std::string_view fen, const std::vector<std::string> 
  */
 std::string FormatSetOption(std::string_view name, std::string_view value);
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

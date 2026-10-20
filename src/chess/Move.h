@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <string>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /**
@@ -252,4 +252,4 @@ class Move
 /** The legal moves of a position, on the stack: at most kMaxMovesPerPosition. */
 using MoveList = StackList<Move, kMaxMovesPerPosition>;
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

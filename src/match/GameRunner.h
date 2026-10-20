@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 /** Where a game starts: a position and moves played from it before the players take over. */
@@ -139,4 +139,4 @@ class GameRunner
     GameSettings settings_; ///< How to play.
 };
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

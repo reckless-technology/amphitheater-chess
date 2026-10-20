@@ -1,6 +1,6 @@
 #include "Process.h"
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 namespace
@@ -56,4 +56,4 @@ void ChildProcess::ReadLines(ProcessStream stream, const std::function<long(char
     }
 }
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

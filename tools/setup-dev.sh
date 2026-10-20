@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set up a Linux or macOS machine to build, test, debug and measure Reckless UCI Host: the toolchain, the tools and the
+# Set up a Linux or macOS machine to build, test, debug and measure Reckless Amphitheater: the toolchain, the tools and the
 # editor. Each component is checked first and installed only when it is missing or not the version the repo wants, so
 # the script is safe to run again at any time. The tools go into the user's own profile (~/.local); the system
 # packages come from apt (Debian, Ubuntu, Mint: sudo asks for a password) or Homebrew (macOS). tools/setup-dev.ps1 is
@@ -202,7 +202,7 @@ uv_tool() {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-echo "Reckless UCI Host: $([ "$check" = 1 ] && echo checking || echo 'setting up') the $os development environment"
+echo "Reckless Amphitheater: $([ "$check" = 1 ] && echo checking || echo 'setting up') the $os development environment"
 
 local_bin="$HOME/.local/bin"
 case "$os" in

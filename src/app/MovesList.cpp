@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 void MovesModel::SetMoves(std::vector<std::string> sans, int first_number, bool is_black_first)
@@ -138,4 +138,4 @@ void MovesList::SetCurrentPly(int ply)
     list_.Repaint();
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

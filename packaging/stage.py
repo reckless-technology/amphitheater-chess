@@ -6,12 +6,12 @@ notices. Everything after it - the archive, the installers, the signing - reads 
 
     python3 -I packaging/stage.py <build-dir> <dist-dir> linux|macos|windows [--cache DIR] [--leave-out-unfit]
 
-    windows  RecklessUciHost.exe, uci-host-cli.exe, engines/<engine>/..., EULA.txt, THIRD-PARTY-NOTICES.txt
-    linux    RecklessUciHost, uci-host-cli, engines/<engine>/..., EULA.txt, THIRD-PARTY-NOTICES.txt - the portable
-             archive as it is, and what the Debian package lays out (the engines under /usr/lib/reckless-uci-host)
-    macos    RecklessUciHost.app with the engines in Contents/Resources/engines/<engine>/ (the bundle copied with
+    windows  Amphitheater.exe, amphitheater-cli.exe, engines/<engine>/..., EULA.txt, THIRD-PARTY-NOTICES.txt
+    linux    amphitheater, amphitheater-cli, engines/<engine>/..., EULA.txt, THIRD-PARTY-NOTICES.txt - the portable
+             archive as it is, and what the Debian package lays out (the engines under /usr/lib/reckless-amphitheater)
+    macos    Amphitheater.app with the engines in Contents/Resources/engines/<engine>/ (the bundle copied with
              ditto and signed again ad hoc, since files added to it break the build's signature; a release signs it
-             with the Developer ID after, packaging/macos/sign.sh), uci-host-cli, EULA.txt, THIRD-PARTY-NOTICES.txt
+             with the Developer ID after, packaging/macos/sign.sh), amphitheater-cli, EULA.txt, THIRD-PARTY-NOTICES.txt
 
 The folder is emptied first; a binary the build did not make stops it before anything is copied. Every engine the stage
 lays out answers its handshake on this machine before the stage ends (both of Zenith's x86-64 builds where the CPU
@@ -29,16 +29,16 @@ sys.path.insert(0, str(ROOT / "tools"))
 import bundled_engines  # noqa: E402
 
 BINARIES = {
-    "linux": ["src/app/RecklessUciHost", "src/cli/uci-host-cli"],
-    "macos": ["src/app/RecklessUciHost.app", "src/cli/uci-host-cli"],
-    "windows": ["src/app/RecklessUciHost.exe", "src/cli/uci-host-cli.exe"],
+    "linux": ["src/app/amphitheater", "src/cli/amphitheater-cli"],
+    "macos": ["src/app/Amphitheater.app", "src/cli/amphitheater-cli"],
+    "windows": ["src/app/Amphitheater.exe", "src/cli/amphitheater-cli.exe"],
 }
 
 
 def engines_folder(dist, platform_name):
     """Where a platform's stage holds the engines."""
     if platform_name == "macos":
-        return dist / "RecklessUciHost.app" / "Contents" / "Resources" / "engines"
+        return dist / "Amphitheater.app" / "Contents" / "Resources" / "engines"
     return dist / "engines"
 
 
@@ -69,13 +69,13 @@ def main():
         sys.exit(f"stage.py: {error}")
     if platform_name == "macos":
         # The build's ad-hoc signature sealed the bundle as it was; the engines added to its resources are sealed again.
-        app = dist / "RecklessUciHost.app"
+        app = dist / "Amphitheater.app"
         subprocess.run(["codesign", "--force", "--sign", "-", str(app)], check=True)
         subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], check=True)
     print(f"staged into {dist}:")
     for path in sorted(dist.rglob("*")):
         relative = path.relative_to(dist).as_posix()
-        is_listed = ".app/" not in relative or "/Resources/engines/" in relative or relative.endswith("/MacOS/RecklessUciHost")
+        is_listed = ".app/" not in relative or "/Resources/engines/" in relative or relative.endswith("/MacOS/Amphitheater")
         if path.is_file() and is_listed:
             print(f"  {relative}  {path.stat().st_size} bytes")
 

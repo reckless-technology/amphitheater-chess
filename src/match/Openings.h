@@ -15,7 +15,7 @@
 #include <string_view>
 #include <vector>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 /** The opening file formats. */
@@ -86,4 +86,4 @@ void OrderOpenings(std::vector<Opening> &openings, OpeningOrder order, std::uint
  */
 Result<std::string> ReadTextFile(const std::string &path);
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

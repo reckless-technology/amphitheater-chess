@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 MainView::MainView(const PieceSet &pieces)
@@ -273,4 +273,4 @@ void MainView::Paint(reckless::gfx::Canvas &c)
     c.FillAll(theme::kWindow);
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

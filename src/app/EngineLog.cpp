@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -264,4 +264,4 @@ void EngineLog::Fit()
     }
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 int Adjudicator::Centipawns(const uci::Score &score)
@@ -56,4 +56,4 @@ std::optional<chess::Outcome> Adjudicator::Judge(const chess::Game &game, chess:
     return std::nullopt;
 }
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

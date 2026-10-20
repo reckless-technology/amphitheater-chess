@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** A game of the competition in progress, as last reported. */
@@ -153,4 +153,4 @@ class CompetitionSession
  */
 std::string PointsText(double points);
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

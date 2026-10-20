@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write THIRD-PARTY-NOTICES.txt: what Reckless UCI Host's binaries contain from elsewhere, each part's licence as it
+"""Write THIRD-PARTY-NOTICES.txt: what Reckless Amphitheater's binaries contain from elsewhere, each part's licence as it
 ships, and the chess engines its installers carry beside it, each a separate program under the GNU General Public
 License version 3, with where its corresponding source is.
 
@@ -9,7 +9,7 @@ there names in its place), and every version from the toolkit's pins (external/r
 the fetched headers or the fonts themselves, so the notices can only say what the build compiles. The parts are the ones
 the window's binary holds: Skia and the libraries it bundles, which the window draws through - Skia's own code with its
 colour management (skcms), its PNG codec and encoder, libpng and zlib, whose SIMD routines are the Chromium authors',
-and on Linux FreeType - and the two typefaces it carries, Noto Serif and Monaspace Xenon. uci-host-cli holds none of
+and on Linux FreeType - and the two typefaces it carries, Noto Serif and Monaspace Xenon. amphitheater-cli holds none of
 them. The skia-pack carries the licences of libpng, zlib and FreeType, read from it here; Skia's own and the Chromium
 source tree's, which the pack lacks, are fetched by the toolkit beside it and read from there. A licence file the pack
 gains stops the script until it is read.
@@ -48,8 +48,8 @@ SKIA_PACK_LICENCE_FILES = {
     "third_party/externals/swiftshader/LICENSE.txt", "include/third_party/vulkan/LICENSE",
 }
 
-APP = "Reckless UCI Host (the window)"
-INSTALLERS = "the installers, as a separate program beside Reckless UCI Host"
+APP = "Reckless Amphitheater (the window)"
+INSTALLERS = "the installers, as a separate program beside Reckless Amphitheater"
 
 
 def read(path):
@@ -155,10 +155,10 @@ def engine_section(engine, gpl_number):
         "ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See "
         f"the GNU General Public License, section {gpl_number}, for more details.",
         f"The installers carry the executable of its release {engine['tag']} unmodified, as published at "
-        f"{repository}/releases/tag/{engine['tag']}. It is a separate program: Reckless UCI Host starts it and "
+        f"{repository}/releases/tag/{engine['tag']}. It is a separate program: Reckless Amphitheater starts it and "
         "talks to it over the UCI protocol on its standard input and output, and contains none of its code.",
         *source,
-        "That source stays available there, without charge, for as long as this version of Reckless UCI Host is "
+        "That source stays available there, without charge, for as long as this version of Reckless Amphitheater is "
         "offered for download. You may also ask for it at hello@recklesstechnology.com.")
 
 
@@ -219,7 +219,7 @@ def build(build_dir):
         "noto": (f"Noto Serif {noto_version}", APP, ofl_noto),
         "monaspace": (f"Monaspace Xenon {monaspace_version}", APP, ofl_monaspace),
         "skia": (f"Skia m{skia_milestone}, skia-pack {p['RECKLESS_SKIA_TAG']}", APP, prose(
-            f"Reckless UCI Host draws its window through Skia m{skia_milestone}, linked from the prebuilt static "
+            f"Reckless Amphitheater draws its window through Skia m{skia_milestone}, linked from the prebuilt static "
             f"libraries of the skia-pack release {p['RECKLESS_SKIA_TAG']}, built from Skia's commit "
             f"{p['RECKLESS_SKIA_COMMIT']}. It holds Skia's own code - its raster renderer, its colour management "
             "(skcms), its PNG codec and its PNG encoder - and, of the libraries the release bundles, libpng and zlib "
@@ -259,11 +259,11 @@ def build(build_dir):
         rows.append(f"  {n[key]:>2}. {title.split(',')[0]:<44} {used.split(',')[0]}")
     engine_names = ", ".join(f"{e['name']} {e['version']}" for e in engines)
     head = ("THIRD-PARTY NOTICES\n\n" + prose(
-        "Reckless UCI Host and uci-host-cli are copyright (C) 2026 Jonny Reckless and licensed under EULA.txt. The "
+        "Reckless Amphitheater and amphitheater-cli are copyright (C) 2026 Jonny Reckless and licensed under EULA.txt. The "
         "window contains the third-party software below, each part used under its own licence, which this file "
         "reproduces wherever the licence asks for it. Nothing in EULA.txt limits any right these licences give you.",
         f"The installers also carry five chess engines - {engine_names} - each a separate program, licensed under the "
-        f"GNU General Public License version 3 (section {n['gpl']}). Reckless UCI Host only starts them and "
+        f"GNU General Public License version 3 (section {n['gpl']}). Reckless Amphitheater only starts them and "
         "talks to them over the UCI protocol; it contains none of their code, and EULA.txt does not cover them. Each "
         "engine's section says where its corresponding source is.") +
         "\n\nWhere each part is used\n\n" + "\n".join(rows) + "\n")

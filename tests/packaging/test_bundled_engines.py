@@ -4,7 +4,7 @@ downloaded once, held to its hash and a mismatch refused with nothing left behin
 their manifest; the handshake reads what an engine says and the smoke test refuses one that does not name its pinned
 version; and the update moves a pin to a newer release, refusing an asset whose hash is not GitHub's digest.
 
-Run by CTest (packaging), the fake engine named by UCI_HOST_FAKE_ENGINE; every download is from a folder of the test's
+Run by CTest (packaging), the fake engine named by AMPHITHEATER_FAKE_ENGINE; every download is from a folder of the test's
 own through a file: URL.
 """
 import hashlib
@@ -210,9 +210,9 @@ class Handshake(unittest.TestCase):
         self.assertEqual(be.parse_option("option name Clear Hash type button"),
                          {"name": "Clear Hash", "type": "button", "default": ""})
 
-    @unittest.skipUnless(os.environ.get("UCI_HOST_FAKE_ENGINE"), "UCI_HOST_FAKE_ENGINE names no fake engine")
+    @unittest.skipUnless(os.environ.get("AMPHITHEATER_FAKE_ENGINE"), "AMPHITHEATER_FAKE_ENGINE names no fake engine")
     def test_the_handshake_reads_an_engine_and_the_smoke_test_holds_it_to_its_version(self):
-        fake = Path(os.environ["UCI_HOST_FAKE_ENGINE"])
+        fake = Path(os.environ["AMPHITHEATER_FAKE_ENGINE"])
         said = be.handshake(fake)
         self.assertEqual(said["name"], "Fake Engine")
         self.assertTrue(any(option["name"] == "Hash" for option in said["options"]))
@@ -237,9 +237,9 @@ class Handshake(unittest.TestCase):
             with self.assertRaisesRegex(be.PinError, "is not there"):
                 be.smoke(engines)
 
-    @unittest.skipUnless(os.name == "nt" and os.environ.get("UCI_HOST_FAKE_ENGINE"), "a Windows image to read")
+    @unittest.skipUnless(os.name == "nt" and os.environ.get("AMPHITHEATER_FAKE_ENGINE"), "a Windows image to read")
     def test_a_windows_engine_may_import_the_system_and_what_lies_beside_it_alone(self):
-        fake = Path(os.environ["UCI_HOST_FAKE_ENGINE"])
+        fake = Path(os.environ["AMPHITHEATER_FAKE_ENGINE"])
         imports = be.pe_imports(fake)
         self.assertIn("kernel32.dll", imports)
         be.check_dependencies(fake, "windows")  # the static runtime: the system's DLLs alone

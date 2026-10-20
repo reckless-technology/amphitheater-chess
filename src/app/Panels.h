@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** A section's label over its card: "MOVES", "GAME", "ANALYSIS", in the label font. */
@@ -180,4 +180,4 @@ class StatusBar final : public reckless::view::View
  */
 std::string ClockText(long long milliseconds);
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

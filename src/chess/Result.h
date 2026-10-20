@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-namespace uci_host
+namespace amphitheater
 {
 
 /** The reason an operation failed, in words a person can read. */
@@ -114,4 +114,4 @@ struct Ok
 /** The result of an operation that returns nothing but may fail: Ok, or an Error. */
 using Status = Result<Ok>;
 
-} // namespace uci_host
+} // namespace amphitheater

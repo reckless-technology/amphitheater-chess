@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The portable Linux archive of a staged release (packaging/stage.py linux): the stage whole in one folder,
-# reckless-uci-host-<version>-linux-x64/ - the window, uci-host-cli, the bundled engines in engines/ beside them, where
+# reckless-amphitheater-<version>-linux-x64/ - the window, amphitheater-cli, the bundled engines in engines/ beside them, where
 # the host looks for them first (src/app/BundledEngines.h), the licence and the notices - zipped with every file's mode
 # kept (zip -ry), so the binaries stay executable once unzipped. Then the archive is held to the stage: unzipped into a
 # folder of its own, every file the staged one byte for byte with its execute bits, and every engine started from its
@@ -19,9 +19,9 @@ for tool in zip unzip; do
     command -v "$tool" > /dev/null || { echo "make-zip.sh: $tool is not on the PATH" >&2; exit 1; }
 done
 root=$(cd "$(dirname "$0")/../.." && pwd)
-work=$(mktemp -d "${TMPDIR:-/tmp}/uci-host-zip.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/amphitheater-zip.XXXXXX")
 trap 'rm -rf "$work"' EXIT
-name="reckless-uci-host-$version-linux-x64"
+name="reckless-amphitheater-$version-linux-x64"
 fail() { echo "::error::make-zip.sh: $*" >&2; exit 1; }
 
 cp -a "$dist" "$work/$name"

@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 namespace
 {
@@ -217,4 +217,4 @@ TEST(Game, ResultAndTerminationText)
 }
 
 } // namespace
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

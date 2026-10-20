@@ -11,7 +11,7 @@
 #include <fstream>
 #include <map>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 namespace
 {
@@ -173,7 +173,7 @@ TEST(Polyglot, ABookRoundTripsThroughItsBytes)
 
 TEST(Polyglot, LoadsFromAFileAndRefusesWhatIsNotABook)
 {
-    const auto path  = std::filesystem::temp_directory_path() / "uci_host_polyglot_test.bin";
+    const auto path  = std::filesystem::temp_directory_path() / "amphitheater_polyglot_test.bin";
     const auto bytes = PolyglotBook::Encode(FixtureEntries());
     {
         std::ofstream file(path, std::ios::binary);
@@ -199,4 +199,4 @@ TEST(Polyglot, LoadsFromAFileAndRefusesWhatIsNotABook)
 }
 
 } // namespace
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

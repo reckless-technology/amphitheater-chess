@@ -1,12 +1,13 @@
 #include "EngineCatalogue.h"
 
+#include "SettingsFolder.h"
+
 #include "JsonFile.h"
-#include "PresetFiles.h"
 
 #include <algorithm>
 #include <cctype>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -286,8 +287,8 @@ std::string EngineEntry::Summary() const
 
 std::filesystem::path EngineCatalogue::DefaultFile()
 {
-    const std::filesystem::path folder = reckless::core::UserSettingsFolder(reckless::core::kSuiteFolder);
-    return folder.empty() ? folder : folder / "uci-host" / "engines.json";
+    const std::filesystem::path folder = SettingsFolder();
+    return folder.empty() ? folder : folder / "engines.json";
 }
 
 json::Value EngineCatalogue::ToJson() const
@@ -448,4 +449,4 @@ bool EngineCatalogue::Save(const std::filesystem::path &file) const
     return reckless::core::WriteJsonFile(file, ToJson());
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

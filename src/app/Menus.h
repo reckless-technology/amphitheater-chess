@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** What the menus need to know to show what is possible now. */
@@ -54,4 +54,4 @@ struct MenuState
  */
 reckless::app::MenuBar BuildMenuBar(const MenuState &state);
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

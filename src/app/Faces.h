@@ -5,7 +5,7 @@
 #include "Embedded.h"
 #include "SkiaCanvas.h"
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** Hand the faces to Skia; once, before anything draws text. */
@@ -17,4 +17,4 @@ inline void InstallFaces()
                                      reckless::embedded::Find("MonaspaceXenon-Bold.otf"));
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

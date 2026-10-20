@@ -17,7 +17,7 @@
 #include <shellapi.h>
 #endif
 
-namespace uci_host
+namespace amphitheater
 {
 
 /**
@@ -51,4 +51,4 @@ inline std::vector<std::string> Utf8Arguments(int argc, char **argv)
     return std::vector<std::string>(argv, argv + argc);
 }
 
-} // namespace uci_host
+} // namespace amphitheater

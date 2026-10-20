@@ -1,7 +1,7 @@
 // Perft on the standard suite (tests/data/standard-perft.epd: the standard.epd collection the Ethereal engine
 // publishes, as pawnstar's perft test carries it): every position to the deepest depth whose count fits the node
-// budget - 1 million nodes a position in a debug build, 20 million in an optimised one, UCI_HOST_PERFT_BUDGET to choose
-// another - and the start position to depth 6 in an optimised build.
+// budget - 1 million nodes a position in a debug build, 20 million in an optimised one, AMPHITHEATER_PERFT_BUDGET to
+// choose another - and the start position to depth 6 in an optimised build.
 
 #include "chess/Perft.h"
 #include "TestSupport.h"
@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 namespace
 {
@@ -27,7 +27,7 @@ struct PerftCase
 
 std::vector<PerftCase> LoadSuite()
 {
-    std::ifstream          file(std::string(UCI_HOST_TEST_DATA_DIR) + "/standard-perft.epd");
+    std::ifstream          file(std::string(AMPHITHEATER_TEST_DATA_DIR) + "/standard-perft.epd");
     std::vector<PerftCase> cases;
     std::string            line;
     while (std::getline(file, line))
@@ -55,7 +55,7 @@ std::vector<PerftCase> LoadSuite()
 
 uint64_t NodeBudget()
 {
-    if (const auto text = testing::EnvironmentVariable("UCI_HOST_PERFT_BUDGET"))
+    if (const auto text = testing::EnvironmentVariable("AMPHITHEATER_PERFT_BUDGET"))
     {
         return std::stoull(*text);
     }
@@ -112,4 +112,4 @@ TEST(Perft, DivideSumsToPerft)
 }
 
 } // namespace
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

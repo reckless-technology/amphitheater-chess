@@ -1,5 +1,5 @@
-// Matches and tournaments from the window, against the fake engine: the dialogs written as uci-host-cli's arguments and
-// read by its own reader, a match played to its end with the board following its games and the score on the card, a
+// Matches and tournaments from the window, against the fake engine: the dialogs written as amphitheater-cli's arguments
+// and read by its own reader, a match played to its end with the board following its games and the score on the card, a
 // game in progress chosen to watch, a tournament's standings and crosstable, and the dialogs' refusals.
 
 #include "DialogButtons.h"
@@ -19,7 +19,7 @@
 #include <functional>
 #include <thread>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -40,7 +40,7 @@ const PieceSet &Pieces()
 EngineEntry Fake(std::string name, std::vector<std::string> arguments = {})
 {
     EngineEntry entry;
-    entry.config.executable = UCI_HOST_FAKE_ENGINE;
+    entry.config.executable = AMPHITHEATER_FAKE_ENGINE;
     entry.config.arguments  = std::move(arguments);
     entry.config.name       = std::move(name);
     return entry;
@@ -93,9 +93,9 @@ TEST(Competition, AnEnginesArgumentsAreTheCommandLinesKeys)
     entry.book_depth         = 12;
     entry.depth              = 9;
     const auto arguments     = EngineArguments(entry);
-    EXPECT_EQ(arguments,
-              (std::vector<std::string>{"cmd=" + std::string(UCI_HOST_FAKE_ENGINE), "name=Alpha", "arg=--seed", "arg=3",
-                                        "option.Hash=64", "depth=9", "book=book.bin", "bookdepth=12", "ponder"}));
+    EXPECT_EQ(arguments, (std::vector<std::string>{"cmd=" + std::string(AMPHITHEATER_FAKE_ENGINE), "name=Alpha",
+                                                   "arg=--seed", "arg=3", "option.Hash=64", "depth=9", "book=book.bin",
+                                                   "bookdepth=12", "ponder"}));
 }
 
 TEST(Competition, AMatchIsPlayedToItsEndWithTheBoardFollowingItsGames)
@@ -275,4 +275,4 @@ TEST(Competition, TheStandingsReadEveryColumnAndFollowTheResultsAsTheyCome)
     EXPECT_EQ(closed, 3);
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

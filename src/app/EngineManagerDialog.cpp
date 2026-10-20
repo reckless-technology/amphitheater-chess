@@ -9,7 +9,7 @@
 #include <charconv>
 #include <filesystem>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -634,4 +634,4 @@ OptionRow *EngineManagerDialog::Row(const std::string &name)
     return nullptr;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

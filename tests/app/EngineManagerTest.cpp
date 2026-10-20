@@ -17,7 +17,7 @@
 #include <chrono>
 #include <thread>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -64,7 +64,7 @@ TEST(EngineManager, AnEngineAddedByItsProgramIsNamedAndItsOptionsReadByItsHandsh
     EngineManagerDialog dialog{EngineCatalogue{}};
     dialog.SetBounds({0, 0, 1380, 1120});
     EXPECT_EQ(dialog.selected(), -1);
-    dialog.AddEngine(UCI_HOST_FAKE_ENGINE);
+    dialog.AddEngine(AMPHITHEATER_FAKE_ENGINE);
     EXPECT_TRUE(dialog.IsDetecting());
     ASSERT_TRUE(AwaitHandshake(dialog));
     ASSERT_EQ(dialog.catalogue().engines.size(), 1u);
@@ -149,14 +149,14 @@ TEST(EngineManager, EveryOptionTypeIsEditedAsItsControlAndSavedWithTheLimitsAndT
 
 TEST(EngineManager, TheControllerWritesTheListWhereItKeepsIt)
 {
-    const auto     scratch = reckless::test::ScratchPath("uci-host-manager");
+    const auto     scratch = reckless::test::ScratchPath("amphitheater-manager");
     const auto     file    = scratch / "engines.json";
     MainView       view(Pieces());
     MainController controller(view, ControllerFiles{file});
     controller.Command(kEngineManager);
     auto *dialog = dynamic_cast<EngineManagerDialog *>(controller.dialog());
     ASSERT_NE(dialog, nullptr);
-    dialog->AddEngine(UCI_HOST_FAKE_ENGINE);
+    dialog->AddEngine(AMPHITHEATER_FAKE_ENGINE);
     ASSERT_TRUE(AwaitHandshake(*dialog));
     dialog->Save();
     controller.Frame(0.0);
@@ -168,4 +168,4 @@ TEST(EngineManager, TheControllerWritesTheListWhereItKeepsIt)
     EXPECT_TRUE(controller.Menus().has_engines);
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

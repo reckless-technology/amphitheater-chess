@@ -1,24 +1,24 @@
 THIRD-PARTY NOTICES
 
-Reckless UCI Host and uci-host-cli are copyright (C) 2026 Jonny Reckless and licensed under
+Reckless Amphitheater and amphitheater-cli are copyright (C) 2026 Jonny Reckless and licensed under
 EULA.txt. The window contains the third-party software below, each part used under its own licence,
 which this file reproduces wherever the licence asks for it. Nothing in EULA.txt limits any right
 these licences give you.
 
 The installers also carry five chess engines - Pawnstar 1.2.0, Zenith 2.1.0, Pawnstar-Go 1.2.0,
 Pawnstar-RS 1.2.0, Stoopid Chess 3.0.0 - each a separate program, licensed under the GNU General
-Public License version 3 (section 12). Reckless UCI Host only starts them and talks to them over the
-UCI protocol; it contains none of their code, and EULA.txt does not cover them. Each engine's
+Public License version 3 (section 12). Reckless Amphitheater only starts them and talks to them over
+the UCI protocol; it contains none of their code, and EULA.txt does not cover them. Each engine's
 section says where its corresponding source is.
 
 Where each part is used
 
-   1. Noto Serif 2.015                             Reckless UCI Host (the window)
-   2. Monaspace Xenon 1.400                        Reckless UCI Host (the window)
-   3. Skia m144                                    Reckless UCI Host (the window)
-   4. libpng 1.6.51                                Reckless UCI Host (the window)
-   5. zlib 1.3.0.1-motley                          Reckless UCI Host (the window)
-   6. FreeType 2.13.3                              Reckless UCI Host (the window) on Linux
+   1. Noto Serif 2.015                             Reckless Amphitheater (the window)
+   2. Monaspace Xenon 1.400                        Reckless Amphitheater (the window)
+   3. Skia m144                                    Reckless Amphitheater (the window)
+   4. libpng 1.6.51                                Reckless Amphitheater (the window)
+   5. zlib 1.3.0.1-motley                          Reckless Amphitheater (the window)
+   6. FreeType 2.13.3                              Reckless Amphitheater (the window) on Linux
    7. Pawnstar 1.2.0                               the installers
    8. Zenith 2.1.0                                 the installers
    9. Pawnstar-Go 1.2.0                            the installers
@@ -28,7 +28,7 @@ Where each part is used
 
 ====================================================================================================
 1. Noto Serif 2.015
-Used in: Reckless UCI Host (the window)
+Used in: Reckless Amphitheater (the window)
 ====================================================================================================
 
 Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)
@@ -127,7 +127,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ====================================================================================================
 2. Monaspace Xenon 1.400
-Used in: Reckless UCI Host (the window)
+Used in: Reckless Amphitheater (the window)
 ====================================================================================================
 
 Copyright (c) 2023, GitHub https://github.com/githubnext/monaspace
@@ -226,11 +226,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ====================================================================================================
 3. Skia m144, skia-pack m144-e2e6623374-4
-Used in: Reckless UCI Host (the window)
+Used in: Reckless Amphitheater (the window)
 ====================================================================================================
 
-Reckless UCI Host draws its window through Skia m144, linked from the prebuilt static libraries of
-the skia-pack release m144-e2e6623374-4, built from Skia's commit
+Reckless Amphitheater draws its window through Skia m144, linked from the prebuilt static libraries
+of the skia-pack release m144-e2e6623374-4, built from Skia's commit
 e2e66233743d048dc880203b6598fd34d94d9765. It holds Skia's own code - its raster renderer, its colour
 management (skcms), its PNG codec and its PNG encoder - and, of the libraries the release bundles,
 libpng and zlib (sections 4 and 5), and on Linux FreeType (section 6), which draws the text there;
@@ -271,7 +271,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ====================================================================================================
 4. libpng 1.6.51, in Skia
-Used in: Reckless UCI Host (the window)
+Used in: Reckless Amphitheater (the window)
 ====================================================================================================
 
 COPYRIGHT NOTICE, DISCLAIMER, and LICENSE
@@ -411,7 +411,7 @@ be appreciated.
 
 ====================================================================================================
 5. zlib 1.3.0.1-motley, in Skia
-Used in: Reckless UCI Host (the window)
+Used in: Reckless Amphitheater (the window)
 ====================================================================================================
 
 version 1.2.12, March 27th, 2022
@@ -469,7 +469,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ====================================================================================================
 6. FreeType 2.13.3, in Skia
-Used in: Reckless UCI Host (the window) on Linux
+Used in: Reckless Amphitheater (the window) on Linux
 ====================================================================================================
 
 This software is based in part on the work of the FreeType Team. FreeType is used under the FreeType
@@ -650,7 +650,7 @@ Legal Terms
 
 ====================================================================================================
 7. Pawnstar 1.2.0, a chess engine
-Used in: the installers, as a separate program beside Reckless UCI Host
+Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
 Pawnstar 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it and/or
@@ -661,8 +661,8 @@ PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more det
 
 The installers carry the executable of its release v1.2.0 unmodified, as published at
 https://github.com/reckless-technology/pawnstar/releases/tag/v1.2.0. It is a separate program:
-Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
-and contains none of its code.
+Reckless Amphitheater starts it and talks to it over the UCI protocol on its standard input and
+output, and contains none of its code.
 
 The corresponding source of this version is the public repository
 https://github.com/reckless-technology/pawnstar at the tag v1.2.0:
@@ -671,12 +671,12 @@ https://github.com/reckless-technology/pawnstar/tree/v1.2.0
 The release also carries it as one archive:
 https://github.com/reckless-technology/pawnstar/releases/download/v1.2.0/pawnstar-1.2.0-source.tar.gz
 
-That source stays available there, without charge, for as long as this version of Reckless UCI Host
-is offered for download. You may also ask for it at hello@recklesstechnology.com.
+That source stays available there, without charge, for as long as this version of Reckless
+Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
 8. Zenith 2.1.0, a chess engine
-Used in: the installers, as a separate program beside Reckless UCI Host
+Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
 Zenith 2.1.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it and/or
@@ -688,8 +688,8 @@ section 12, for more details.
 
 The installers carry the executable of its release v2.1.0 unmodified, as published at
 https://github.com/reckless-technology/zenith/releases/tag/v2.1.0. It is a separate program:
-Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
-and contains none of its code.
+Reckless Amphitheater starts it and talks to it over the UCI protocol on its standard input and
+output, and contains none of its code.
 
 The corresponding source of this version is the public repository
 https://github.com/reckless-technology/zenith at the tag v2.1.0:
@@ -698,12 +698,12 @@ https://github.com/reckless-technology/zenith/tree/v2.1.0
 GitHub serves it as one archive:
 https://github.com/reckless-technology/zenith/archive/refs/tags/v2.1.0.tar.gz
 
-That source stays available there, without charge, for as long as this version of Reckless UCI Host
-is offered for download. You may also ask for it at hello@recklesstechnology.com.
+That source stays available there, without charge, for as long as this version of Reckless
+Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
 9. Pawnstar-Go 1.2.0, a chess engine
-Used in: the installers, as a separate program beside Reckless UCI Host
+Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
 Pawnstar-Go 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it
@@ -714,8 +714,8 @@ PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more det
 
 The installers carry the executable of its release v1.2.0 unmodified, as published at
 https://github.com/reckless-technology/pawnstar-go/releases/tag/v1.2.0. It is a separate program:
-Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
-and contains none of its code.
+Reckless Amphitheater starts it and talks to it over the UCI protocol on its standard input and
+output, and contains none of its code.
 
 The corresponding source of this version is the public repository
 https://github.com/reckless-technology/pawnstar-go at the tag v1.2.0:
@@ -724,12 +724,12 @@ https://github.com/reckless-technology/pawnstar-go/tree/v1.2.0
 The release also carries it as one archive:
 https://github.com/reckless-technology/pawnstar-go/releases/download/v1.2.0/pawnstar-go-1.2.0-source.tar.gz
 
-That source stays available there, without charge, for as long as this version of Reckless UCI Host
-is offered for download. You may also ask for it at hello@recklesstechnology.com.
+That source stays available there, without charge, for as long as this version of Reckless
+Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
 10. Pawnstar-RS 1.2.0, a chess engine
-Used in: the installers, as a separate program beside Reckless UCI Host
+Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
 Pawnstar-RS 1.2.0, Copyright (C) 2026 Jonny Reckless, is free software: you can redistribute it
@@ -740,8 +740,8 @@ PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more det
 
 The installers carry the executable of its release v1.2.0 unmodified, as published at
 https://github.com/reckless-technology/pawnstar-rs/releases/tag/v1.2.0. It is a separate program:
-Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
-and contains none of its code.
+Reckless Amphitheater starts it and talks to it over the UCI protocol on its standard input and
+output, and contains none of its code.
 
 The corresponding source of this version is the public repository
 https://github.com/reckless-technology/pawnstar-rs at the tag v1.2.0:
@@ -750,12 +750,12 @@ https://github.com/reckless-technology/pawnstar-rs/tree/v1.2.0
 The release also carries it as one archive:
 https://github.com/reckless-technology/pawnstar-rs/releases/download/v1.2.0/pawnstar-rs-1.2.0-source.tar.gz
 
-That source stays available there, without charge, for as long as this version of Reckless UCI Host
-is offered for download. You may also ask for it at hello@recklesstechnology.com.
+That source stays available there, without charge, for as long as this version of Reckless
+Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
 11. Stoopid Chess 3.0.0, a chess engine
-Used in: the installers, as a separate program beside Reckless UCI Host
+Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
 Stoopid Chess 3.0.0, Copyright (C) 2009-2026 Jonny Reckless, is free software: you can redistribute
@@ -766,8 +766,8 @@ PARTICULAR PURPOSE. See the GNU General Public License, section 12, for more det
 
 The installers carry the executable of its release v3.0.0 unmodified, as published at
 https://github.com/reckless-technology/stoopid-chess/releases/tag/v3.0.0. It is a separate program:
-Reckless UCI Host starts it and talks to it over the UCI protocol on its standard input and output,
-and contains none of its code.
+Reckless Amphitheater starts it and talks to it over the UCI protocol on its standard input and
+output, and contains none of its code.
 
 The corresponding source of this version is the public repository
 https://github.com/reckless-technology/stoopid-chess at the tag v3.0.0:
@@ -776,8 +776,8 @@ https://github.com/reckless-technology/stoopid-chess/tree/v3.0.0
 The release also carries it as one archive:
 https://github.com/reckless-technology/stoopid-chess/releases/download/v3.0.0/stoopid-chess-3.0.0-source.tar.gz
 
-That source stays available there, without charge, for as long as this version of Reckless UCI Host
-is offered for download. You may also ask for it at hello@recklesstechnology.com.
+That source stays available there, without charge, for as long as this version of Reckless
+Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
 12. The GNU General Public License, version 3

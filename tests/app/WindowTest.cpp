@@ -29,7 +29,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -468,9 +468,9 @@ TEST(MainView, TheWindowDrawsThroughSkiaAndTheBoardGrowsWithIt)
     EXPECT_GT(png.size(), 10000u);
     if (const auto dir = reckless::app::EnvironmentVariable("RECKLESS_SCREENSHOT_DIR"); dir && !dir->empty())
     {
-        std::ofstream file(std::filesystem::path(*dir) / "uci-host-main-window.png", std::ios::binary);
+        std::ofstream file(std::filesystem::path(*dir) / "amphitheater-main-window.png", std::ios::binary);
         file.write(reinterpret_cast<const char *>(png.data()), static_cast<std::streamsize>(png.size()));
     }
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

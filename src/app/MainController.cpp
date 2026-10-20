@@ -21,7 +21,7 @@
 #include <filesystem>
 #include <fstream>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -622,7 +622,7 @@ std::string MainController::WindowTitle() const
     {
         title += " - " + file_name_;
     }
-    return title + " - Reckless UCI Host";
+    return title + " - Reckless Amphitheater";
 }
 
 bool MainController::Paste(const std::string &text)
@@ -1338,4 +1338,4 @@ void MainController::ShowEval()
     view_.SetEval(GraphSeries(), game_.PlyCount(), view_ply_, EvalCaption());
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

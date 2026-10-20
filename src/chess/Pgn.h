@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 struct PgnMove;
@@ -134,4 +134,4 @@ std::string WritePgn(const PgnGame &game);
  */
 std::string EscapeTagValue(std::string_view value);
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

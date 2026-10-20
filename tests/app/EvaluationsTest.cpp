@@ -15,7 +15,7 @@
 
 #include <chrono>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -219,4 +219,4 @@ TEST(Evaluations, APgnWithScoresOpensWithItsSeriesOnTheGraph)
     EXPECT_EQ(graph.caption(), "2...Nc6  -0.25");
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <utility>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 std::optional<Milliseconds> ParseSeconds(std::string_view text)
@@ -362,4 +362,4 @@ bool Clock::Spend(Milliseconds elapsed, Milliseconds margin)
     return true;
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

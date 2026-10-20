@@ -77,8 +77,8 @@
             "label": "Run: perft",
             "detail": "The command line's perft of the start position to depth 6 (release)",
             "type": "shell",
-            "command": "build/release/src/cli/uci-host-cli perft startpos 6",
-            "windows": { "command": "build/release/src/cli/uci-host-cli.exe perft startpos 6" },
+            "command": "build/release/src/cli/amphitheater-cli perft startpos 6",
+            "windows": { "command": "build/release/src/cli/amphitheater-cli.exe perft startpos 6" },
             "dependsOn": "Build: release",
             "problemMatcher": []
         },
@@ -86,9 +86,9 @@
             "label": "Run: a match of fake engines",
             "detail": "Four games between two copies of the tests' fake engine (debug)",
             "type": "shell",
-            "command": "build/debug/src/cli/uci-host-cli match -engine cmd=build/debug/tests/uci_host_fake_engine name=A -engine cmd=build/debug/tests/uci_host_fake_engine name=B -each tc=10+0.1 -games 4 -maxmoves 40",
+            "command": "build/debug/src/cli/amphitheater-cli match -engine cmd=build/debug/tests/amphitheater_fake_engine name=A -engine cmd=build/debug/tests/amphitheater_fake_engine name=B -each tc=10+0.1 -games 4 -maxmoves 40",
             "windows": {
-                "command": "build/debug/src/cli/uci-host-cli.exe match -engine cmd=build/debug/tests/uci_host_fake_engine.exe name=A -engine cmd=build/debug/tests/uci_host_fake_engine.exe name=B -each tc=10+0.1 -games 4 -maxmoves 40"
+                "command": "build/debug/src/cli/amphitheater-cli.exe match -engine cmd=build/debug/tests/amphitheater_fake_engine.exe name=A -engine cmd=build/debug/tests/amphitheater_fake_engine.exe name=B -each tc=10+0.1 -games 4 -maxmoves 40"
             },
             "dependsOn": "Build: debug",
             "problemMatcher": []

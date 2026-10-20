@@ -8,7 +8,7 @@
 #include <cmath>
 #include <string>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -458,4 +458,4 @@ void BoardView::MouseUp(const reckless::view::MouseEvent &e)
     Repaint(); // back where it was, still selected
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

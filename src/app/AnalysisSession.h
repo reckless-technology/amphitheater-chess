@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** A line an analysing engine exchanged. */
@@ -151,4 +151,4 @@ class AnalysisSession
     int                                           version_ = 0; ///< Counts the positions asked for.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

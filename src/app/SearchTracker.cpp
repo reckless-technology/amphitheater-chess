@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstdio>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -353,4 +353,4 @@ EngineBlock SearchTracker::Block(TimePoint now, std::size_t most_lines) const
     return block;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

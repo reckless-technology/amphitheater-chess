@@ -19,7 +19,7 @@
 #include <thread>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** One side of a game on the board. */
@@ -184,4 +184,4 @@ class PlaySession
 chess::TimeControl ResumedTimeControl(const chess::TimeControl &control, chess::Milliseconds remaining, int moves_to_go,
                                       chess::Milliseconds increment);
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -286,4 +286,4 @@ void StatusBar::Paint(reckless::gfx::Canvas &c)
     }
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

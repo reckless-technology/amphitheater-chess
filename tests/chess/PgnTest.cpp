@@ -8,14 +8,14 @@
 #include <fstream>
 #include <sstream>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 namespace
 {
 
 std::string ReadData(const char *name)
 {
-    std::ifstream      file(std::string(UCI_HOST_TEST_DATA_DIR) + "/" + name, std::ios::binary);
+    std::ifstream      file(std::string(AMPHITHEATER_TEST_DATA_DIR) + "/" + name, std::ios::binary);
     std::ostringstream text;
     text << file.rdbuf();
     return text.str();
@@ -234,4 +234,4 @@ TEST(Pgn, ReaderReportsTheEnd)
 }
 
 } // namespace
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

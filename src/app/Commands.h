@@ -2,7 +2,7 @@
 
 /// @file Commands.h What the menus, the buttons and the keys ask the window to do, by number.
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** A command, as a menu item's id. Zero is no command (a dismissed menu). */
@@ -46,8 +46,8 @@ enum Command : int
     kWindowLarger,       ///< View > Larger: the next size up.
     kWindowSmaller,      ///< View > Smaller: the next size down.
 
-    kAbout         = 800,   ///< Help > About Reckless UCI Host.
+    kAbout         = 800,   ///< Help > About Reckless Amphitheater.
     kWatchGameBase = 10000, ///< Match and Tournament > Watch game n: this plus the game's number.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -27,7 +27,7 @@
 #include <thread>
 #include <vector>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 /** An engine in a tournament. */
@@ -164,4 +164,4 @@ class Tournament
     std::vector<GameResultEntry>     results_;             ///< Finished games' results.
 };
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

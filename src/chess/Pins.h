@@ -9,7 +9,7 @@
 
 #include <array>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /// @brief Class for representing pinned pieces on the board and the squares to which they are allowed to move.
@@ -71,4 +71,4 @@ constexpr bool Pins::IsAllowed(Square from, Square to) const
     return (AllowedSquares(from) & Bitboard(to)).IsNotEmpty();
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

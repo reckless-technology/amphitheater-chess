@@ -10,7 +10,7 @@
 #include <array>
 #include <utility>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 // Sliding attacks use magic bitboards: a masked occupancy times a precomputed magic, shifted down to a
@@ -80,4 +80,4 @@ constexpr std::array<std::pair<Piece, AttackFn>, 4> piece_attackers_except_king
 }};
 // clang-format on
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

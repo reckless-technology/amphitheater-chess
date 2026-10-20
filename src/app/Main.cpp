@@ -1,12 +1,13 @@
-// Reckless UCI Host: the window on the machine's own platform, through the toolkit's app shell (AppRun.h, AppRoot.h)
-// and its child window on Skia. `--smoke [frames]` is a launch's check: the window opened, a few frames drawn, closed -
-// exit 0 when every frame was drawn, 3 when too few were, 1 where no window could be shown.
+// Reckless Amphitheater: the window on the machine's own platform, through the toolkit's app shell (AppRun.h,
+// AppRoot.h) and its child window on Skia. `--smoke [frames]` is a launch's check: the window opened, a few frames
+// drawn, closed - exit 0 when every frame was drawn, 3 when too few were, 1 where no window could be shown.
 
 #include "BundledEngines.h"
 #include "Faces.h"
 #include "MainController.h"
 #include "MainView.h"
 #include "PieceSet.h"
+#include "SettingsFolder.h"
 #include "Theme.h"
 #include "WindowSizes.h"
 #include "version/Version.h"
@@ -28,14 +29,14 @@
 #include <vector>
 
 /**
- * Reckless UCI Host's window.
+ * Reckless Amphitheater's window.
  * @param argc The argument count.
  * @param argv The arguments.
  * @return The exit code (reckless::app::RunApp).
  */
 int main(int argc, char **argv)
 {
-    using uci_host::app::MainView;
+    using amphitheater::app::MainView;
     reckless::app::AppOptions options = reckless::app::ParseAppOptions(std::vector<std::string>(argv + 1, argv + argc));
     // A PGN file named on the command line (a file opened with the app) is shown as the window opens.
     std::vector<std::string> pgn_files;
@@ -47,18 +48,18 @@ int main(int argc, char **argv)
         }
         return is_pgn;
     });
-    uci_host::app::InstallFaces();
-    std::string                   error;
-    const uci_host::app::PieceSet pieces = uci_host::app::PieceSet::FromEmbedded(&error);
+    amphitheater::app::InstallFaces();
+    std::string                       error;
+    const amphitheater::app::PieceSet pieces = amphitheater::app::PieceSet::FromEmbedded(&error);
     if (!pieces.IsComplete())
     {
-        std::fprintf(stderr, "Reckless UCI Host: the pieces could not be read: %s\n", error.c_str());
+        std::fprintf(stderr, "Reckless Amphitheater: the pieces could not be read: %s\n", error.c_str());
     }
 
     const std::unique_ptr<reckless::app::AppPlatform> platform =
-        reckless::app::AppPlatform::Create("Reckless UCI Host", reckless::embedded::Find("icon-256.png"));
-    MainView                          view(pieces);
-    uci_host::app::ControllerServices services;
+        reckless::app::AppPlatform::Create("Reckless Amphitheater", reckless::embedded::Find("icon-256.png"));
+    MainView                              view(pieces);
+    amphitheater::app::ControllerServices services;
     services.read_clipboard  = [&platform] { return platform->ClipboardText(); };
     services.write_clipboard = [&platform](const std::string &text) { return platform->SetClipboardText(text); };
     services.quit            = [&platform] { platform->CallSoon([&platform] { platform->Quit(); }); };
@@ -70,30 +71,37 @@ int main(int argc, char **argv)
     };
     if (!platform->HasNativeMenuBar())
     {
-        view.SetMenuBarView(platform->MakeMenuBarView(uci_host::app::theme::MenuBarLook()));
+        view.SetMenuBarView(platform->MakeMenuBarView(amphitheater::app::theme::MenuBarLook()));
+    }
+    // The settings earlier builds kept in reckless-technology/uci-host/ brought into the app's folder before anything
+    // reads them (SettingsFolder.h); a launch's check leaves both folders alone.
+    if (!options.is_smoke)
+    {
+        amphitheater::app::BringOverSettings(amphitheater::app::EarlierSettingsFolder(),
+                                             amphitheater::app::SettingsFolder());
     }
     // The window's root, and the sizes the View menu offers (WindowSizes.h): opened at the size chosen last, kept in
     // the user's settings, or at the design size; a launch's check keeps none.
-    reckless::app::AppRoot     root(view, uci_host::app::theme::Shell().Tooltip(), {},
-                                    {MainView::kLayoutWidth, MainView::kLayoutHeight});
-    uci_host::app::WindowSizes sizes(root, {MainView::kDesignWidth, MainView::kDesignHeight},
-                                     options.is_smoke ? std::filesystem::path()
-                                                      : uci_host::app::WindowSizes::DefaultFile());
+    reckless::app::AppRoot         root(view, amphitheater::app::theme::Shell().Tooltip(), {},
+                                        {MainView::kLayoutWidth, MainView::kLayoutHeight});
+    amphitheater::app::WindowSizes sizes(root, {MainView::kDesignWidth, MainView::kDesignHeight},
+                                         options.is_smoke ? std::filesystem::path()
+                                                          : amphitheater::app::WindowSizes::DefaultFile());
     sizes.Restore();
     services.window_sizes       = [&sizes] { return sizes.Menu(); };
     services.choose_window_size = [&sizes](int percent) { sizes.Choose(percent); };
     // The engines the install carries beside the app (BundledEngines.h): seeded into the person's engine list. A build
     // tree's app carries none, and leaves the list as it is.
-    uci_host::app::ControllerFiles files;
-    files.bundled_engines = uci_host::app::BundledEnginesFolder(uci_host::app::RunningExecutable());
-    uci_host::app::MainController controller(view, files, services);
+    amphitheater::app::ControllerFiles files;
+    files.bundled_engines = amphitheater::app::BundledEnginesFolder(amphitheater::app::RunningExecutable());
+    amphitheater::app::MainController controller(view, files, services);
     // The update check, as every product on the toolkit runs it: once a day at most while the window shows, never in a
     // launch's check, and none where RECKLESS_UPDATE_CHECK=off (every CI runner).
     if (!options.is_smoke)
     {
-        const reckless::update::Product product{"RecklessUciHost", uci_host::VersionText(),
-                                                "https://recklesstechnology.com/updates/uci-host.json",
-                                                "uci-host-updates.json"};
+        const reckless::update::Product product{"RecklessAmphitheater", amphitheater::VersionText(),
+                                                "https://recklesstechnology.com/updates/amphitheater.json",
+                                                "amphitheater-updates.json"};
         controller.SetUpdateChecker(reckless::app::MakeUpdateChecker(product),
                                     [](const std::string &url) { reckless::window::OpenInBrowser(url); });
     }
@@ -128,6 +136,6 @@ int main(int argc, char **argv)
         window = nullptr;
     };
     return reckless::app::RunApp(*platform, root, {MainView::kMinimumWidth, MainView::kMinimumHeight}, options,
-                                 "Reckless UCI Host", uci_host::VersionText(), &reckless::window::CreateChildWindow,
-                                 hooks);
+                                 "Reckless Amphitheater", amphitheater::VersionText(),
+                                 &reckless::window::CreateChildWindow, hooks);
 }

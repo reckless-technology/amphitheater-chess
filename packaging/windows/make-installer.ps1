@@ -1,5 +1,5 @@
 # The Windows installer of a staged release (packaging/stage.py windows): Inno Setup 6's ISCC on
-# packaging\windows\RecklessUciHost.iss, writing reckless-uci-host-<version>-win64-setup.exe into -OutDir.
+# packaging\windows\Amphitheater.iss, writing reckless-amphitheater-<version>-win64-setup.exe into -OutDir.
 #
 #   pwsh -File packaging\windows\make-installer.ps1 -DistDir dist -Version 1.0.3 [-OutDir installer] [-IconFile x.ico]
 #        [-Fetch] [-SignWithESigner] [-TestRoot <dir>]
@@ -12,7 +12,7 @@
 # ESIGNER_TOTP_SECRET, RECKLESS_CODESIGNTOOL), whose own words, which ISCC's /Qp hides, are printed on a failure; the
 # signature is then held as Windows checks it, valid and Jonathan Reckless's. -TestRoot makes the test build
 # packaging\windows\test-installer.ps1 installs: every part under that folder, an id of its own,
-# reckless-uci-host-<version>-win64-setup-test.exe. The installer and its uninstaller carry the app's icon,
+# reckless-amphitheater-<version>-win64-setup-test.exe. The installer and its uninstaller carry the app's icon,
 # assets\icon\Icon.ico, unless -IconFile names another.
 param(
     [Parameter(Mandatory = $true)] [string] $DistDir,
@@ -34,7 +34,7 @@ $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $dist = (Resolve-Path $DistDir).Path
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $out = (Resolve-Path $OutDir).Path
-foreach ($file in 'RecklessUciHost.exe', 'uci-host-cli.exe', 'EULA.txt', 'THIRD-PARTY-NOTICES.txt', 'engines\bundled.json') {
+foreach ($file in 'Amphitheater.exe', 'amphitheater-cli.exe', 'EULA.txt', 'THIRD-PARTY-NOTICES.txt', 'engines\bundled.json') {
     if (-not (Test-Path (Join-Path $dist $file))) { throw "$dist has no ${file}: stage it with packaging/stage.py" }
 }
 
@@ -60,9 +60,9 @@ if (-not $iscc) {
 }
 Write-Host "ISCC: $iscc"
 
-$defines = @("/DUciHostVersion=$Version", "/DStageDir=$dist", "/DOutputDir=$out")
+$defines = @("/DAmphitheaterVersion=$Version", "/DStageDir=$dist", "/DOutputDir=$out")
 if ($IconFile) { $defines += "/DIconFile=$((Resolve-Path $IconFile).Path)" }
-$name = "reckless-uci-host-$Version-win64-setup"
+$name = "reckless-amphitheater-$Version-win64-setup"
 if ($TestRoot) {
     $defines += "/DTestRoot=$TestRoot"
     $name += '-test'
@@ -72,10 +72,10 @@ if ($SignWithESigner) {
     $signer = Join-Path $repo 'external\reckless-toolkit\tools\esigner-sign.ps1'
     if (-not (Test-Path $signer)) { throw "no ${signer}: the toolkit's submodule is not checked out" }
     $signing = @("/Sesigner=pwsh -NoProfile -File `$q$signer`$q `$q`$f`$q", '/DSignToolName=esigner')
-    $env:RECKLESS_SIGN_LOG = Join-Path ([IO.Path]::GetTempPath()) "reckless-uci-host-sign-$Version.log"
+    $env:RECKLESS_SIGN_LOG = Join-Path ([IO.Path]::GetTempPath()) "reckless-amphitheater-sign-$Version.log"
     Remove-Item -Force -ErrorAction SilentlyContinue $env:RECKLESS_SIGN_LOG
 }
-& $iscc /Qp @defines @signing (Join-Path $PSScriptRoot 'RecklessUciHost.iss')
+& $iscc /Qp @defines @signing (Join-Path $PSScriptRoot 'Amphitheater.iss')
 if ($LASTEXITCODE -ne 0) {
     if ($SignWithESigner -and (Test-Path $env:RECKLESS_SIGN_LOG)) {
         Write-Host "--- what the sign tool said ---"

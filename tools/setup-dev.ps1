@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Set up a Windows machine to build, test, debug and measure Reckless UCI Host: the toolchain, the tools and the
+  Set up a Windows machine to build, test, debug and measure Reckless Amphitheater: the toolchain, the tools and the
   editor.
 
 .DESCRIPTION
@@ -203,7 +203,7 @@ function Install-UvTool([string]$name, [string]$version, [string]$why, [switch]$
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-Write-Host "Reckless UCI Host: $(if ($Check) { 'checking' } else { 'setting up' }) the Windows development environment"
+Write-Host "Reckless Amphitheater: $(if ($Check) { 'checking' } else { 'setting up' }) the Windows development environment"
 
 $localBin = Join-Path $env:USERPROFILE '.local\bin'
 

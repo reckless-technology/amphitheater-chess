@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /** A game's result as PGN writes it. */
@@ -205,4 +205,4 @@ class Game
     Outcome               outcome_;   ///< How it ended, if it has.
 };
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

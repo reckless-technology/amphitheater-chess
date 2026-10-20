@@ -7,7 +7,7 @@
 
 #include <string_view>
 
-namespace uci_host::app::test
+namespace amphitheater::app::test
 {
 
 /**
@@ -45,4 +45,4 @@ inline void Press(reckless::view::Button &button)
     button.MouseUp(event);
 }
 
-} // namespace uci_host::app::test
+} // namespace amphitheater::app::test

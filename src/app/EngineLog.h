@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** Which way a logged line went. */
@@ -192,4 +192,4 @@ class EngineLog
     bool                     is_wrapping_ = true; ///< Long lines wrap.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

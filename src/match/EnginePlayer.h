@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 /** A UCI engine playing one side. Driven by one thread, as its Engine is. */
@@ -90,4 +90,4 @@ class EnginePlayer : public Player
     std::string                  pondering_on_;       ///< The move the engine is pondering on, while it ponders.
 };
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

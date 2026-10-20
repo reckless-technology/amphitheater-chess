@@ -7,7 +7,7 @@
 #include "match/EnginePlayer.h"
 #include "match/Player.h"
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -298,4 +298,4 @@ std::optional<match::GameRecord> PlaySession::Record() const
     return record_;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

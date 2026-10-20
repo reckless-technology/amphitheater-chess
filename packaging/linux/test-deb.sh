@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The Debian package held to the stage it was made from, with no root and nothing installed: its control fields, every
-# staged file byte for byte at its place with its mode (the engines under /usr/lib/reckless-uci-host/engines), the link
+# staged file byte for byte at its place with its mode (the engines under /usr/lib/reckless-amphitheater/engines), the link
 # on the PATH, the menu entry (desktop-file-validate where it is installed) and the icon at every size, its md5sums,
 # nothing outside its folders, every library the binaries need owned by a package its Depends names, and every bundled engine started
 # from its place in the extracted package and held to answer uci with uciok (tools/bundled_engines.py smoke).
@@ -13,14 +13,14 @@ dist=$(cd "$1" && pwd)
 version=$2
 deb=$3
 root=$(cd "$(dirname "$0")/../.." && pwd)
-work=$(mktemp -d "${TMPDIR:-/tmp}/uci-host-deb-test.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/amphitheater-deb-test.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 fail() { echo "::error::test-deb.sh: $*" >&2; exit 1; }
-id=com.recklesstechnology.ucihost
-engines=usr/lib/reckless-uci-host/engines
+id=com.recklesstechnology.amphitheater
+engines=usr/lib/reckless-amphitheater/engines
 
 field() { dpkg-deb --field "$deb" "$1"; }
-[ "$(field Package)" = reckless-uci-host ] || fail "Package is $(field Package)"
+[ "$(field Package)" = reckless-amphitheater ] || fail "Package is $(field Package)"
 [ "$(field Version)" = "$version" ] || fail "Version is $(field Version), not $version"
 [ "$(field Architecture)" = amd64 ] || fail "Architecture is $(field Architecture)"
 depends=$(field Depends)
@@ -28,11 +28,11 @@ echo "Depends: $depends"
 
 dpkg-deb --raw-extract "$deb" "$work/x"
 x="$work/x"
-for binary in RecklessUciHost uci-host-cli; do
+for binary in amphitheater amphitheater-cli; do
     cmp -s "$dist/$binary" "$x/opt/reckless-technology/bin/$binary" || fail "$binary is not the staged one"
     [ "$(stat -c %a "$x/opt/reckless-technology/bin/$binary")" = 755 ] || fail "$binary is not 0755"
 done
-[ "$(readlink "$x/usr/bin/uci-host-cli")" = /opt/reckless-technology/bin/uci-host-cli ] || fail "the tool's link"
+[ "$(readlink "$x/usr/bin/amphitheater-cli")" = /opt/reckless-technology/bin/amphitheater-cli ] || fail "the tool's link"
 staged_engines=0
 while IFS= read -r -d '' file; do
     relative=${file#"$dist/engines/"}
@@ -44,27 +44,27 @@ while IFS= read -r -d '' file; do
 done < <(find "$dist/engines" -type f -print0)
 [ "$(find "$x/$engines" -type f | wc -l)" = "$staged_engines" ] || fail "the engines' folder holds files the stage does not"
 for doc in EULA.txt THIRD-PARTY-NOTICES.txt; do
-    cmp -s "$dist/$doc" "$x/usr/share/doc/reckless-uci-host/$doc" || fail "$doc is not the staged one"
+    cmp -s "$dist/$doc" "$x/usr/share/doc/reckless-amphitheater/$doc" || fail "$doc is not the staged one"
 done
-[ -s "$x/usr/share/doc/reckless-uci-host/copyright" ] || fail "no copyright file"
+[ -s "$x/usr/share/doc/reckless-amphitheater/copyright" ] || fail "no copyright file"
 for size in 16 24 32 48 64 128 256 512; do
     cmp -s "$root/assets/icon/png/icon-$size.png" "$x/usr/share/icons/hicolor/${size}x${size}/apps/$id.png" ||
         fail "the ${size}x${size} icon is not assets/icon/png/icon-$size.png"
 done
 desktop="$x/usr/share/applications/$id.desktop"
-grep -qx "Exec=/opt/reckless-technology/bin/RecklessUciHost %F" "$desktop" || fail "the menu entry runs something else"
+grep -qx "Exec=/opt/reckless-technology/bin/amphitheater %F" "$desktop" || fail "the menu entry runs something else"
 if command -v desktop-file-validate > /dev/null; then desktop-file-validate "$desktop" || fail "the menu entry"; fi
 (cd "$x" && md5sum --quiet -c DEBIAN/md5sums) || fail "md5sums"
 for script in postinst postrm; do
     [ -x "$x/DEBIAN/$script" ] || fail "$script is not executable"
 done
 outside=$(cd "$x" && find . \( -type f -o -type l \) ! -path './DEBIAN/*' | grep -v -e '^./opt/reckless-technology/' \
-    -e '^./usr/bin/uci-host-cli$' -e "^./usr/share/applications/$id.desktop$" -e "^./usr/share/icons/hicolor/" \
-    -e '^./usr/share/doc/reckless-uci-host/' -e "^./$engines/" || true)
+    -e '^./usr/bin/amphitheater-cli$' -e "^./usr/share/applications/$id.desktop$" -e "^./usr/share/icons/hicolor/" \
+    -e '^./usr/share/doc/reckless-amphitheater/' -e "^./$engines/" || true)
 [ -z "$outside" ] || fail "files outside the package's folders: $outside"
 
 # Every library a binary needs is owned by a package Depends names.
-binaries=("$dist/RecklessUciHost" "$dist/uci-host-cli")
+binaries=("$dist/amphitheater" "$dist/amphitheater-cli")
 while IFS= read -r -d '' file; do
     objdump -p "$file" > /dev/null 2>&1 && binaries+=("$file")
 done < <(find "$dist/engines" -type f -perm -u+x -print0)

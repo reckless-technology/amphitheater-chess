@@ -11,7 +11,7 @@
 #include <string_view>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /**
@@ -51,4 +51,4 @@ struct PastedGames
  */
 PastedGames ReadPasted(std::string_view text);
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

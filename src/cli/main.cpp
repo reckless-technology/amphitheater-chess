@@ -1,4 +1,4 @@
-// uci-host-cli: the command-line runner (Cli.h). Ctrl+C stops a match after abandoning the games in progress.
+// amphitheater-cli: the command-line runner (Cli.h). Ctrl+C stops a match after abandoning the games in progress.
 
 #include "Cli.h"
 #include "uci/Utf8Arguments.h"
@@ -34,5 +34,5 @@ extern "C" void RequestStop(int signal)
 int main(int argc, char **argv)
 {
     std::signal(SIGINT, RequestStop);
-    return uci_host::cli::RunCli(uci_host::Utf8Arguments(argc, argv), std::cout, std::cerr, &is_stop_requested);
+    return amphitheater::cli::RunCli(amphitheater::Utf8Arguments(argc, argv), std::cout, std::cerr, &is_stop_requested);
 }

@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdio>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -202,4 +202,4 @@ std::string CompetitionSession::ScoreText() const
            std::to_string(standings.front().score.Games());
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

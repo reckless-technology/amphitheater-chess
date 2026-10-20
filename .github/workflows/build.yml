@@ -19,8 +19,8 @@ name: build
 # cache are its own, so its checkouts start empty and clang-format is fetched into its cache once. .github/actions/cpp
 # provides the toolchain.
 #
-# The version every binary reports is MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag (cmake/UciHostVersion.cmake),
-# which a shallow clone cuts off: every checkout is fetch-depth 0.
+# The version every binary reports is MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag
+# (cmake/AmphitheaterVersion.cmake), which a shallow clone cuts off: every checkout is fetch-depth 0.
 #
 # The window is built on the toolkit, a git submodule (reckless-technology/reckless-toolkit at external/reckless-toolkit)
 # in a private repository the workflow's token cannot read. Every job that builds checks it out right after its own
@@ -133,12 +133,12 @@ jobs:
           for tool in python3 dpkg-deb dpkg objdump ldconfig zip unzip; do
             command -v "$tool" > /dev/null || { echo "::error::$tool is not on the runner's PATH"; exit 1; }
           done
-          version=$(sed -n 's/.*UCI_HOST_VERSION_STRING "\(.*\)"/\1/p' build/ci-linux/generated/UciHostVersion.h)
+          version=$(sed -n 's/.*AMPHITHEATER_VERSION_STRING "\(.*\)"/\1/p' build/ci-linux/generated/AmphitheaterVersion.h)
           rm -rf build/ci-linux-dist build/ci-linux-out
           python3 -I packaging/stage.py build/ci-linux build/ci-linux-dist linux --leave-out-unfit
-          packaging/linux/make-zip.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-x64.zip"
-          packaging/linux/make-deb.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-amd64.deb"
-          packaging/linux/test-deb.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-uci-host-$version-linux-amd64.deb"
+          packaging/linux/make-zip.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-amphitheater-$version-linux-x64.zip"
+          packaging/linux/make-deb.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-amphitheater-$version-linux-amd64.deb"
+          packaging/linux/test-deb.sh build/ci-linux-dist "$version" "build/ci-linux-out/reckless-amphitheater-$version-linux-amd64.deb"
           rm -rf build/ci-linux-dist build/ci-linux-out
 
   sanitizers:
@@ -162,7 +162,7 @@ jobs:
         uses: ./.github/actions/cpp
       - name: Configure
         run: >
-          cmake -S . -B build/ci-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DUCI_HOST_ASAN=ON
+          cmake -S . -B build/ci-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAMPHITHEATER_ASAN=ON
           -DFETCHCONTENT_UPDATES_DISCONNECTED=ON "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
       - name: Build
         run: cmake --build build/ci-asan -j ${{ steps.cpp.outputs.jobs }}
@@ -200,7 +200,7 @@ jobs:
           "$RUNNER_TEMP/gcovr/bin/pip" install --quiet gcovr==8.3
       - name: Configure
         run: >
-          cmake -S . -B build/ci-coverage -G Ninja -DCMAKE_BUILD_TYPE=Debug -DUCI_HOST_COVERAGE=ON
+          cmake -S . -B build/ci-coverage -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAMPHITHEATER_COVERAGE=ON
           -DFETCHCONTENT_UPDATES_DISCONNECTED=ON "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
       - name: Build
         run: |
@@ -267,7 +267,7 @@ jobs:
       - name: Package (the stage and the installer, installed and taken away)
         shell: pwsh
         run: |
-          $version = (Select-String -Path build/ci-windows/generated/UciHostVersion.h -Pattern 'VERSION_STRING "(.*)"').Matches[0].Groups[1].Value
+          $version = (Select-String -Path build/ci-windows/generated/AmphitheaterVersion.h -Pattern 'VERSION_STRING "(.*)"').Matches[0].Groups[1].Value
           Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/ci-windows-dist
           & "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-windows build/ci-windows-dist windows --leave-out-unfit
           if ($LASTEXITCODE -ne 0) { throw "the stage failed" }
@@ -304,7 +304,7 @@ jobs:
         run: cmake --build build/ci-macos -j ${{ steps.cpp.outputs.jobs }}
       - name: Every binary holds arm64 and x86_64, for macOS 13.3 on
         run: |
-          for binary in build/ci-macos/src/cli/uci-host-cli build/ci-macos/tests/uci_host_*                         build/ci-macos/src/app/RecklessUciHost.app/Contents/MacOS/RecklessUciHost; do
+          for binary in build/ci-macos/src/cli/amphitheater-cli build/ci-macos/tests/amphitheater_*                         build/ci-macos/src/app/Amphitheater.app/Contents/MacOS/Amphitheater; do
             lipo -info "$binary"
             for arch in arm64 x86_64; do lipo "$binary" -verify_arch "$arch"; done
             [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}' | sort -u)" = 13.3 ] || { echo "::error::$binary is not for macOS 13.3"; exit 1; }
@@ -314,7 +314,7 @@ jobs:
       # not use (no microphone).
       - name: The app's bundle
         run: |
-          app=build/ci-macos/src/app/RecklessUciHost.app
+          app=build/ci-macos/src/app/Amphitheater.app
           codesign --verify --deep --strict "$app"
           icon=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIconFile" "$app/Contents/Info.plist") ||
             { echo "::error::the plist names no icon"; exit 1; }
@@ -336,11 +336,11 @@ jobs:
       - name: Package (the stage and the installer)
         run: |
           set -euo pipefail
-          version=$(sed -n 's/.*UCI_HOST_VERSION_STRING "\(.*\)"/\1/p' build/ci-macos/generated/UciHostVersion.h)
+          version=$(sed -n 's/.*AMPHITHEATER_VERSION_STRING "\(.*\)"/\1/p' build/ci-macos/generated/AmphitheaterVersion.h)
           rm -rf build/ci-macos-dist build/ci-macos-out
           "${{ steps.cpp.outputs.python }}" -I packaging/stage.py build/ci-macos build/ci-macos-dist macos --leave-out-unfit
-          packaging/macos/make-installer.sh build/ci-macos-dist "$version" "build/ci-macos-out/reckless-uci-host-$version-macos.pkg"
-          packaging/macos/test-installer.sh build/ci-macos-dist "$version" "build/ci-macos-out/reckless-uci-host-$version-macos.pkg"
+          packaging/macos/make-installer.sh build/ci-macos-dist "$version" "build/ci-macos-out/reckless-amphitheater-$version-macos.pkg"
+          packaging/macos/test-installer.sh build/ci-macos-dist "$version" "build/ci-macos-out/reckless-amphitheater-$version-macos.pkg"
           rm -rf build/ci-macos-dist build/ci-macos-out
 
   # Every C++ file clang-format clean under the repository's .clang-format, with 22.1.8 from the PyPI wheel (the one

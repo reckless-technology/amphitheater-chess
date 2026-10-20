@@ -13,7 +13,7 @@
 #include <optional>
 #include <utility>
 
-namespace uci_host
+namespace amphitheater
 {
 
 /**
@@ -117,4 +117,4 @@ template <typename T> class ThreadSafeQueue
     bool                    is_closed_ = false; ///< Whether the queue refuses further elements.
 };
 
-} // namespace uci_host
+} // namespace amphitheater

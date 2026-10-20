@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /** A square index (location) on the board, a1 = 0 to h8 = 63 (little-endian rank-file order). */
@@ -87,4 +87,4 @@ class Square
     std::uint8_t value_; ///< The square index in little-endian rank-file order.
 };
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

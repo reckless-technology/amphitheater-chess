@@ -4,7 +4,7 @@
 #include <cctype>
 #include <filesystem>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 namespace
@@ -494,4 +494,4 @@ void Engine::Kill()
     }
 }
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -254,4 +254,4 @@ void EvalGraph::MouseDown(const reckless::view::MouseEvent &e)
     }
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

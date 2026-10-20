@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -128,7 +128,7 @@ TEST(About, HelpAboutOpensOverTheWindowWithTheNameAndVersionAndClosesOnEscape)
     EXPECT_EQ(about->info().version, VersionText());
     const std::vector<std::string> lines = about->Lines();
     ASSERT_GE(lines.size(), 2u);
-    EXPECT_EQ(lines[0], "Reckless UCI Host");
+    EXPECT_EQ(lines[0], "Reckless Amphitheater");
     EXPECT_EQ(lines[1], "Version " + VersionText());
     const auto has = [&lines](const std::string &part) {
         return std::any_of(lines.begin(), lines.end(),
@@ -178,7 +178,7 @@ TEST(About, HelpAboutOpensOverTheWindowWithTheNameAndVersionAndClosesOnEscape)
 
 TEST(About, TheEnginesTheInstallCarriesAreListedWithTheirVersionsAndLicences)
 {
-    const std::filesystem::path folder = reckless::test::ScratchPath("uci-host-about") / "engines";
+    const std::filesystem::path folder = reckless::test::ScratchPath("amphitheater-about") / "engines";
     WriteManifest(folder);
     MainView        view(Pieces());
     ControllerFiles files{{}};
@@ -220,4 +220,4 @@ TEST(About, ItsMarkIsTheAppsIconCarriedInTheBinary)
     EXPECT_TRUE(about.has_mark());
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

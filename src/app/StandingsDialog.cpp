@@ -7,7 +7,7 @@
 
 #include <cstdio>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 std::size_t StandingsModel::RowCount() const
@@ -174,4 +174,4 @@ void StandingsDialog::LayOutContent(reckless::gfx::RectI area)
     crosstable_.SetBounds({area.x(), area.y() + half + 38, area.width(), area.bottom() - area.y() - half - 38});
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

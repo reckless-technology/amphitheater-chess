@@ -10,7 +10,7 @@
 #include <random>
 #include <sstream>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 Result<Opening> ParseEpdLine(std::string_view line)
@@ -210,4 +210,4 @@ void OrderOpenings(std::vector<Opening> &openings, OpeningOrder order, std::uint
     std::rotate(openings.begin(), openings.begin() + static_cast<std::ptrdiff_t>(offset), openings.end());
 }
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

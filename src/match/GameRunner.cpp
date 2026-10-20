@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 namespace
@@ -339,4 +339,4 @@ GameRecord GameRunner::Play(const std::function<void(const GameProgress &)> &on_
     return record;
 }
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

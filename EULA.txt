@@ -3,7 +3,7 @@ RECKLESS TECHNOLOGY END-USER LICENCE
 By installing or using this software you agree to this licence. If you do not agree, do not install or use it.
 
 1. "We" are Jonny Reckless, trading as Reckless Technology, in California, USA. "You" are the person or organisation
-   using this copy. "The Software" is Reckless UCI Host - the application and its command-line tool, uci-host-cli -
+   using this copy. "The Software" is Reckless Amphitheater - the application and its command-line tool, amphitheater-cli -
    its documentation and updates. It does not include the chess engines the installer carries beside it (section 4).
 
 2. The Software is free. You may install it on as many computers as you like and use it for any purpose, personal or
@@ -23,7 +23,7 @@ By installing or using this software you agree to this licence. If you do not ag
 5. The Software collects no personal data. While its window is open it asks recklesstechnology.com whether a newer
    version is out - at once the first time it runs, then at most once a day, or an hour after a check that failed -
    and says so in its status bar if one is. Each check is one request for a small file; it carries the Software's
-   name and the version you have ("RecklessUciHost/" and the version, as its User-Agent) and nothing about you or your
+   name and the version you have ("Amphitheater/" and the version, as its User-Agent) and nothing about you or your
    computer, though the website's host sees the address it comes from, as for any web page. It never downloads or
    installs anything itself; turn the check off under Help > Updates. Everything else it keeps - the engines you
    configure, its settings - stays on your computer, in the files it writes there.

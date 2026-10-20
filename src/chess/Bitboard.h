@@ -9,7 +9,7 @@
 
 #include "Square.h"
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /// @brief Class to represent a bitboard.
@@ -402,4 +402,4 @@ inline constexpr Bitboard kWhiteSquares     {0x55AA55AA55AA55AAull};///< All lig
 inline constexpr Bitboard kBlackSquares     {~kWhiteSquares};       ///< All dark squares.
 // clang-format on
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

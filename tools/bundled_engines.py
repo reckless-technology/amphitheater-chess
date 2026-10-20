@@ -28,7 +28,7 @@ packaging/engines.json by its tag, each platform's asset and the asset's SHA-256
         Every engine of a manifest, from where it lies, answers uci with uciok and isready with readyok, and names its
         pinned version: each build this machine can run (both of Zenith's x86-64 builds where the CPU takes both).
 
-The cache is --cache, else $RUNNER_TOOL_CACHE/reckless-uci-host-engines, else build/engines-cache; each file is kept
+The cache is --cache, else $RUNNER_TOOL_CACHE/reckless-amphitheater-engines, else build/engines-cache; each file is kept
 under its own SHA-256, so two pins never meet. RECKLESS_ENGINES_BASE_URL replaces https://github.com for the
 downloads (the suite points it at a folder of its own through a file: URL). Only the standard library is used.
 """
@@ -129,7 +129,7 @@ def asset_url(repository, tag, asset):
 
 def default_cache():
     if os.environ.get("RUNNER_TOOL_CACHE"):
-        return Path(os.environ["RUNNER_TOOL_CACHE"]) / "reckless-uci-host-engines"
+        return Path(os.environ["RUNNER_TOOL_CACHE"]) / "reckless-amphitheater-engines"
     return ROOT / "build" / "engines-cache"
 
 
@@ -145,7 +145,7 @@ def download(url, into):
     """A URL's bytes into a file, whole or not at all."""
     into.parent.mkdir(parents=True, exist_ok=True)
     partial = into.with_name(into.name + ".part")
-    request = urllib.request.Request(url, headers={"User-Agent": "reckless-uci-host-packaging"})
+    request = urllib.request.Request(url, headers={"User-Agent": "reckless-amphitheater-packaging"})
     with urllib.request.urlopen(request, timeout=300) as response, open(partial, "wb") as f:
         shutil.copyfileobj(response, f, 1 << 20)
     os.replace(partial, into)
@@ -488,7 +488,7 @@ def smoke(engines_dir):
 def github_json(path):
     request = urllib.request.Request(f"https://api.github.com/{path}",
                                      headers={"Accept": "application/vnd.github+json",
-                                              "User-Agent": "reckless-uci-host-packaging"})
+                                              "User-Agent": "reckless-amphitheater-packaging"})
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     if token:
         request.add_header("Authorization", f"Bearer {token}")

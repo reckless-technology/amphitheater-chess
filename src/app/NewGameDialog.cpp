@@ -1,6 +1,6 @@
 #include "NewGameDialog.h"
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 const std::vector<TimeControlPreset> &TimeControlPresets()
@@ -148,4 +148,4 @@ void NewGameDialog::Start()
     }
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

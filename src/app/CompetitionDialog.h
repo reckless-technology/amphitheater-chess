@@ -1,7 +1,7 @@
 #pragma once
 /// @file CompetitionDialog.h Match > New match and Tournament > New tournament: the engines and the options
-/// uci-host-cli takes - the time control, games and rounds, a double round robin, repeated openings, concurrency, an
-/// opening file, the adjudications and a PGN file - written as the command line's own arguments and read by its own
+/// amphitheater-cli takes - the time control, games and rounds, a double round robin, repeated openings, concurrency,
+/// an opening file, the adjudications and a PGN file - written as the command line's own arguments and read by its own
 /// reader (cli::ParseTournamentArguments), so the window and the command line agree on every option and its checks.
 
 #include "Controls.h"
@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** The arguments a configured engine is on the command line: cmd=, name=, arg=, option.<name>=, book=, ponder. */
@@ -125,4 +125,4 @@ class CompetitionDialog final : public DialogFrame
     Caption                                 note_;            ///< What is wrong, or a hint.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

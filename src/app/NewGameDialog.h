@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** A time control a person picks from the dialog's list. */
@@ -97,4 +97,4 @@ class NewGameDialog final : public DialogFrame
     Caption                   note_;        ///< What is wrong, or a hint.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -16,7 +16,7 @@
 #include <string_view>
 #include <vector>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /** Milliseconds, the unit of every time here (and of UCI's wtime, btime and movetime). */
@@ -171,4 +171,4 @@ class Clock
     bool         has_flag_fallen_ = false; ///< Whether the flag has fallen.
 };
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

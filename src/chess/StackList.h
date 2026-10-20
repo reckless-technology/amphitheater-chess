@@ -8,7 +8,7 @@
 #include <cassert>
 #include <cstddef>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /// @brief Fixed size, very simple stack storage container for lists of moves.
@@ -153,4 +153,4 @@ template <typename T, int N> constexpr typename std::array<T, N>::const_iterator
     return end_;
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

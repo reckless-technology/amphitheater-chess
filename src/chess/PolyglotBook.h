@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /** The Polyglot format's 781 Zobrist constants. */
@@ -116,4 +116,4 @@ class PolyglotBook
     std::vector<PolyglotEntry> entries_; ///< The entries, sorted by key.
 };
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

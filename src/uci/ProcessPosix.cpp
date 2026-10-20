@@ -16,7 +16,7 @@
 
 extern char **environ;
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 namespace
@@ -353,6 +353,6 @@ long ChildProcess::Id() const
     return static_cast<long>(platform_->pid);
 }
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci
 
 #endif

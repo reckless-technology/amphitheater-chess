@@ -2,7 +2,7 @@
 
 #include <cctype>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 namespace
@@ -317,4 +317,4 @@ Result<Move> ParseSan(const Position &position, std::string_view original)
     return illegal();
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

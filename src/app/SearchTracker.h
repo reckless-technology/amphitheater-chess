@@ -16,7 +16,7 @@
 #include <string_view>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /**
@@ -173,4 +173,4 @@ class SearchTracker
     std::optional<int>          hash_full_;            ///< The latest hash fill, in permille.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

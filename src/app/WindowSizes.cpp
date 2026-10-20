@@ -1,14 +1,15 @@
 #include "WindowSizes.h"
 
+#include "SettingsFolder.h"
+
 #include "Json.h"
 #include "JsonFile.h"
-#include "PresetFiles.h"
 
 #include <algorithm>
 #include <cmath>
 #include <utility>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -164,8 +165,8 @@ bool WindowSizes::Store(const std::filesystem::path &file, std::optional<int> pe
 
 std::filesystem::path WindowSizes::DefaultFile()
 {
-    const std::filesystem::path folder = reckless::core::UserSettingsFolder(reckless::core::kSuiteFolder);
-    return folder.empty() ? folder : folder / "uci-host" / "window.json";
+    const std::filesystem::path folder = SettingsFolder();
+    return folder.empty() ? folder : folder / "window.json";
 }
 
 reckless::gfx::PointI WindowSizes::SizeAt(int percent) const
@@ -193,4 +194,4 @@ void WindowSizes::RefreshRoom()
     }
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -1,7 +1,8 @@
 #pragma once
-/// @file AboutDialog.h Help > About Reckless UCI Host: the app's mark - its icon, Jonny's sketch of the Colosseum on a
-/// rounded square - its name and version, the copyright, the terms it is used on, the engines the install carries with
-/// their versions and licences, where the third-party notices are, and the website as a link to the person's browser.
+/// @file AboutDialog.h Help > About Reckless Amphitheater: the app's mark - its icon, Jonny's sketch of the Colosseum
+/// on a rounded square - its name and version, the copyright, the terms it is used on, the engines the install carries
+/// with their versions and licences, where the third-party notices are, and the website as a link to the person's
+/// browser.
 
 #include "Controls.h"
 
@@ -11,7 +12,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** One engine the install carries, as the About window names it. */
@@ -136,4 +137,4 @@ class AboutDialog final : public DialogFrame
     reckless::gfx::RectI area_; ///< Where the content goes, as last laid out.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** The games of a PGN file, as the list shows them. */
@@ -72,4 +72,4 @@ class GamePickerDialog final : public DialogFrame
     Caption                     note_;  ///< How many there are, and how many were skipped.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

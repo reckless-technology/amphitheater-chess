@@ -1,5 +1,5 @@
-// Against a real engine, when UCI_HOST_TEST_ENGINE names one (skipped otherwise): the handshake, a search, and a short
-// match of the engine against itself with no game lost to a crash, a stall or an illegal move.
+// Against a real engine, when AMPHITHEATER_TEST_ENGINE names one (skipped otherwise): the handshake, a search, and a
+// short match of the engine against itself with no game lost to a crash, a stall or an illegal move.
 
 #include "TestSupport.h"
 #include "chess/Notation.h"
@@ -8,7 +8,7 @@
 
 #include <gtest/gtest.h>
 
-namespace uci_host
+namespace amphitheater
 {
 namespace
 {
@@ -17,7 +17,7 @@ using namespace std::chrono_literals;
 
 std::optional<std::string> RealEngine()
 {
-    return testing::EnvironmentVariable("UCI_HOST_TEST_ENGINE");
+    return testing::EnvironmentVariable("AMPHITHEATER_TEST_ENGINE");
 }
 
 TEST(RealEngine, HandshakeAndSearch)
@@ -25,7 +25,7 @@ TEST(RealEngine, HandshakeAndSearch)
     const auto path = RealEngine();
     if (!path)
     {
-        GTEST_SKIP() << "UCI_HOST_TEST_ENGINE names no engine";
+        GTEST_SKIP() << "AMPHITHEATER_TEST_ENGINE names no engine";
     }
     uci::EngineConfig config;
     config.executable = *path;
@@ -55,7 +55,7 @@ TEST(RealEngine, AShortMatchAgainstItself)
     const auto path = RealEngine();
     if (!path)
     {
-        GTEST_SKIP() << "UCI_HOST_TEST_ENGINE names no engine";
+        GTEST_SKIP() << "AMPHITHEATER_TEST_ENGINE names no engine";
     }
     match::TournamentSettings settings;
     for (const char *name : {"First", "Second"})
@@ -87,4 +87,4 @@ TEST(RealEngine, AShortMatchAgainstItself)
 }
 
 } // namespace
-} // namespace uci_host
+} // namespace amphitheater

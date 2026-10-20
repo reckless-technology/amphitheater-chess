@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -295,4 +295,4 @@ bool DialogFrame::KeyPressed(const reckless::view::KeyEvent &key)
     return false;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

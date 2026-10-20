@@ -15,7 +15,7 @@
 #include <string_view>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** What a mate counts as on the graph, in pawns: past any scale it draws, so it is held at the scale's edge. */
@@ -82,4 +82,4 @@ std::optional<EvalPoint> EvalPointOfComment(std::string_view comment);
  */
 std::vector<EvalSeries> SeriesOfPgn(const chess::PgnGame &pgn);
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

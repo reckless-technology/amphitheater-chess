@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -199,10 +199,10 @@ TEST(Menus, TheUpdateChecksMenuStandsUnderHelpAndFollowsTheCheck)
     const std::size_t rows_before = controller.menu_bar().menus.back().submenu.size();
 
     // A check that never reaches the network: switched off, as the environment switches it off on a runner.
-    const auto file    = reckless::test::ScratchPath("uci-host-updates") / "uci-host-updates.json";
+    const auto file    = reckless::test::ScratchPath("amphitheater-updates") / "amphitheater-updates.json";
     auto       checker = std::make_unique<reckless::update::Checker>(
-        file, reckless::update::Version{0, 1, 2}, "https://recklesstechnology.com/updates/uci-host.json",
-        [] { return std::unique_ptr<reckless::net::Transport>(); }, [] { return 1.0e9; }, false, "RecklessUciHost");
+        file, reckless::update::Version{0, 1, 2}, "https://recklesstechnology.com/updates/amphitheater.json",
+        [] { return std::unique_ptr<reckless::net::Transport>(); }, [] { return 1.0e9; }, false, "Amphitheater");
     std::vector<std::string> opened;
     controller.SetUpdateChecker(std::move(checker), [&](const std::string &url) { opened.push_back(url); });
     const MenuEntry &help = controller.menu_bar().menus.back();
@@ -222,4 +222,4 @@ TEST(Menus, TheUpdateChecksMenuStandsUnderHelpAndFollowsTheCheck)
     EXPECT_EQ(controller.menu_bar().menus.back().submenu.size(), rows_before) << "no check, no menu";
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

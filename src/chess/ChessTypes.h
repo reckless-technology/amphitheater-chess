@@ -7,7 +7,7 @@
 
 #include <cstdint>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /** The six kinds of piece, and none. */
@@ -78,4 +78,4 @@ constexpr Piece PieceFromLetter(char letter)
     }
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

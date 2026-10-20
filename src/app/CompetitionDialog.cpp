@@ -4,7 +4,7 @@
 #include <cctype>
 #include <filesystem>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 std::vector<std::string> EngineArguments(const EngineEntry &entry)
@@ -78,7 +78,7 @@ CompetitionDialog::CompetitionDialog(bool is_tournament, const std::vector<Engin
     AddLine("Opening plies", "8", "How many plies of a PGN game or a book walk each opening keeps");
     AddLine("Max moves", "", "A draw after this many moves by each side; empty for no limit");
     AddLine("PGN file", "", "Every finished game appended to this file; empty for none");
-    AddLine("Arguments", "", "More of uci-host-cli's options, as its command line takes them");
+    AddLine("Arguments", "", "More of amphitheater-cli's options, as its command line takes them");
     for (const char *text : {"Repeat each opening, colours swapped", "Double round robin: every cycle twice",
                              "Resign adjudication: 3 moves at -6.00 or worse",
                              "Draw adjudication: from move 40, 8 moves "
@@ -121,7 +121,7 @@ CompetitionDialog::CompetitionDialog(bool is_tournament, const std::vector<Engin
     AddChild(*choose_pgn_);
     AddChild(note_);
     note_.SetText(engines_.size() < 2 ? "Two engines are needed: add them under Engines > Manage engines."
-                                      : "The options are uci-host-cli's: Arguments takes any other it has.");
+                                      : "The options are amphitheater-cli's: Arguments takes any other it has.");
     AddButton("Start", [this] { Start(); });
     AddButton("Cancel", [this] {
         if (on_close)
@@ -345,4 +345,4 @@ void CompetitionDialog::Start()
     }
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

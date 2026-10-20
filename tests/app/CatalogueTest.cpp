@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -48,8 +48,8 @@ TEST(EngineCatalogue, TheListRoundTripsThroughJsonAndAFile)
     EXPECT_EQ(back->engines[0].declared[1].choices, (std::vector<std::string>{"A", "B"}));
     EXPECT_EQ(back->engines[1].DisplayName(), "b");
 
-    const auto scratch = reckless::test::ScratchPath("uci-host-engines");
-    const auto file    = scratch / "uci-host" / "engines.json";
+    const auto scratch = reckless::test::ScratchPath("amphitheater-engines");
+    const auto file    = scratch / "amphitheater" / "engines.json";
     ASSERT_TRUE(catalogue.Save(file));
     std::string error;
     const auto  loaded = EngineCatalogue::Load(file, &error);
@@ -82,4 +82,4 @@ TEST(EngineCatalogue, AnEnginesSummaryAndOptionsReadAsTheStripShowsThem)
     EXPECT_EQ(entry.OptionValue("Missing"), "");
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

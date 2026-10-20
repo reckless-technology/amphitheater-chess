@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cctype>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -274,4 +274,4 @@ std::vector<std::string> AnalysisSession::Names() const
     return names;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

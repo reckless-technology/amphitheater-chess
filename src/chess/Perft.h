@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /**
@@ -53,4 +53,4 @@ inline std::vector<std::pair<Move, std::uint64_t>> PerftDivide(const Position &p
     return counts;
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

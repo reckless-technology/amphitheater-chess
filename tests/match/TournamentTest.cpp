@@ -13,7 +13,7 @@
 #include <map>
 #include <set>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 namespace
 {
@@ -265,7 +265,7 @@ TEST(Openings, OrdersAndLoads)
 
     EXPECT_FALSE(LoadOpenings("/no/such/file.epd", OpeningFormat::kEpd, 0));
     EXPECT_FALSE(ReadTextFile("/no/such/file.epd"));
-    const auto path = (std::filesystem::temp_directory_path() / "uci_host_openings_test.epd").string();
+    const auto path = (std::filesystem::temp_directory_path() / "amphitheater_openings_test.epd").string();
     {
         std::ofstream file(path);
         file << "# nothing but a comment\n";
@@ -286,7 +286,7 @@ TEST(Openings, OrdersAndLoads)
 TournamentEngine FakeEngine(const std::string &name, std::vector<std::string> arguments = {})
 {
     TournamentEngine engine;
-    engine.config.executable = UCI_HOST_FAKE_ENGINE;
+    engine.config.executable = AMPHITHEATER_FAKE_ENGINE;
     engine.config.name       = name;
     engine.config.arguments  = std::move(arguments);
     return engine;
@@ -303,7 +303,7 @@ TEST(Tournament, ARoundRobinPlaysEveryGameInParallelAndReportsEach)
     settings.adjudication.max_moves    = 20;
     settings.openings                  = {{"", {"e2e4"}, "e4"}, {"", {"d2d4"}, "d4"}};
     settings.event                     = "Round Robin";
-    settings.pgn_path = (std::filesystem::temp_directory_path() / "uci_host_tournament_test.pgn").string();
+    settings.pgn_path = (std::filesystem::temp_directory_path() / "amphitheater_tournament_test.pgn").string();
     std::filesystem::remove(settings.pgn_path);
     std::mutex logged_mutex;
     int        logged      = 0;
@@ -452,4 +452,4 @@ TEST(Tournament, AnUnwritablePgnFileIsAWarning)
 }
 
 } // namespace
-} // namespace uci_host::match
+} // namespace amphitheater::match

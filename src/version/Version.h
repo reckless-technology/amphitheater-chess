@@ -3,10 +3,11 @@
 
 #include <string>
 
-namespace uci_host
+namespace amphitheater
 {
 
-/** @return The host's version, MAJOR.MINOR.BUILD, from the nearest vMAJOR.MINOR tag (cmake/UciHostVersion.cmake). */
+/** @return The host's version, MAJOR.MINOR.BUILD, from the nearest vMAJOR.MINOR tag (cmake/AmphitheaterVersion.cmake).
+ */
 std::string VersionText();
 
-} // namespace uci_host
+} // namespace amphitheater

@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 class DialogFrame;
@@ -201,8 +201,8 @@ class MainController
     chess::PgnGame CurrentPgn() const;
 
     /**
-     * The window's title, following the game shown: "White vs Black - Reckless UCI Host", the file's name before the
-     * app's while the game shown is one opened from a file or saved to one.
+     * The window's title, following the game shown: "White vs Black - Reckless Amphitheater", the file's name before
+     * the app's while the game shown is one opened from a file or saved to one.
      * @return The title.
      */
     std::string WindowTitle() const;
@@ -393,4 +393,4 @@ class MainController
     std::string                               error_;          ///< The last thing that went wrong.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

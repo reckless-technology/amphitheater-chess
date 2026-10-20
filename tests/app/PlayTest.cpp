@@ -19,7 +19,7 @@
 #include <string>
 #include <thread>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -40,7 +40,7 @@ const PieceSet &Pieces()
 EngineEntry Fake(std::vector<std::string> arguments = {}, std::string name = "Fake")
 {
     EngineEntry entry;
-    entry.config.executable = UCI_HOST_FAKE_ENGINE;
+    entry.config.executable = AMPHITHEATER_FAKE_ENGINE;
     entry.config.arguments  = std::move(arguments);
     entry.config.name       = std::move(name);
     return entry;
@@ -370,4 +370,4 @@ TEST(SearchTracker, ReadsAFensPositionMateScoresAndRefusesWhatItCannotRead)
     EXPECT_FALSE(tracker.IsSearching());
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

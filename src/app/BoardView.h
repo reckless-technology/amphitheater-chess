@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** An arrow from one square to another: an engine's best move. */
@@ -223,4 +223,4 @@ class BoardView final : public reckless::view::View
     std::string                  banner_detail_;          ///< The line under it.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 std::string ResultText(GameResult result)
@@ -209,4 +209,4 @@ Outcome Game::RulesOutcome() const
     return {};
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

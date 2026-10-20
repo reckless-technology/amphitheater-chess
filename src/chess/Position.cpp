@@ -3,7 +3,7 @@
 #include <charconv>
 #include <vector>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 namespace
@@ -391,4 +391,4 @@ bool Position::operator==(const Position &that) const
            full_move_count_ == that.full_move_count_;
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

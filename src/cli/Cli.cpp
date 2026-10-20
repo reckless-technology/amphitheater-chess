@@ -15,7 +15,7 @@
 #include <mutex>
 #include <ostream>
 
-namespace uci_host::cli
+namespace amphitheater::cli
 {
 
 namespace
@@ -350,13 +350,13 @@ int RunPerft(const std::vector<std::string> &arguments, std::ostream &out, std::
     }
     if (words.size() < 2)
     {
-        err << "uci-host-cli: perft takes a position (startpos or a FEN) and a depth\n";
+        err << "amphitheater-cli: perft takes a position (startpos or a FEN) and a depth\n";
         return 2;
     }
     const auto depth = ParseNumber(words.back(), "perft's depth", 0);
     if (!depth)
     {
-        err << "uci-host-cli: " << depth.ErrorMessage() << '\n';
+        err << "amphitheater-cli: " << depth.ErrorMessage() << '\n';
         return 2;
     }
     words.pop_back();
@@ -369,7 +369,7 @@ int RunPerft(const std::vector<std::string> &arguments, std::ostream &out, std::
                                             : chess::Position::FromFen(fen, chess::FenMode::kTolerant);
     if (!position)
     {
-        err << "uci-host-cli: " << position.ErrorMessage() << '\n';
+        err << "amphitheater-cli: " << position.ErrorMessage() << '\n';
         return 2;
     }
     const auto    start = Clock::now();
@@ -409,7 +409,7 @@ int RunTournament(const std::vector<std::string> &arguments, bool is_match, std:
     auto options = ParseTournamentArguments(arguments, is_match);
     if (!options)
     {
-        err << "uci-host-cli: " << options.ErrorMessage() << '\n';
+        err << "amphitheater-cli: " << options.ErrorMessage() << '\n';
         return 2;
     }
     for (const auto &warning : options->warnings)
@@ -430,7 +430,7 @@ int RunTournament(const std::vector<std::string> &arguments, bool is_match, std:
     const auto        started = tournament.Start();
     if (!started)
     {
-        err << "uci-host-cli: " << started.ErrorMessage() << '\n';
+        err << "amphitheater-cli: " << started.ErrorMessage() << '\n';
         return 1;
     }
     bool has_requested_stop = false;
@@ -506,7 +506,7 @@ int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std
     const auto options = ParseAnalyseArguments(arguments);
     if (!options)
     {
-        err << "uci-host-cli: " << options.ErrorMessage() << '\n';
+        err << "amphitheater-cli: " << options.ErrorMessage() << '\n';
         return 2;
     }
     chess::Position position = chess::Position::Start();
@@ -515,7 +515,7 @@ int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std
         const auto parsed = chess::Position::FromFen(options->fen, chess::FenMode::kTolerant);
         if (!parsed)
         {
-            err << "uci-host-cli: " << parsed.ErrorMessage() << '\n';
+            err << "amphitheater-cli: " << parsed.ErrorMessage() << '\n';
             return 2;
         }
         position = *parsed;
@@ -525,7 +525,7 @@ int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std
         const auto move = chess::ParseUciMove(position, text);
         if (!move)
         {
-            err << "uci-host-cli: " << move.ErrorMessage() << '\n';
+            err << "amphitheater-cli: " << move.ErrorMessage() << '\n';
             return 2;
         }
         position = position.MakeMove(*move);
@@ -534,7 +534,7 @@ int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std
     const auto  started = engine.Start();
     if (!started)
     {
-        err << "uci-host-cli: " << started.ErrorMessage() << '\n';
+        err << "amphitheater-cli: " << started.ErrorMessage() << '\n';
         return 1;
     }
     for (const auto &warning : engine.Warnings())
@@ -625,11 +625,11 @@ int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std
         }
         else if (event->kind == uci::EngineEventKind::kExited)
         {
-            err << "uci-host-cli: the engine exited during the analysis\n";
+            err << "amphitheater-cli: the engine exited during the analysis\n";
             return 1;
         }
     }
-    err << "uci-host-cli: the engine did not answer 'stop'\n";
+    err << "amphitheater-cli: the engine did not answer 'stop'\n";
     return 1;
 }
 
@@ -637,15 +637,15 @@ int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std
 
 std::string UsageText()
 {
-    return R"(Reckless UCI Host - matches, tournaments and analysis with UCI chess engines.
+    return R"(Reckless Amphitheater - matches, tournaments and analysis with UCI chess engines.
 
 Usage:
-  uci-host-cli match      -engine <keys> -engine <keys> [options]
-  uci-host-cli tournament -engine <keys> -engine <keys> [-engine <keys>...] [options]
-  uci-host-cli perft      <startpos|FEN> <depth> [-divide]
-  uci-host-cli analyse    -engine <keys> [-fen <startpos|FEN>] [-moves <uci>...] [-time <s>] [-depth <n>]
+  amphitheater-cli match      -engine <keys> -engine <keys> [options]
+  amphitheater-cli tournament -engine <keys> -engine <keys> [-engine <keys>...] [options]
+  amphitheater-cli perft      <startpos|FEN> <depth> [-divide]
+  amphitheater-cli analyse    -engine <keys> [-fen <startpos|FEN>] [-moves <uci>...] [-time <s>] [-depth <n>]
                           [-multipv <n>]
-  uci-host-cli --version | --help
+  amphitheater-cli --version | --help
 
 Engine keys (-engine for one engine, -each for every engine, the engine's own winning):
   cmd=<program>         the engine to run (required)
@@ -1113,7 +1113,7 @@ int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::os
     }
     if (command == "--version" || command == "-v" || command == "version")
     {
-        out << "Reckless UCI Host " << VersionText() << '\n';
+        out << "Reckless Amphitheater " << VersionText() << '\n';
         return 0;
     }
     if (command == "perft")
@@ -1128,8 +1128,8 @@ int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::os
     {
         return RunAnalyse(rest, out, err);
     }
-    err << "uci-host-cli: unknown command '" << command << "'\n\n" << UsageText();
+    err << "amphitheater-cli: unknown command '" << command << "'\n\n" << UsageText();
     return 2;
 }
 
-} // namespace uci_host::cli
+} // namespace amphitheater::cli

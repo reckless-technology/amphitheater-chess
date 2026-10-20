@@ -16,7 +16,7 @@
 #include <functional>
 #include <thread>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -37,7 +37,7 @@ const PieceSet &Pieces()
 EngineEntry Fake(std::vector<std::string> arguments, std::string name)
 {
     EngineEntry entry;
-    entry.config.executable = UCI_HOST_FAKE_ENGINE;
+    entry.config.executable = AMPHITHEATER_FAKE_ENGINE;
     entry.config.arguments  = std::move(arguments);
     entry.config.name       = std::move(name);
     return entry;
@@ -213,4 +213,4 @@ TEST(Analysis, TheReaperQuitsEnginesOffTheWindowsThread)
     EXPECT_EQ(reaper.Pending(), 0u);
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

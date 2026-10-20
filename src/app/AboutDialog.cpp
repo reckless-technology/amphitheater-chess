@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -32,7 +32,7 @@ constexpr int   kCardWidth    = 640;    ///< The card's width.
 constexpr int   kTitleBand    = 48;     ///< The card's title band (DialogFrame's).
 constexpr int   kFooterBand   = 58;     ///< The card's button band (DialogFrame's).
 
-constexpr const char *kName       = "Reckless UCI Host";
+constexpr const char *kName       = "Reckless Amphitheater";
 constexpr const char *kCopyright  = "Copyright 2026 Jonny Reckless. Reckless Technology.";
 constexpr const char *kTerms      = "Free, proprietary software, used under its end-user licence (EULA.txt).";
 constexpr const char *kEngineNote = "Each engine is a separate program the host runs over UCI, under its own licence.";
@@ -137,8 +137,8 @@ void LinkLabel::MouseUp(const reckless::view::MouseEvent &e)
 }
 
 AboutDialog::AboutDialog(AboutInfo info)
-    : DialogFrame("About Reckless UCI Host", kCardWidth, CardHeightFor(info.engines.size())), info_(std::move(info)),
-      link_("recklesstechnology.com")
+    : DialogFrame("About Reckless Amphitheater", kCardWidth, CardHeightFor(info.engines.size())),
+      info_(std::move(info)), link_("recklesstechnology.com")
 {
     if (const auto bytes = reckless::embedded::Find(kMarkFile); !bytes.empty())
     {
@@ -276,4 +276,4 @@ void AboutDialog::Paint(reckless::gfx::Canvas &c)
                      1, 0.85f);
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

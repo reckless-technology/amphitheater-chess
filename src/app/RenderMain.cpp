@@ -1,7 +1,7 @@
-// uci_host_render_main: the main window drawn to a PNG with no window and no display, through Skia, as the app draws
-// it - the review images in docs/design/ are made with it.
+// amphitheater_render_main: the main window drawn to a PNG with no window and no display, through Skia, as the app
+// draws it - the review images in docs/design/ are made with it.
 //
-//   uci_host_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines] [tournament]
+//   amphitheater_render_main <out.png> [scale] [width height] [flipped] [empty] [newgame] [engines] [tournament]
 //                       [standings] [about]
 //
 // The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        std::fprintf(stderr, "usage: uci_host_render_main <out.png> [scale] [width height] [view]\n");
+        std::fprintf(stderr, "usage: amphitheater_render_main <out.png> [scale] [width height] [view]\n");
         return 2;
     }
     const std::string        out = argv[1];
@@ -118,30 +118,30 @@ int main(int argc, char **argv)
             numbers.push_back(argument);
         }
     }
-    const float scale  = numbers.size() >= 1 ? std::strtof(numbers[0].c_str(), nullptr) : 1.0f;
-    const int   width  = numbers.size() >= 3 ? std::atoi(numbers[1].c_str()) : uci_host::app::MainView::kDesignWidth;
-    const int   height = numbers.size() >= 3 ? std::atoi(numbers[2].c_str()) : uci_host::app::MainView::kDesignHeight;
+    const float scale = numbers.size() >= 1 ? std::strtof(numbers[0].c_str(), nullptr) : 1.0f;
+    const int   width = numbers.size() >= 3 ? std::atoi(numbers[1].c_str()) : amphitheater::app::MainView::kDesignWidth;
+    const int height = numbers.size() >= 3 ? std::atoi(numbers[2].c_str()) : amphitheater::app::MainView::kDesignHeight;
     if (!(scale > 0.0f) || width < 1 || height < 1)
     {
-        std::fprintf(stderr, "uci_host_render_main: a scale above zero and a size of at least one pixel\n");
+        std::fprintf(stderr, "amphitheater_render_main: a scale above zero and a size of at least one pixel\n");
         return 2;
     }
 
-    uci_host::app::InstallFaces();
-    std::string                   error;
-    const uci_host::app::PieceSet pieces = uci_host::app::PieceSet::FromEmbedded(&error);
+    amphitheater::app::InstallFaces();
+    std::string                       error;
+    const amphitheater::app::PieceSet pieces = amphitheater::app::PieceSet::FromEmbedded(&error);
     if (!pieces.IsComplete())
     {
-        std::fprintf(stderr, "uci_host_render_main: the pieces: %s\n", error.c_str());
+        std::fprintf(stderr, "amphitheater_render_main: the pieces: %s\n", error.c_str());
         return 1;
     }
-    RenderHost              host;
-    uci_host::app::MainView view(pieces);
+    RenderHost                  host;
+    amphitheater::app::MainView view(pieces);
     view.SetHost(&host);
-    uci_host::app::MainController controller(view, uci_host::app::ControllerFiles{{}});
+    amphitheater::app::MainController controller(view, amphitheater::app::ControllerFiles{{}});
     if (!is_empty)
     {
-        uci_host::app::ShowSample(view);
+        amphitheater::app::ShowSample(view);
     }
     view.SetFlipped(is_flipped);
     view.SetBounds({width, height});
@@ -149,16 +149,16 @@ int main(int argc, char **argv)
     {
         for (const char *name : {"Pawnstar 2.1", "Zenith 0.9"})
         {
-            uci_host::app::EngineEntry engine;
+            amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
             engine.config.executable = name;
             controller.catalogue().engines.push_back(engine);
         }
-        controller.Command(uci_host::app::kNewGame);
+        controller.Command(amphitheater::app::kNewGame);
     }
     if (is_engines)
     {
-        uci_host::app::EngineEntry pawnstar;
+        amphitheater::app::EngineEntry pawnstar;
         pawnstar.config.executable  = "C:/Engines/pawnstar/pawnstar.exe";
         pawnstar.engine_name        = "Pawnstar 2.1";
         pawnstar.author             = "Jonny Reckless";
@@ -172,49 +172,49 @@ int main(int argc, char **argv)
               "option name Style type combo default Normal var Solid var Normal var Risky",
               "option name UCI_ShowWDL type check default false", "option name SyzygyPath type string default <empty>"})
         {
-            pawnstar.declared.push_back(*uci_host::uci::ParseOptionLine(line));
+            pawnstar.declared.push_back(*amphitheater::uci::ParseOptionLine(line));
         }
         pawnstar.SetOption("Hash", "64");
-        uci_host::app::EngineEntry zenith;
+        amphitheater::app::EngineEntry zenith;
         zenith.config.executable       = "C:/Engines/zenith/zenith.exe";
         zenith.engine_name             = "Zenith 0.9";
         zenith.author                  = "Jonny Reckless";
         controller.catalogue().engines = {pawnstar, zenith};
-        controller.Command(uci_host::app::kEngineManager);
+        controller.Command(amphitheater::app::kEngineManager);
     }
     if (is_tournament)
     {
         for (const char *name : {"Pawnstar 2.1", "Zenith 0.9", "Stoopid Chess 1.4"})
         {
-            uci_host::app::EngineEntry engine;
+            amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
             engine.config.executable = name;
             controller.catalogue().engines.push_back(engine);
         }
-        controller.Command(uci_host::app::kNewTournament);
+        controller.Command(amphitheater::app::kNewTournament);
     }
     // Ten games of a double round robin of four: the leader two and a half points clear, one pairing yet to meet.
-    using uci_host::chess::GameResult;
+    using amphitheater::chess::GameResult;
     const std::vector<std::string> names = {"Pawnstar 2.1", "Zenith 0.9", "Stoopid Chess 1.4", "Blunderbuss 3"};
-    const std::vector<uci_host::match::GameResultEntry> results = {
+    const std::vector<amphitheater::match::GameResultEntry> results = {
         {0, 1, GameResult::kWhiteWins}, {1, 0, GameResult::kDraw},      {0, 2, GameResult::kWhiteWins},
         {2, 0, GameResult::kDraw},      {1, 2, GameResult::kBlackWins}, {2, 1, GameResult::kWhiteWins},
         {0, 3, GameResult::kWhiteWins}, {3, 0, GameResult::kBlackWins}, {1, 3, GameResult::kDraw},
         {3, 1, GameResult::kWhiteWins}};
-    uci_host::app::StandingsDialog standings([&] { return std::make_pair(names, results); });
+    amphitheater::app::StandingsDialog standings([&] { return std::make_pair(names, results); });
     if (is_standings)
     {
         view.SetOverlay(&standings);
     }
     // The five engines the installers carry, at the versions packaging/engines.json pins, as an install's About shows.
-    uci_host::app::AboutInfo about_info;
-    about_info.version = uci_host::VersionText();
+    amphitheater::app::AboutInfo about_info;
+    about_info.version = amphitheater::VersionText();
     about_info.engines = {{"Pawnstar", "1.2.0", "GPL-3.0"},
                           {"Zenith", "2.1.0", "GPL-3.0-or-later"},
                           {"Pawnstar-Go", "1.2.0", "GPL-3.0"},
                           {"Pawnstar-RS", "1.2.0", "GPL-3.0"},
                           {"Stoopid Chess", "3.0.0", "GPL-3.0"}};
-    uci_host::app::AboutDialog about(about_info);
+    amphitheater::app::AboutDialog about(about_info);
     if (is_about)
     {
         view.SetOverlay(&about);
@@ -226,7 +226,7 @@ int main(int argc, char **argv)
         const auto canvas = reckless::gfx::MakeImageCanvas(image, scale);
         if (!canvas)
         {
-            std::fprintf(stderr, "uci_host_render_main: no canvas\n");
+            std::fprintf(stderr, "amphitheater_render_main: no canvas\n");
             return 1;
         }
         reckless::view::PaintTree(view, *canvas);
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
     file.write(reinterpret_cast<const char *>(png.data()), static_cast<std::streamsize>(png.size()));
     if (!file)
     {
-        std::fprintf(stderr, "uci_host_render_main: could not write %s\n", out.c_str());
+        std::fprintf(stderr, "amphitheater_render_main: could not write %s\n", out.c_str());
         return 1;
     }
     std::printf("%s: %d x %d at %.2fx\n", out.c_str(), width, height, static_cast<double>(scale));

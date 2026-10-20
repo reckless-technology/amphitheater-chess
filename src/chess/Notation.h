@@ -11,7 +11,7 @@
 #include <string>
 #include <string_view>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /**
@@ -50,4 +50,4 @@ std::string MoveToSan(const Position &position, Move move);
  */
 Result<Move> ParseSan(const Position &position, std::string_view text);
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

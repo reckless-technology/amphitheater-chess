@@ -10,7 +10,7 @@
 #include "AttackTables.h"
 #include "Move.h"
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /// @brief Encapsulates the four castling-rights flags (white/black × kingside/queenside).
@@ -209,4 +209,4 @@ constexpr std::string CastlingRights::ToFenString() const
     return s;
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

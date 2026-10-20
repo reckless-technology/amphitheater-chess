@@ -1,7 +1,8 @@
 #pragma once
 /// @file WindowSizes.h The window's sizes the View menu offers - 50 % to 150 % of the layout's design size, the
 /// content drawn at exactly that scale - which one is in force, which the window's screen takes, the next up and down,
-/// and the one chosen kept across launches in `reckless-technology/uci-host/window.json` in the user's settings folder.
+/// and the one chosen kept across launches in `reckless-technology/amphitheater/window.json` in the user's settings
+/// folder.
 
 #include "AppPlatform.h"
 #include "AppRoot.h"
@@ -12,7 +13,7 @@
 #include <filesystem>
 #include <optional>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** The sizes the View menu offers, in percent of the layout's design size, smallest first. */
@@ -114,7 +115,8 @@ class WindowSizes
      */
     static bool Store(const std::filesystem::path &file, std::optional<int> percent);
 
-    /** @return `reckless-technology/uci-host/window.json` in the user's settings folder; empty where there is none. */
+    /** @return `reckless-technology/amphitheater/window.json` in the user's settings folder; empty where there is none.
+     */
     static std::filesystem::path DefaultFile();
 
   private:
@@ -141,4 +143,4 @@ class WindowSizes
     double                    elapsed_ = 0.0;     ///< Seconds since the room was last asked.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

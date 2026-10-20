@@ -14,7 +14,7 @@
 
 #include <string_view>
 
-namespace uci_host::app::theme
+namespace amphitheater::app::theme
 {
 
 using reckless::gfx::Color;
@@ -71,9 +71,9 @@ inline reckless::look::Palette Buttons()
     return {kWindow, kInk, kAmber, kPlate, kAmberDim};
 }
 
-} // namespace uci_host::app::theme
+} // namespace amphitheater::app::theme
 
-namespace uci_host::app::fonts
+namespace amphitheater::app::fonts
 {
 
 using reckless::gfx::Font;
@@ -123,9 +123,9 @@ inline Font Plate()
     return Font(16.5f).Bold();
 }
 
-} // namespace uci_host::app::fonts
+} // namespace amphitheater::app::fonts
 
-namespace uci_host::app::theme
+namespace amphitheater::app::theme
 {
 
 /**
@@ -152,9 +152,9 @@ inline reckless::view::Button::Painter PlatePainter()
     };
 }
 
-} // namespace uci_host::app::theme
+} // namespace amphitheater::app::theme
 
-namespace uci_host::app::theme
+namespace amphitheater::app::theme
 {
 
 /**
@@ -177,4 +177,4 @@ inline reckless::app::MenuBarStyle MenuBarLook()
     return style;
 }
 
-} // namespace uci_host::app::theme
+} // namespace amphitheater::app::theme

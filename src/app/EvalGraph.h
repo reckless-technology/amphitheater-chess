@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** The graph of the evaluation. */
@@ -97,4 +97,4 @@ class EvalGraph final : public reckless::view::View
     std::string             caption_;       ///< The bottom right's text.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

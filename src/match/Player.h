@@ -17,7 +17,7 @@
 #include <string>
 #include <utility>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 /** What a player is asked: the game so far, the clocks, and when its time is up. */
@@ -127,4 +127,4 @@ class CallbackPlayer : public Player
     Chooser     chooser_; ///< What chooses its moves.
 };
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

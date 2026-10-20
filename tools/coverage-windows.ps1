@@ -69,9 +69,9 @@ $merged = Join-Path $profiles 'merged.profdata'
 Invoke-Native 'llvm-profdata merge' { llvm-profdata merge -sparse -o $merged $raw }
 
 # The binaries the tests ran: every suite, the fake engine and the command-line tool.
-$binaries = @(Get-ChildItem -Path (Join-Path $build 'tests') -Filter 'uci_host_*.exe' | ForEach-Object { $_.FullName })
-$binaries += (Resolve-Path (Join-Path $build 'src/cli/uci-host-cli.exe')).Path
-$render = Join-Path $build 'src/app/uci_host_render_main.exe'
+$binaries = @(Get-ChildItem -Path (Join-Path $build 'tests') -Filter 'amphitheater_*.exe' | ForEach-Object { $_.FullName })
+$binaries += (Resolve-Path (Join-Path $build 'src/cli/amphitheater-cli.exe')).Path
+$render = Join-Path $build 'src/app/amphitheater_render_main.exe'
 if (Test-Path $render) { $binaries += (Resolve-Path $render).Path }
 $objects = @($binaries[0])
 foreach ($binary in $binaries[1..($binaries.Count - 1)]) { $objects += @('-object', $binary) }

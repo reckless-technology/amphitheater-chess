@@ -1,14 +1,14 @@
 #pragma once
 /// @file Cli.h The command-line runner: matches, tournaments, perft and analysis, as one function.
 ///
-/// uci-host-cli's main hands its UTF-8 arguments to RunCli, which the tests call in-process too. The arguments
+/// amphitheater-cli's main hands its UTF-8 arguments to RunCli, which the tests call in-process too. The arguments
 /// follow the conventions cutechess-cli and fastchess share (-engine, -each, -tc, -games, -openings, -resign, -draw,
 /// -pgnout), so a script written for either reads here with little change:
 ///
-///   uci-host-cli match      -engine cmd=A [name=..] -engine cmd=B -each tc=40/60+0.6 -games 10 -concurrency 2
-///   uci-host-cli tournament -engine cmd=A -engine cmd=B -engine cmd=C -each st=0.1 -rounds 2 -double
-///   uci-host-cli perft      <fen|startpos> <depth> [-divide]
-///   uci-host-cli analyse    -engine cmd=A -fen <fen|startpos> [-moves e2e4 ...] -time 5 [-depth N] [-multipv N]
+///   amphitheater-cli match      -engine cmd=A [name=..] -engine cmd=B -each tc=40/60+0.6 -games 10 -concurrency 2
+///   amphitheater-cli tournament -engine cmd=A -engine cmd=B -engine cmd=C -each st=0.1 -rounds 2 -double
+///   amphitheater-cli perft      <fen|startpos> <depth> [-divide]
+///   amphitheater-cli analyse    -engine cmd=A -fen <fen|startpos> [-moves e2e4 ...] -time 5 [-depth N] [-multipv N]
 ///
 /// UsageText has the whole syntax.
 
@@ -23,13 +23,13 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::cli
+namespace amphitheater::cli
 {
 
 /** @return The full usage text. */
 std::string UsageText();
 
-using uci_host::VersionText; // The host's version, MAJOR.MINOR.BUILD (version/Version.h).
+using amphitheater::VersionText; // The host's version, MAJOR.MINOR.BUILD (version/Version.h).
 
 /** What "match" and "tournament" were asked for, read from the arguments. */
 struct TournamentOptions
@@ -76,4 +76,4 @@ Result<AnalyseOptions> ParseAnalyseArguments(const std::vector<std::string> &arg
 int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err,
            const std::atomic<bool> *stop = nullptr);
 
-} // namespace uci_host::cli
+} // namespace amphitheater::cli

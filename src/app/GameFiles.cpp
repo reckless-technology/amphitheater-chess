@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <ctime>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 GameInfo InfoFromPgn(const chess::PgnGame &game)
@@ -105,4 +105,4 @@ PastedGames ReadPasted(std::string_view text)
     return pasted;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

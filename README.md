@@ -1,8 +1,8 @@
-# Reckless UCI Host
+# Reckless Amphitheater
 
 A chess GUI and UCI engine host for Windows, macOS and Linux, in C++20. This repository holds its toolkit-free core -
-the rules of chess, UCI engines as child processes, games, matches and tournaments between them - `uci-host-cli`, a
-command-line match and tournament runner on that core, and the window, `RecklessUciHost`, drawn with Skia on
+the rules of chess, UCI engines as child processes, games, matches and tournaments between them - `amphitheater-cli`, a
+command-line match and tournament runner on that core, and the window, `Amphitheater`, drawn with Skia on
 reckless-toolkit (a git submodule at `external/reckless-toolkit`), which drives the same libraries.
 
 Proprietary and free: see [LICENSE](LICENSE); the releases are licensed to their users under [EULA.txt](EULA.txt).
@@ -17,11 +17,11 @@ and each engine's source (its public repository at the release's tag) in the not
 
 | Library | Directory | What it does |
 |---|---|---|
-| `uci_host_chess` | `src/chess/` | The board and its legal move generator (adapted from pawnstar), FEN (strict and tolerant), SAN and UCI notation, games and the rules that end them, PGN reading and writing, Polyglot opening books, time controls and clocks |
-| `uci_host_uci` | `src/uci/` | A child process with pipes and reader threads (Windows and POSIX), the UCI protocol parsed and formatted, and the engine session |
-| `uci_host_match` | `src/match/` | Players, the game runner (clocks, legality, adjudication, books, pondering, PGN with per-move comments), openings, the round-robin schedule, statistics, and tournaments played in parallel |
-| `uci_host_cli_core`, `uci-host-cli` | `src/cli/` | The command line: `match`, `tournament`, `perft`, `analyse` |
-| `uci_host_gui`, `RecklessUciHost` | `src/app/` | The window on the toolkit: the board, the moves, the game's card, the analysis, the evaluation graph, the engine log, the menus, and the controllers behind them |
+| `amphitheater_chess` | `src/chess/` | The board and its legal move generator (adapted from pawnstar), FEN (strict and tolerant), SAN and UCI notation, games and the rules that end them, PGN reading and writing, Polyglot opening books, time controls and clocks |
+| `amphitheater_uci` | `src/uci/` | A child process with pipes and reader threads (Windows and POSIX), the UCI protocol parsed and formatted, and the engine session |
+| `amphitheater_match` | `src/match/` | Players, the game runner (clocks, legality, adjudication, books, pondering, PGN with per-move comments), openings, the round-robin schedule, statistics, and tournaments played in parallel |
+| `amphitheater_cli_core`, `amphitheater-cli` | `src/cli/` | The command line: `match`, `tournament`, `perft`, `analyse` |
+| `amphitheater_gui`, `Amphitheater` | `src/app/` | The window on the toolkit: the board, the moves, the game's card, the analysis, the evaluation graph, the engine log, the menus, and the controllers behind them |
 
 The suites are in `tests/` (GoogleTest), with a scriptable fake engine (`tests/fake_engine/`) that the UCI, match and
 command-line suites play against: normal, slow, crashing, hanging, garbage-writing, illegal-moving.
@@ -87,10 +87,10 @@ hooks and the editor's extensions; `-Check` / `--check` only reports. In VS Code
 tasks.
 
 The window is built on the toolkit, a private repository at `external/reckless-toolkit`: clone with
-`git clone --recurse-submodules`, or `git submodule update --init` after a plain clone. `-DUCI_HOST_GUI=OFF` builds
+`git clone --recurse-submodules`, or `git submodule update --init` after a plain clone. `-DAMPHITHEATER_GUI=OFF` builds
 the core, the command line and their suites alone, with no submodule. The app lands at
-`build/<preset>/src/app/RecklessUciHost.exe` on Windows, `build/<preset>/src/app/RecklessUciHost.app` on macOS and
-`build/<preset>/src/app/RecklessUciHost` on Linux.
+`build/<preset>/src/app/Amphitheater.exe` on Windows, `build/<preset>/src/app/Amphitheater.app` on macOS and
+`build/<preset>/src/app/amphitheater` on Linux.
 
 ```
 cmake --preset release && cmake --build --preset release && ctest --preset release
@@ -108,27 +108,27 @@ runtime.
 
 | CTest | Binary | What it holds |
 |---|---|---|
-| `chess` | `uci_host_chess_test` | perft, FEN, SAN and UCI notation, games and draw rules, PGN, Polyglot keys and books, time controls and clocks |
-| `uci` | `uci_host_uci_test` | the protocol's parsers and formatters; the child process and the engine session against the fake engine |
-| `match` | `uci_host_match_test` | games between fake engines (every way one ends, pondering, books), the schedule, statistics, openings, tournaments |
-| `cli` | `uci_host_cli_test` | the command line in-process: every subcommand and the arguments it refuses |
-| `cli_perft`, `cli_match` | `uci-host-cli` | the executable end to end |
-| `integration` | `uci_host_integration_test` | a real engine, named by `UCI_HOST_TEST_ENGINE`; skipped when unset |
-| `gui` | `uci_host_window_test` | the window with no window: the pieces, the board's geometry and a person's moves on it, the lists, the graph, the controller, the window drawn through Skia |
-| `app_smoke` | `RecklessUciHost --smoke` | the app opens its window and draws thirty frames (label `window`: a display is needed) |
+| `chess` | `amphitheater_chess_test` | perft, FEN, SAN and UCI notation, games and draw rules, PGN, Polyglot keys and books, time controls and clocks |
+| `uci` | `amphitheater_uci_test` | the protocol's parsers and formatters; the child process and the engine session against the fake engine |
+| `match` | `amphitheater_match_test` | games between fake engines (every way one ends, pondering, books), the schedule, statistics, openings, tournaments |
+| `cli` | `amphitheater_cli_test` | the command line in-process: every subcommand and the arguments it refuses |
+| `cli_perft`, `cli_match` | `amphitheater-cli` | the executable end to end |
+| `integration` | `amphitheater_integration_test` | a real engine, named by `AMPHITHEATER_TEST_ENGINE`; skipped when unset |
+| `gui` | `amphitheater_window_test` | the window with no window: the pieces, the board's geometry and a person's moves on it, the lists, the graph, the controller, the window drawn through Skia |
+| `app_smoke` | `Amphitheater --smoke` | the app opens its window and draws thirty frames (label `window`: a display is needed) |
 | `packaging` | `tests/packaging/test_bundled_engines.py` | the engines' pins, a hash that differs refused, the stage's layout and manifest, the handshake and the smoke test, the pins' update |
 | `notices` | `tools/third_party_notices.py --check` | `THIRD-PARTY-NOTICES.txt` as the build's fetches and the engines' pins write it |
 | `icon` | `tools/make_icon.py --check` | the committed icon as the script renders it from the artwork; skipped where the Python lacks Pillow or resvg-py |
-| `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings`, `render_about` | `uci_host_render_main` | the window and its dialogs drawn to PNGs with no display |
+| `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings`, `render_about` | `amphitheater_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```
-UCI_HOST_TEST_ENGINE=/path/to/engine ctest --preset release -R integration --output-on-failure
-UCI_HOST_PERFT_BUDGET=200000000 build/release/tests/uci_host_chess_test --gtest_filter='Perft.*'
+AMPHITHEATER_TEST_ENGINE=/path/to/engine ctest --preset release -R integration --output-on-failure
+AMPHITHEATER_PERFT_BUDGET=200000000 build/release/tests/amphitheater_chess_test --gtest_filter='Perft.*'
 ```
 
 ## The window
 
-`RecklessUciHost` is the GUI, on the toolkit's app shell (`AppRun`, `AppRoot`: the window, its loop, the zoom below the
+`Amphitheater` is the GUI, on the toolkit's app shell (`AppRun`, `AppRoot`: the window, its loop, the zoom below the
 layout's least and the tooltips), its child window on Skia and its views. The layout follows the approved mockup
 (`docs/design/main-window-mockup.html`, viewable through `docs/design/build-mockup.py`) with the board given the room:
 the menu bar; the board, as large as the height above the foot allows, its squares whole pixels (80 at the 1380 x 1120
@@ -146,7 +146,7 @@ when it is moved in until all of it stands there, and the layout is drawn at the
 (`AppRoot::SetFixedZoom`). The size drawn is ticked; dragging the frame to any other size ticks none and the layout
 follows the window again as above. A size the window's screen cannot take whole is dim rather than shrunk to fit, so a
 ticked size is always the one drawn. Larger and Smaller step to the next size that fits and stop at the ends. The size
-chosen is kept in `reckless-technology/uci-host/window.json` in the user's settings folder, and the next launch opens
+chosen is kept in `reckless-technology/amphitheater/window.json` in the user's settings folder, and the next launch opens
 at it, held to its screen; with none kept - a first launch, or a window last left at a dragged size - the window opens
 at the design size, held to its screen. The moves
 and the log are a whole number of rows tall, so a list kept on the move shown or the newest line never leaves part of a
@@ -184,12 +184,12 @@ the keys work as soon as the window has the keyboard, with no click into it firs
 through the game and F flips the board; with Command on a Mac and Control elsewhere, N starts a new game, O and S open
 and save PGN, C copies the FEN and Shift+C the PGN, V pastes a FEN or a PGN, Z takes back, E manages the engines, Q
 quits, 0 makes the window 100 %, = (or +) the next size up and - the next size down. A list or a line that has the keyboard keeps its own keys, and every menu waits while a dialog is open. The
-window's title follows the game - "White vs Black - Reckless UCI Host", the file's name before the app's while the game
+window's title follows the game - "White vs Black - Reckless Amphitheater", the file's name before the app's while the game
 shown was opened from a file or saved to one. The lists' scroll bars are in the accent.
 
 Help > Updates is the toolkit's update check (`update::Checker`, `app::MakeUpdateChecker`): at most once a day, while the
-window shows, a plain GET of `https://recklesstechnology.com/updates/uci-host.json` (the website writes it as a release
-is promoted; until then a check finds nothing and says so), the answer kept in `reckless-technology/uci-host-updates.json`
+window shows, a plain GET of `https://recklesstechnology.com/updates/amphitheater.json` (the website writes it as a release
+is promoted; until then a check finds nothing and says so), the answer kept in `reckless-technology/amphitheater-updates.json`
 in the user's settings folder; its menu says what the check found, opens a newer release's page and turns checking by
 the clock on and off, and the status bar says UPDATE while a newer release is out. Nothing is downloaded or installed.
 A launch's check (`--smoke`) makes none, and `RECKLESS_UPDATE_CHECK=off` - every CI job sets it - switches it off.
@@ -239,8 +239,11 @@ which fills the engine's name, author and every option it declares; Detect runs 
 editor sets the name to show, the program's arguments, pondering, whether Analyse runs it, a depth limit for its
 games, its own Polyglot book and the book's depth, and each declared option as a control of its kind - a check box,
 a spin's line held to its range, a combo's list, a button pressed at every start, a string's line - a value back at
-its default no longer configured. The list is JSON, `reckless-technology/uci-host/engines.json` in the user's settings
-folder (`%APPDATA%` on Windows, `~/Library/Application Support` on macOS, `~/.config` on Linux).
+its default no longer configured. The list is JSON, `reckless-technology/amphitheater/engines.json` in the user's settings
+folder (`%APPDATA%` on Windows, `~/Library/Application Support` on macOS, `~/.config` on Linux). As the app starts it
+copies into `reckless-technology/amphitheater/` each file it lacks from `reckless-technology/uci-host/`, where earlier
+builds kept the engine list and the window's size (`SettingsFolder.h`); nothing there is overwritten, and the earlier
+folder is left as it is.
 
 File > Open PGN shows a file's game, or lists a file's many games - number, players, result, event, date, length - to
 pick one from (a game that cannot be read is skipped and counted); a `.pgn` named on the command line opens with the
@@ -251,7 +254,7 @@ comment; anything else with the Seven Tag Roster from what the card knows. Edit 
 position shown or the game on the clipboard; Paste FEN or PGN takes a position, a game, or a list of games to pick
 from. The window reads and writes the clipboard through the toolkit's app platform.
 
-Match > New match and Tournament > New tournament take the engines and uci-host-cli's options - the time control,
+Match > New match and Tournament > New tournament take the engines and amphitheater-cli's options - the time control,
 games and rounds, a double round robin, repeated openings, concurrency, an opening file, the adjudications, a PGN
 file, and any other the command line has, typed as it takes them - and write them as the command line's own
 arguments, which its own reader turns into the tournament's settings (`cli::ParseTournamentArguments`), so the window
@@ -262,7 +265,7 @@ blocks and their lines in the log; the card carries the match's score with its E
 tournament's leader. Tournament > Standings and crosstable shows both in the toolkit's lists, followed as games
 finish. Stop abandons the games in progress; the workers finish their moves in the background.
 
-`uci_host_render_main <out.png> [scale] [width height] [view]` draws the window to a PNG with the mockup's state, with
+`amphitheater_render_main <out.png> [scale] [width height] [view]` draws the window to a PNG with the mockup's state, with
 no window and no display; the view is `flipped`, `empty` (a fresh window), `newgame`, `engines` (the engine manager),
 `tournament` (a new tournament's setup), `standings` (the standings and crosstable), `about` (Help > About, for
 an install carrying the five pinned engines). The review images in `docs/design/` are made with it at 1380 x 1120:
@@ -275,15 +278,15 @@ The arguments follow the conventions cutechess-cli and fastchess share, so their
 change; the output's score and Elo lines read the same way.
 
 ```
-uci-host-cli match -engine cmd=./engine-a name=A -engine cmd=./engine-b name=B -each tc=40/60+0.6 option.Hash=64
+amphitheater-cli match -engine cmd=./engine-a name=A -engine cmd=./engine-b name=B -each tc=40/60+0.6 option.Hash=64
                    -games 2 -rounds 50 -repeat -concurrency 4 -openings file=book.epd order=random
                    -resign movecount=3 score=600 -draw movenumber=40 movecount=8 score=10 -pgnout games.pgn
-uci-host-cli tournament -engine cmd=./a -engine cmd=./b -engine cmd=./c -each st=0.5 -double -concurrency 3
-uci-host-cli match -engine cmd=./a book=book.bin bookdepth=16 ponder -engine cmd=./b ponder -each tc=60+0.5
+amphitheater-cli tournament -engine cmd=./a -engine cmd=./b -engine cmd=./c -each st=0.5 -double -concurrency 3
+amphitheater-cli match -engine cmd=./a book=book.bin bookdepth=16 ponder -engine cmd=./b ponder -each tc=60+0.5
                    -games 2 -rounds 20 -repeat -openings file=book.bin format=polyglot plies=8
-uci-host-cli perft startpos 6
-uci-host-cli perft "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1" 4 -divide
-uci-host-cli analyse -engine cmd=./engine -fen startpos -moves e2e4 e7e5 -time 10
+amphitheater-cli perft startpos 6
+amphitheater-cli perft "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1" 4 -divide
+amphitheater-cli analyse -engine cmd=./engine -fen startpos -moves e2e4 e7e5 -time 10
 ```
 
 Engines take `cmd=`, `name=`, `dir=`, `arg=` (repeatable), `option.<name>=<value>`, their own `tc=`, `st=`,
@@ -292,7 +295,7 @@ engine's own keys winning. A time control is
 `[moves/]time[+increment]`, times in seconds or minutes:seconds, sessions separated by commas (`40/120,20/60,15+30`).
 A match prints each game as it ends and the score after it - wins, losses, draws, the score fraction, the Elo
 difference with its 95 % margin, the likelihood of superiority and the draw ratio; a tournament ends with its standings
-(points, then Sonneborn-Berger) and a crosstable. `uci-host-cli --help` has the whole syntax. Ctrl+C stops a match,
+(points, then Sonneborn-Berger) and a crosstable. `amphitheater-cli --help` has the whole syntax. Ctrl+C stops a match,
 abandoning the games in progress.
 
 Every score the command line writes is from White's side: each PGN move's comment, `{+0.35/18 1.2s}` (White better,
@@ -304,7 +307,7 @@ the engines' lines exactly as they went, their scores their own.
 ## Versions
 
 One version, MAJOR.MINOR.BUILD, from git alone: MAJOR.MINOR is the nearest `vMAJOR.MINOR` tag reachable from HEAD and
-BUILD the commits since it (`cmake/UciHostVersion.cmake`). With no such tag the build reports 0.0.0 and the configure
+BUILD the commits since it (`cmake/AmphitheaterVersion.cmake`). With no such tag the build reports 0.0.0 and the configure
 says so. Nothing in the tree is edited to release.
 
 ## The bundled engines
@@ -339,8 +342,8 @@ On macOS the bundled engines are arm64 only: the engines' releases build no Inte
 universal.
 
 They lie in a folder named `engines`, one folder per engine with `bundled.json` beside them: in the install folder on
-Windows (`{app}\engines\<engine>\`), inside the bundle on macOS (`RecklessUciHost.app/Contents/Resources/engines/`),
-under `/usr/lib/reckless-uci-host/engines/` from the Debian package (whose host is in `/opt/reckless-technology/bin`),
+Windows (`{app}\engines\<engine>\`), inside the bundle on macOS (`Amphitheater.app/Contents/Resources/engines/`),
+under `/usr/lib/reckless-amphitheater/engines/` from the Debian package (whose host is in `/opt/reckless-technology/bin`),
 and beside the binary in the portable Linux zip. The manifest, which `packaging/stage.py` writes as it lays the engines
 out, gives each engine's name, version, licence, seeded options, the options its handshake declared when it was packaged, and
 its builds in order, each with what it asks of the CPU; every staged engine answers its handshake before the stage
@@ -368,13 +371,13 @@ and removes it like any other, for good.
 ## Packages and releases
 
 `packaging/stage.py <build-dir> <dist-dir> windows|macos|linux` stages a release from a release tree: the window,
-`uci-host-cli`, the engines, `EULA.txt` and `THIRD-PARTY-NOTICES.txt`. From the stage:
+`amphitheater-cli`, the engines, `EULA.txt` and `THIRD-PARTY-NOTICES.txt`. From the stage:
 
 | Platform | Package | Made and checked by |
 |---|---|---|
-| Windows | `reckless-uci-host-<v>-win64-setup.exe`: Inno Setup, per user by default (the dialog offers Program Files), under `Reckless Technology\UCI Host`, the engines in `engines\`, signed through SSL.com eSigner | `packaging/windows/make-installer.ps1`; `test-installer.ps1` installs a test build of it, checks every file and engine at its place, upgrades over an earlier release's engine and uninstalls, leaving a sibling product's folder alone |
-| macOS | `reckless-uci-host-<v>-macos.pkg`: the app in `/Applications/Reckless Technology`, `uci-host-cli` in `/usr/local/bin`, the documents in `/Library/Documentation/Reckless UCI Host`, an uninstaller beside the app; every engine, the app and the tool signed with the Developer ID and the hardened runtime from the inside out (`packaging/macos/sign.sh`), the package notarised and stapled | `packaging/macos/make-installer.sh`; `test-installer.sh` expands it, holds it to the stage, starts every engine from its place in it, and runs the uninstaller's script on a stand-in for `/` |
-| Linux | `reckless-uci-host-<v>-linux-amd64.deb` and the portable `reckless-uci-host-<v>-linux-x64.zip` | `packaging/linux/make-deb.sh` and `test-deb.sh`; `make-zip.sh`, which unzips what it made and starts every engine from there |
+| Windows | `reckless-amphitheater-<v>-win64-setup.exe`: Inno Setup, per user by default (the dialog offers Program Files), under `Reckless Technology\Amphitheater`, the engines in `engines\`, signed through SSL.com eSigner | `packaging/windows/make-installer.ps1`; `test-installer.ps1` installs a test build of it, checks every file and engine at its place, upgrades over an earlier release's engine and uninstalls, leaving a sibling product's folder alone |
+| macOS | `reckless-amphitheater-<v>-macos.pkg`: the app in `/Applications/Reckless Technology`, `amphitheater-cli` in `/usr/local/bin`, the documents in `/Library/Documentation/Reckless Amphitheater`, an uninstaller beside the app; every engine, the app and the tool signed with the Developer ID and the hardened runtime from the inside out (`packaging/macos/sign.sh`), the package notarised and stapled | `packaging/macos/make-installer.sh`; `test-installer.sh` expands it, holds it to the stage, starts every engine from its place in it, and runs the uninstaller's script on a stand-in for `/` |
+| Linux | `reckless-amphitheater-<v>-linux-amd64.deb` and the portable `reckless-amphitheater-<v>-linux-x64.zip` | `packaging/linux/make-deb.sh` and `test-deb.sh`; `make-zip.sh`, which unzips what it made and starts every engine from there |
 
 `.github/workflows/build.yml` makes all of them unsigned on every pull request that changes code. `release.yml` makes
 them from nothing on a pushed `vMAJOR.MINOR` tag, or by hand on `main` (`gh workflow run release.yml --ref main`;
@@ -382,8 +385,8 @@ them from nothing on a pushed `vMAJOR.MINOR` tag, or by hand on `main` (`gh work
 tag), uploads them onto a draft and publishes it with `release-notes.md`. The Windows installer is signed whenever the
 eSigner secrets are set, a dry run's included, at two of the account's signings. `promote.yml`
 (`gh workflow run promote.yml --ref main -f tag=vX.Y.Z`) copies a published release's four files to the public
-`reckless-technology/uci-host-releases`, under their names and fixed ones, with `SHA256SUMS`, and wakes the website,
-which writes `updates/uci-host.json`; it needs the secret `PUBLIC_RELEASES_TOKEN`.
+`reckless-technology/amphitheater-releases`, under their names and fixed ones, with `SHA256SUMS`, and wakes the website,
+which writes `updates/amphitheater.json`; it needs the secret `PUBLIC_RELEASES_TOKEN`.
 
 ## CI
 

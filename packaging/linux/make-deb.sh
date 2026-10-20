@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
-# The Linux installer of a staged release (packaging/stage.py linux): a Debian package, reckless-uci-host, made with
+# The Linux installer of a staged release (packaging/stage.py linux): a Debian package, reckless-amphitheater, made with
 # dpkg-deb on the machine that built the binaries -
 #
-#   /opt/reckless-technology/bin/RecklessUciHost, uci-host-cli          the binaries, beside the suite's other apps
-#   /usr/bin/uci-host-cli                                               a link to the tool, on every PATH
-#   /usr/lib/reckless-uci-host/engines/<engine>/, bundled.json          the five bundled engines and their manifest,
-#                                                                       where the host in /opt/reckless-technology/bin
-#                                                                       looks for them (src/app/BundledEngines.h)
-#   /usr/share/applications/com.recklesstechnology.ucihost.desktop      the menu entry
-#   /usr/share/icons/hicolor/<N>x<N>/apps/com.recklesstechnology.ucihost.png    the app's icon, Jonny's sketch of the
-#                                                                               Colosseum, each size its own render
-#                                                                               (assets/icon/, tools/make_icon.py), N 16
-#                                                                               to 512; a drawing has no scalable form
-#   /usr/share/doc/reckless-uci-host/                                   EULA.txt, THIRD-PARTY-NOTICES.txt, copyright
+#   /opt/reckless-technology/bin/amphitheater, amphitheater-cli
+#       the binaries, beside the suite's other apps
+#   /usr/bin/amphitheater-cli
+#       a link to the tool, on every PATH
+#   /usr/lib/reckless-amphitheater/engines/<engine>/, bundled.json
+#       the five bundled engines and their manifest, where the program in /opt/reckless-technology/bin looks for them
+#       (src/app/BundledEngines.h)
+#   /usr/share/applications/com.recklesstechnology.amphitheater.desktop
+#       the menu entry
+#   /usr/share/icons/hicolor/<N>x<N>/apps/com.recklesstechnology.amphitheater.png
+#       the app's icon, Jonny's sketch of the Colosseum, each size its own render (assets/icon/, tools/make_icon.py), N
+#       16 to 512; a drawing has no scalable form
+#   /usr/share/doc/reckless-amphitheater/
+#       EULA.txt, THIRD-PARTY-NOTICES.txt, copyright
 #
 # every file the staged one byte for byte, owned by root, 0755 where it runs and 0644 elsewhere, its time
 # SOURCE_DATE_EPOCH's or the last commit's, so one stage makes one package. Its Depends is read off the binaries, the
@@ -29,7 +32,7 @@ dist=$(cd "$1" && pwd)
 version=$2
 out=$3
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "make-deb.sh: the version is MAJOR.MINOR.BUILD, not $version" >&2; exit 2; }
-for file in RecklessUciHost uci-host-cli EULA.txt THIRD-PARTY-NOTICES.txt engines/bundled.json; do
+for file in amphitheater amphitheater-cli EULA.txt THIRD-PARTY-NOTICES.txt engines/bundled.json; do
     [ -e "$dist/$file" ] || { echo "make-deb.sh: $dist has no $file: stage it with packaging/stage.py" >&2; exit 1; }
 done
 here=$(cd "$(dirname "$0")" && pwd)
@@ -38,16 +41,16 @@ for tool in dpkg-deb dpkg objdump ldconfig; do
     command -v "$tool" > /dev/null || { echo "make-deb.sh: $tool is not on the PATH (a Debian-family Linux)" >&2; exit 1; }
 done
 export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git -C "$root" log -1 --format=%ct 2> /dev/null || date +%s)}
-work=$(mktemp -d "${TMPDIR:-/tmp}/uci-host-deb.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/amphitheater-deb.XXXXXX")
 trap 'rm -rf "$work"' EXIT
-pkg="$work/reckless-uci-host"
-id=com.recklesstechnology.ucihost
-engines=/usr/lib/reckless-uci-host/engines
+pkg="$work/reckless-amphitheater"
+id=com.recklesstechnology.amphitheater
+engines=/usr/lib/reckless-amphitheater/engines
 
 install -d -m 0755 "$pkg/DEBIAN" "$pkg/opt/reckless-technology/bin" "$pkg/usr/bin" "$pkg/usr/share/applications" \
-    "$pkg/usr/share/doc/reckless-uci-host" "$pkg$engines"
-install -m 0755 "$dist/RecklessUciHost" "$dist/uci-host-cli" "$pkg/opt/reckless-technology/bin/"
-ln -s /opt/reckless-technology/bin/uci-host-cli "$pkg/usr/bin/uci-host-cli"
+    "$pkg/usr/share/doc/reckless-amphitheater" "$pkg$engines"
+install -m 0755 "$dist/amphitheater" "$dist/amphitheater-cli" "$pkg/opt/reckless-technology/bin/"
+ln -s /opt/reckless-technology/bin/amphitheater-cli "$pkg/usr/bin/amphitheater-cli"
 (cd "$dist/engines" && find . -type d) | while read -r folder; do install -d -m 0755 "$pkg$engines/$folder"; done
 (cd "$dist/engines" && find . -type f) | while read -r file; do
     mode=0644
@@ -59,30 +62,30 @@ for size in 16 24 32 48 64 128 256 512; do
     install -d -m 0755 "$pkg/usr/share/icons/hicolor/${size}x${size}/apps"
     install -m 0644 "$root/assets/icon/png/icon-$size.png" "$pkg/usr/share/icons/hicolor/${size}x${size}/apps/$id.png"
 done
-install -m 0644 "$dist/EULA.txt" "$dist/THIRD-PARTY-NOTICES.txt" "$pkg/usr/share/doc/reckless-uci-host/"
-cat > "$pkg/usr/share/doc/reckless-uci-host/copyright" <<COPYRIGHT
+install -m 0644 "$dist/EULA.txt" "$dist/THIRD-PARTY-NOTICES.txt" "$pkg/usr/share/doc/reckless-amphitheater/"
+cat > "$pkg/usr/share/doc/reckless-amphitheater/copyright" <<COPYRIGHT
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: Reckless UCI Host
+Upstream-Name: Reckless Amphitheater
 Upstream-Contact: Jonny Reckless <hello@recklesstechnology.com>
 Source: https://recklesstechnology.com
 
 Files: *
 Copyright: 2026 Jonny Reckless
 License: proprietary
- Licensed to its users under /usr/share/doc/reckless-uci-host/EULA.txt. The third-party parts it contains are used
- under the licences /usr/share/doc/reckless-uci-host/THIRD-PARTY-NOTICES.txt reproduces.
+ Licensed to its users under /usr/share/doc/reckless-amphitheater/EULA.txt. The third-party parts it contains are used
+ under the licences /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt reproduces.
 
-Files: usr/lib/reckless-uci-host/engines/*
+Files: usr/lib/reckless-amphitheater/engines/*
 Copyright: 2009-2026 Jonny Reckless
 License: GPL-3
  The five bundled chess engines, each a separate program under the GNU General Public License version 3, whose
- text and each engine's source are in /usr/share/doc/reckless-uci-host/THIRD-PARTY-NOTICES.txt; on Debian systems
+ text and each engine's source are in /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt; on Debian systems
  the licence is also in /usr/share/common-licenses/GPL-3.
 COPYRIGHT
-chmod 0644 "$pkg/usr/share/doc/reckless-uci-host/copyright"
+chmod 0644 "$pkg/usr/share/doc/reckless-amphitheater/copyright"
 
 # What the binaries need, by package: the host's and every engine's.
-binaries=("$dist/RecklessUciHost" "$dist/uci-host-cli")
+binaries=("$dist/amphitheater" "$dist/amphitheater-cli")
 while IFS= read -r -d '' file; do
     objdump -p "$file" > /dev/null 2>&1 && binaries+=("$file")
 done < <(find "$dist/engines" -type f -perm -u+x -print0)
@@ -125,7 +128,7 @@ done | sort -u | paste -sd, - | sed 's/,/, /g')
 size=$(du -sk --apparent-size "$pkg" | cut -f1)
 
 cat > "$pkg/DEBIAN/control" <<CONTROL
-Package: reckless-uci-host
+Package: reckless-amphitheater
 Version: $version
 Architecture: amd64
 Maintainer: Jonny Reckless <hello@recklesstechnology.com>
@@ -136,9 +139,9 @@ Section: games
 Priority: optional
 Homepage: https://recklesstechnology.com
 Description: chess GUI and UCI engine host
- Reckless UCI Host plays chess against UCI engines, analyses positions with several
+ Reckless Amphitheater plays chess against UCI engines, analyses positions with several
  engines at once, and runs matches and tournaments between engines, with clocks,
- opening books, adjudication, pondering and PGN. uci-host-cli runs the same matches
+ opening books, adjudication, pondering and PGN. amphitheater-cli runs the same matches
  and tournaments from the command line. Five chess engines come with it, each a
  separate program under the GNU General Public License version 3.
 CONTROL

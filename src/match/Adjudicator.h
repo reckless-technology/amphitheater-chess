@@ -13,7 +13,7 @@
 #include <array>
 #include <optional>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 /** When to resign a game for a side. */
@@ -78,4 +78,4 @@ class Adjudicator
     std::array<int, 2>   drawn_runs_{};   ///< Each side's run of scores within the draw score.
 };
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

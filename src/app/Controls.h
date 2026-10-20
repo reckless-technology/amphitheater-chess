@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** A plate showing one of several named choices; a press opens a menu of them under it. */
@@ -229,4 +229,4 @@ class DialogFrame : public reckless::view::View
     std::vector<std::pair<int, std::unique_ptr<reckless::view::Button>>> buttons_;     ///< Width and button.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

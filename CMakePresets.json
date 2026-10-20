@@ -8,7 +8,7 @@
             "binaryDir": "${sourceDir}/build/${presetName}",
             "generator": "Ninja",
             "cacheVariables": {
-                "UCI_HOST_BUILD_TESTS": "ON"
+                "AMPHITHEATER_BUILD_TESTS": "ON"
             }
         },
         {
@@ -35,14 +35,14 @@
             "displayName": "Coverage: the host's own code instrumented (gcov on gcc, llvm-cov on clang)",
             "inherits": "base",
             "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"},
-            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "UCI_HOST_COVERAGE": "ON"}
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "AMPHITHEATER_COVERAGE": "ON"}
         },
         {
             "name": "asan",
             "displayName": "Sanitizers: address and undefined behaviour, unoptimised (gcc or clang)",
             "inherits": "base",
             "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"},
-            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "UCI_HOST_ASAN": "ON"}
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "AMPHITHEATER_ASAN": "ON"}
         },
         {
             "name": "coverage-windows",
@@ -53,7 +53,7 @@
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "CMAKE_C_COMPILER": "clang-cl",
                 "CMAKE_CXX_COMPILER": "clang-cl",
-                "UCI_HOST_COVERAGE": "ON"
+                "AMPHITHEATER_COVERAGE": "ON"
             }
         },
         {
@@ -61,7 +61,7 @@
             "displayName": "AddressSanitizer, Windows: MSVC's, optimised with debug information",
             "inherits": "base",
             "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
-            "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo", "UCI_HOST_ASAN": "ON"}
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo", "AMPHITHEATER_ASAN": "ON"}
         }
     ],
     "buildPresets": [

@@ -6,7 +6,7 @@
 
 #include <iterator>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 void ShowSample(MainView &view)
@@ -96,4 +96,4 @@ void ShowSample(MainView &view)
         {"White to move", "Pawnstar searching", "Zenith pondering 13.Ne2", "Concurrency 1 \xc2\xb7 game 7 of 20"});
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

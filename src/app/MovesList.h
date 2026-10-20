@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** The moves as the list shows them, and the move the board shows. */
@@ -120,4 +120,4 @@ class MovesList
     reckless::view::ListView list_;  ///< The list.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

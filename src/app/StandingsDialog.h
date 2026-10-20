@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** The standings as the list shows them. */
@@ -105,4 +105,4 @@ class StandingsDialog final : public DialogFrame
     reckless::view::ListView crosstable_;                                   ///< Its list.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

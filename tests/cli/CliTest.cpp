@@ -12,7 +12,7 @@
 #include <fstream>
 #include <sstream>
 
-namespace uci_host::cli
+namespace amphitheater::cli
 {
 namespace
 {
@@ -26,7 +26,7 @@ struct Run
 
 Run RunWith(std::vector<std::string> arguments, const std::atomic<bool> *stop = nullptr)
 {
-    arguments.insert(arguments.begin(), "uci-host-cli");
+    arguments.insert(arguments.begin(), "amphitheater-cli");
     std::ostringstream out;
     std::ostringstream err;
     Run                run;
@@ -36,7 +36,7 @@ Run RunWith(std::vector<std::string> arguments, const std::atomic<bool> *stop = 
     return run;
 }
 
-const std::string kFake = std::string("cmd=") + UCI_HOST_FAKE_ENGINE;
+const std::string kFake = std::string("cmd=") + AMPHITHEATER_FAKE_ENGINE;
 
 std::filesystem::path TempFile(const char *name)
 {
@@ -48,11 +48,11 @@ TEST(Cli, HelpVersionAndUnknownCommands)
     EXPECT_EQ(RunWith({}).code, 2);
     auto run = RunWith({"--help"});
     EXPECT_EQ(run.code, 0);
-    EXPECT_NE(run.out.find("uci-host-cli match"), std::string::npos);
+    EXPECT_NE(run.out.find("amphitheater-cli match"), std::string::npos);
     run = RunWith({"--version"});
     EXPECT_EQ(run.code, 0);
-    EXPECT_NE(run.out.find("Reckless UCI Host "), std::string::npos);
-    EXPECT_EQ(run.out.find("Reckless UCI Host " + VersionText()), 0u);
+    EXPECT_NE(run.out.find("Reckless Amphitheater "), std::string::npos);
+    EXPECT_EQ(run.out.find("Reckless Amphitheater " + VersionText()), 0u);
     run = RunWith({"juggle"});
     EXPECT_EQ(run.code, 2);
     EXPECT_NE(run.err.find("unknown command 'juggle'"), std::string::npos);
@@ -75,9 +75,9 @@ TEST(Cli, Perft)
 
 TEST(Cli, AMatchBetweenFakeEnginesWritesItsGames)
 {
-    const auto pgn = TempFile("uci_host_cli_match.pgn");
+    const auto pgn = TempFile("amphitheater_cli_match.pgn");
     std::filesystem::remove(pgn);
-    const auto epd = TempFile("uci_host_cli_openings.epd");
+    const auto epd = TempFile("amphitheater_cli_openings.epd");
     {
         std::ofstream file(epd);
         file << "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 id \"e4\";\n"
@@ -230,7 +230,7 @@ TEST(Cli, RefusesBadMatchArguments)
 
 TEST(Cli, ParsesOpeningsFromPgnByTheFileName)
 {
-    const auto pgn = TempFile("uci_host_cli_openings.pgn");
+    const auto pgn = TempFile("amphitheater_cli_openings.pgn");
     {
         std::ofstream file(pgn);
         file << "[Event \"x\"]\n\n1. e4 e5 2. Nf3 *\n";
@@ -314,7 +314,7 @@ std::string WriteLineBook(const char *name)
 
 TEST(Cli, ReadsBooksAndPonderingForEachEngine)
 {
-    const auto book = WriteLineBook("uci_host_cli_book.bin");
+    const auto book = WriteLineBook("amphitheater_cli_book.bin");
     const auto options =
         ParseTournamentArguments({"-engine", kFake, "book=" + book, "bookdepth=4", "ponder", "-engine", kFake,
                                   "ponder=false", "-each", "book=" + book, "-st", "1", "-srand", "9"},
@@ -334,7 +334,7 @@ TEST(Cli, ReadsBooksAndPonderingForEachEngine)
 
 TEST(Cli, ReadsAPolyglotBookAsAnOpeningSource)
 {
-    const auto book = WriteLineBook("uci_host_cli_openings.bin");
+    const auto book = WriteLineBook("amphitheater_cli_openings.bin");
     auto       options =
         ParseTournamentArguments({"-engine", kFake, "-engine", kFake, "-st", "1", "-openings", "file=" + book}, true);
     ASSERT_TRUE(options) << options.ErrorMessage();
@@ -381,4 +381,4 @@ TEST(Cli, RefusesBadBookAndPonderKeys)
 }
 
 } // namespace
-} // namespace uci_host::cli
+} // namespace amphitheater::cli

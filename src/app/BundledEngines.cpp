@@ -13,7 +13,7 @@
 #endif
 
 #if defined(_M_X64) || defined(__x86_64__)
-#define UCI_HOST_X86_64 1
+#define AMPHITHEATER_X86_64 1
 #if defined(_MSC_VER)
 #include <intrin.h>
 #else
@@ -21,7 +21,7 @@
 #endif
 #endif
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -69,7 +69,7 @@ bool SameFile(const std::filesystem::path &a, const std::filesystem::path &b)
     return std::filesystem::equivalent(a, b, ignored);
 }
 
-#if defined(UCI_HOST_X86_64)
+#if defined(AMPHITHEATER_X86_64)
 
 /** One CPUID leaf's four registers. */
 struct CpuidRegisters
@@ -134,7 +134,7 @@ constexpr bool Bit(std::uint32_t value, int bit)
 CpuLevels DetectCpuLevels()
 {
     CpuLevels levels;
-#if defined(UCI_HOST_X86_64)
+#if defined(AMPHITHEATER_X86_64)
     const CpuidRegisters vendor_leaf = Cpuid(0, 0);
     if (vendor_leaf.eax < 7)
     {
@@ -228,7 +228,7 @@ std::filesystem::path BundledEnginesFolder(const std::filesystem::path &executab
 #if !defined(_WIN32) && !defined(__APPLE__)
     if (folder == std::filesystem::path("/opt/reckless-technology/bin"))
     {
-        candidates.push_back("/usr/lib/reckless-uci-host/engines");
+        candidates.push_back("/usr/lib/reckless-amphitheater/engines");
     }
 #endif
     for (const std::filesystem::path &candidate : candidates)
@@ -374,4 +374,4 @@ bool SeedBundledEngines(EngineCatalogue &catalogue, const std::vector<BundledEng
     return is_changed;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -5,7 +5,7 @@
 #include <charconv>
 #include <cstdio>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 namespace
@@ -476,4 +476,4 @@ std::string FormatSetOption(std::string_view name, std::string_view value)
     return line;
 }
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

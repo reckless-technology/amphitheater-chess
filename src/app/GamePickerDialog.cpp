@@ -4,7 +4,7 @@
 
 #include "ListStyles.h"
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 std::size_t GamesModel::RowCount() const
@@ -116,4 +116,4 @@ void GamePickerDialog::LayOutContent(reckless::gfx::RectI area)
     note_.SetBounds({area.x(), area.bottom() - 30, area.width(), 26});
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

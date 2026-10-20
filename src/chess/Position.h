@@ -28,7 +28,7 @@
 #include <string>
 #include <string_view>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 /** How strictly Position::FromFen reads a FEN. */
@@ -292,11 +292,11 @@ constexpr Bitboard Position::AttacksTo(Square location, Color color) const
     return result;
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess
 
 #include "Pins.h"
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 template <Color color, bool do_all_moves> constexpr MoveList Position::GenMoves() const
@@ -747,4 +747,4 @@ constexpr zobrist_t Position::ComputeHash() const
     return hash;
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

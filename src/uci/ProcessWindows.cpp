@@ -10,7 +10,7 @@
 #include <mutex>
 #include <thread>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 namespace
@@ -390,6 +390,6 @@ long ChildProcess::Id() const
     return static_cast<long>(platform_->id);
 }
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci
 
 #endif

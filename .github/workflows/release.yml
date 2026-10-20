@@ -4,7 +4,7 @@ name: release
 # on Linux, Windows and macOS, signed, and published as GitHub release vMAJOR.MINOR.0 with an installer for each
 # platform and the portable Linux zip. Run the workflow by hand (workflow_dispatch) and the same happens at the head of
 # main, published as vMAJOR.MINOR.BUILD where BUILD is the number of commits since the nearest vMAJOR.MINOR tag - the
-# version the binaries report (cmake/UciHostVersion.cmake). The workflow creates that three-component tag; only
+# version the binaries report (cmake/AmphitheaterVersion.cmake). The workflow creates that three-component tag; only
 # two-component tags are version marks. A dispatch at a commit already released fails rather than overwrite. Releases
 # are cut from main and nowhere else: verify refuses a dispatch on another branch and a tag on a commit main does not
 # hold, before anything is built. A dry run (dispatch with dry_run) builds, tests, signs and packages exactly as a
@@ -129,7 +129,7 @@ jobs:
             # Through the REST API, whose answer carries the draft's numeric id - what the package jobs upload to,
             # since a draft has no tag to be named by.
             release_id=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$tag" \
-              -f name="Reckless UCI Host v$version" -F draft=true -F body=@release-notes.md --jq .id)
+              -f name="Reckless Amphitheater v$version" -F draft=true -F body=@release-notes.md --jq .id)
             echo "draft release $tag opened: id $release_id"
           fi
           {
@@ -138,7 +138,7 @@ jobs:
             echo "publish=$publish"
             echo "release_id=$release_id"
           } >> "$GITHUB_OUTPUT"
-          echo "Reckless UCI Host $version ($describe); publish=$publish"
+          echo "Reckless Amphitheater $version ($describe); publish=$publish"
 
   # Linux, with gcc, in a tree built from nothing: every suite (the windows on Xvfb's display), the version, the
   # notices, then the stage, the zip and the Debian package, each held to the stage with every engine answering.
@@ -175,7 +175,7 @@ jobs:
           mkdir -p build
           cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
             "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" | tee build/configure.log
-          grep -q "Reckless UCI Host $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
+          grep -q "Reckless Amphitheater $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
       - name: Build
         run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
@@ -183,14 +183,14 @@ jobs:
       - name: Test the window on a display (xvfb-run)
         run: xvfb-run -a -s "-screen 0 1600x1200x24" ctest --test-dir build/release-ci --output-on-failure -L '^window$'
       - name: The binaries report the version
-        run: build/release-ci/src/cli/uci-host-cli --version | tee /dev/stderr | grep -qx "Reckless UCI Host $VERSION"
+        run: build/release-ci/src/cli/amphitheater-cli --version | tee /dev/stderr | grep -qx "Reckless Amphitheater $VERSION"
       - name: Package
         run: |
           set -euo pipefail
           python3 -I packaging/stage.py build/release-ci build/release-dist linux
-          packaging/linux/make-zip.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-linux-x64.zip"
-          packaging/linux/make-deb.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-linux-amd64.deb"
-          packaging/linux/test-deb.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-linux-amd64.deb"
+          packaging/linux/make-zip.sh build/release-dist "$VERSION" "build/release-out/reckless-amphitheater-$VERSION-linux-x64.zip"
+          packaging/linux/make-deb.sh build/release-dist "$VERSION" "build/release-out/reckless-amphitheater-$VERSION-linux-amd64.deb"
+          packaging/linux/test-deb.sh build/release-dist "$VERSION" "build/release-out/reckless-amphitheater-$VERSION-linux-amd64.deb"
           ls -l build/release-out
       - name: Upload to the draft release
         if: needs.verify.outputs.publish == 'true'
@@ -210,7 +210,7 @@ jobs:
         if: needs.verify.outputs.publish != 'true'
         continue-on-error: true
         with:
-          name: reckless-uci-host-linux
+          name: reckless-amphitheater-linux
           path: build/release-out/*
           retention-days: 1
 
@@ -280,7 +280,7 @@ jobs:
             "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" | Out-String
           $out
           if ($LASTEXITCODE -ne 0) { throw "the configure failed" }
-          if ($out -notmatch [regex]::Escape("Reckless UCI Host $env:VERSION")) { throw "the configure does not report $env:VERSION" }
+          if ($out -notmatch [regex]::Escape("Reckless Amphitheater $env:VERSION")) { throw "the configure does not report $env:VERSION" }
       - name: Build
         run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
@@ -288,10 +288,10 @@ jobs:
       - name: The binaries report the version
         shell: pwsh
         run: |
-          $said = & build/release-ci/src/cli/uci-host-cli.exe --version
-          if ($said -ne "Reckless UCI Host $env:VERSION") { throw "uci-host-cli says '$said'" }
-          $info = (Get-Item build/release-ci/src/app/RecklessUciHost.exe).VersionInfo
-          "RecklessUciHost.exe: $($info.ProductName) $($info.ProductVersion), $($info.FileDescription)"
+          $said = & build/release-ci/src/cli/amphitheater-cli.exe --version
+          if ($said -ne "Reckless Amphitheater $env:VERSION") { throw "amphitheater-cli says '$said'" }
+          $info = (Get-Item build/release-ci/src/app/Amphitheater.exe).VersionInfo
+          "Amphitheater.exe: $($info.ProductName) $($info.ProductVersion), $($info.FileDescription)"
           if ($info.ProductVersion -ne $env:VERSION) { throw "the app's version resource says $($info.ProductVersion)" }
       - name: Package
         shell: pwsh
@@ -319,7 +319,7 @@ jobs:
         if: steps.esigner.outputs.sign == 'true'
         shell: pwsh
         run: |
-          $files = @(Get-Item "build/release-out/reckless-uci-host-$env:VERSION-win64-setup.exe") + @(Get-ChildItem -Recurse -File build/release-dist/engines -Filter *.exe)
+          $files = @(Get-Item "build/release-out/reckless-amphitheater-$env:VERSION-win64-setup.exe") + @(Get-ChildItem -Recurse -File build/release-dist/engines -Filter *.exe)
           foreach ($file in $files) {
             $signature = Get-AuthenticodeSignature $file.FullName
             "$($file.Name): $($signature.Status), $($signature.SignerCertificate.Subject), timestamp $($signature.TimeStamperCertificate.Subject)"
@@ -346,7 +346,7 @@ jobs:
         if: needs.verify.outputs.publish != 'true'
         continue-on-error: true
         with:
-          name: reckless-uci-host-windows
+          name: reckless-amphitheater-windows
           path: build/release-out/*
           retention-days: 1
 
@@ -383,13 +383,13 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
             "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" \
             | tee build/configure.log
-          grep -q "Reckless UCI Host $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
+          grep -q "Reckless Amphitheater $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
       - name: Build
         run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
       - name: Both slices, the floor, the version and the icon
         run: |
-          app=build/release-ci/src/app/RecklessUciHost.app
-          for binary in "$app/Contents/MacOS/RecklessUciHost" build/release-ci/src/cli/uci-host-cli; do
+          app=build/release-ci/src/app/Amphitheater.app
+          for binary in "$app/Contents/MacOS/Amphitheater" build/release-ci/src/cli/amphitheater-cli; do
             for arch in arm64 x86_64; do lipo "$binary" -verify_arch "$arch"; done
             [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}' | sort -u)" = 13.3 ] || { echo "::error::$binary is not for macOS 13.3"; exit 1; }
           done
@@ -398,8 +398,8 @@ jobs:
           icon=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$app/Contents/Info.plist")
           cmp "$app/Contents/Resources/$icon" assets/icon/Icon.icns ||
             { echo "::error::the bundle's $icon, which its plist names, is not assets/icon/Icon.icns"; exit 1; }
-          build/release-ci/src/cli/uci-host-cli --version | grep -qx "Reckless UCI Host $VERSION"
-          arch -x86_64 build/release-ci/src/cli/uci-host-cli --version | grep -qx "Reckless UCI Host $VERSION"
+          build/release-ci/src/cli/amphitheater-cli --version | grep -qx "Reckless Amphitheater $VERSION"
+          arch -x86_64 build/release-ci/src/cli/amphitheater-cli --version | grep -qx "Reckless Amphitheater $VERSION"
       - name: Test
         env:
           RECKLESS_REQUIRE_WINDOW: "1"
@@ -435,15 +435,15 @@ jobs:
             exit 1
           fi
           export RECKLESS_APPLICATION_IDENTITY
-          packaging/macos/make-installer.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-macos.pkg"
+          packaging/macos/make-installer.sh build/release-dist "$VERSION" "build/release-out/reckless-amphitheater-$VERSION-macos.pkg"
       - name: Notarise the installer
         env:
           MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
-        run: external/reckless-toolkit/tools/sign-mac.sh notarize "build/release-out/reckless-uci-host-$VERSION-macos.pkg"
+        run: external/reckless-toolkit/tools/sign-mac.sh notarize "build/release-out/reckless-amphitheater-$VERSION-macos.pkg"
       - name: The installer holds the signed stage
-        run: packaging/macos/test-installer.sh build/release-dist "$VERSION" "build/release-out/reckless-uci-host-$VERSION-macos.pkg" --signed
+        run: packaging/macos/test-installer.sh build/release-dist "$VERSION" "build/release-out/reckless-amphitheater-$VERSION-macos.pkg" --signed
       - name: Upload to the draft release
         if: needs.verify.outputs.publish == 'true'
         env:
@@ -462,7 +462,7 @@ jobs:
         if: needs.verify.outputs.publish != 'true'
         continue-on-error: true
         with:
-          name: reckless-uci-host-macos
+          name: reckless-amphitheater-macos
           path: build/release-out/*
           retention-days: 1
       - name: Close the signing keychain
@@ -498,8 +498,8 @@ jobs:
           fi
           assets=$(gh api "$release" --jq '.assets[].name')
           missing=""
-          for file in "reckless-uci-host-$VERSION-linux-x64.zip" "reckless-uci-host-$VERSION-linux-amd64.deb" \
-                      "reckless-uci-host-$VERSION-win64-setup.exe" "reckless-uci-host-$VERSION-macos.pkg"; do
+          for file in "reckless-amphitheater-$VERSION-linux-x64.zip" "reckless-amphitheater-$VERSION-linux-amd64.deb" \
+                      "reckless-amphitheater-$VERSION-win64-setup.exe" "reckless-amphitheater-$VERSION-macos.pkg"; do
             if ! grep -qx "$file" <<< "$assets"; then
               echo "::error::$file is not on the draft $TAG; the package job that makes it did not upload it"
               missing="$missing $file"
@@ -521,7 +521,7 @@ jobs:
             echo "$TAG already names this commit (an earlier attempt pushed it); publishing onto it"
           else
             git -c user.name="Jonny Reckless" -c user.email="jonny@recklesstechnology.com" \
-              tag -a "$TAG" "$GITHUB_SHA" -m "Reckless UCI Host v$VERSION"
+              tag -a "$TAG" "$GITHUB_SHA" -m "Reckless Amphitheater v$VERSION"
             git push origin "$TAG"
           fi
           gh api -X PATCH "$release" -F draft=false -f make_latest=true -F body=@release-notes.md --jq .html_url

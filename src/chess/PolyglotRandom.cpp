@@ -4,7 +4,7 @@
 
 #include "PolyglotBook.h"
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 // clang-format off
@@ -208,4 +208,4 @@ const std::array<std::uint64_t, 781> kPolyglotRandom64 = {{
 }};
 // clang-format on
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

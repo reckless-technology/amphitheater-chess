@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 TEST(Controls, ADropDownTellsAChoiceThatMovesAndNothingElse)
@@ -71,4 +71,4 @@ TEST(Controls, ADialogTakesEscapeAndReturnAndLaysItsButtonsOutAtItsFoot)
     EXPECT_TRUE(dialog.WantsKeyboardFocus());
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -1,28 +1,28 @@
 name: promote
 
 # A release reaches the public only when it is promoted. This repository is private, so its releases are Jonny's alone;
-# promote copies one to the public reckless-technology/uci-host-releases - a repository of a README and releases and
+# promote copies one to the public reckless-technology/amphitheater-releases - a repository of a README and releases and
 # nothing else, which recklesstechnology.com's download page links to - as IR Capture's promote.yml copies its releases
 # to reckless-technology/ir-capture-releases. Run it by hand with a published tag:
 #
 #   gh workflow run promote.yml --ref main -f tag=v1.0.3                    # promote
 #   gh workflow run promote.yml --ref main -f tag=v1.0.3 -f dry_run=true    # gather and check, publish nothing
 #
-# It copies the three installers and the portable Linux zip, under their versioned names and again under four fixed
-# ones - reckless-uci-host-macos.pkg, reckless-uci-host-win64-setup.exe, reckless-uci-host-linux-amd64.deb and
-# reckless-uci-host-linux-x64.zip - so releases/latest/download/<name> is always the newest; SHA256SUMS, every file's
-# checksum, which the download page shows; and the release's notes, release-notes.md at the tag. The public release is
-# marked latest unless the public repository already holds a newer version, so promoting an older tag after a newer
-# one never moves releases/latest - and with it the website's downloads and the update manifest - backwards. Then it
-# wakes the website's deploy (a repository_dispatch, uci-host-release), which reads the newest public release and builds
-# the download page and updates/uci-host.json, the manifest the host's update check reads (src/app/Main.cpp) - so
-# nothing on the website is edited for a release; its daily deploy catches a wake that failed.
+# It copies the three installers and the portable Linux zip, under their versioned names and again under four fixed ones
+# - reckless-amphitheater-macos.pkg, reckless-amphitheater-win64-setup.exe, reckless-amphitheater-linux-amd64.deb and
+# reckless-amphitheater-linux-x64.zip - so releases/latest/download/<name> is always the newest; SHA256SUMS, every
+# file's checksum, which the download page shows; and the release's notes, release-notes.md at the tag. The public
+# release is marked latest unless the public repository already holds a newer version, so promoting an older tag after a
+# newer one never moves releases/latest - and with it the website's downloads and the update manifest - backwards. Then
+# it wakes the website's deploy (a repository_dispatch, amphitheater-release), which reads the newest public release and
+# builds the download page and updates/amphitheater.json, the manifest the host's update check reads (src/app/Main.cpp)
+# - so nothing on the website is edited for a release; its daily deploy catches a wake that failed.
 #
 # Every installer carries the five bundled chess engines, GPLv3 programs whose corresponding source the notices point
 # at in each engine's own public repository, at the tag the installer carries.
 #
 # The job writes to the other repositories with the secret PUBLIC_RELEASES_TOKEN: a fine-grained token of Jonny's with
-# Contents write on reckless-technology/uci-host-releases and on reckless-technology/website for the wake. It checks
+# Contents write on reckless-technology/amphitheater-releases and on reckless-technology/website for the wake. It checks
 # before anything is gathered that the token can reach both, and refuses a tag the public repository has published
 # already; a draft of the tag left there by an attempt that failed part-way is deleted and made again.
 on:
@@ -50,7 +50,7 @@ jobs:
     timeout-minutes: 30
     env:
       TAG: ${{ inputs.tag }}
-      PUBLIC: reckless-technology/uci-host-releases
+      PUBLIC: reckless-technology/amphitheater-releases
     steps:
       - name: The tag is a published release
         env:
@@ -100,18 +100,18 @@ jobs:
           version="${TAG#v}"
           rm -rf promote promote-notes.md && mkdir promote
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir promote \
-            --pattern "reckless-uci-host-$version-macos.pkg" \
-            --pattern "reckless-uci-host-$version-win64-setup.exe" \
-            --pattern "reckless-uci-host-$version-linux-amd64.deb" \
-            --pattern "reckless-uci-host-$version-linux-x64.zip"
-          for file in "reckless-uci-host-$version-macos.pkg" "reckless-uci-host-$version-win64-setup.exe" \
-                      "reckless-uci-host-$version-linux-amd64.deb" "reckless-uci-host-$version-linux-x64.zip"; do
+            --pattern "reckless-amphitheater-$version-macos.pkg" \
+            --pattern "reckless-amphitheater-$version-win64-setup.exe" \
+            --pattern "reckless-amphitheater-$version-linux-amd64.deb" \
+            --pattern "reckless-amphitheater-$version-linux-x64.zip"
+          for file in "reckless-amphitheater-$version-macos.pkg" "reckless-amphitheater-$version-win64-setup.exe" \
+                      "reckless-amphitheater-$version-linux-amd64.deb" "reckless-amphitheater-$version-linux-x64.zip"; do
             [ -s "promote/$file" ] || { echo "::error::$TAG has no $file"; exit 1; }
           done
-          cp "promote/reckless-uci-host-$version-macos.pkg" promote/reckless-uci-host-macos.pkg
-          cp "promote/reckless-uci-host-$version-win64-setup.exe" promote/reckless-uci-host-win64-setup.exe
-          cp "promote/reckless-uci-host-$version-linux-amd64.deb" promote/reckless-uci-host-linux-amd64.deb
-          cp "promote/reckless-uci-host-$version-linux-x64.zip" promote/reckless-uci-host-linux-x64.zip
+          cp "promote/reckless-amphitheater-$version-macos.pkg" promote/reckless-amphitheater-macos.pkg
+          cp "promote/reckless-amphitheater-$version-win64-setup.exe" promote/reckless-amphitheater-win64-setup.exe
+          cp "promote/reckless-amphitheater-$version-linux-amd64.deb" promote/reckless-amphitheater-linux-amd64.deb
+          cp "promote/reckless-amphitheater-$version-linux-x64.zip" promote/reckless-amphitheater-linux-x64.zip
           gh api "repos/$GITHUB_REPOSITORY/contents/release-notes.md?ref=$TAG" --jq .content | base64 -d > promote-notes.md
           (cd promote && sha256sum -- * > ../SHA256SUMS) && mv SHA256SUMS promote/SHA256SUMS
           cat promote/SHA256SUMS
@@ -132,7 +132,7 @@ jobs:
             echo "::warning::$TAG is older than $PUBLIC's latest release, $latest: it is published without being marked latest"
             mark_latest=--latest=false
           fi
-          if ! gh release create "$TAG" --repo "$PUBLIC" --title "Reckless UCI Host ${TAG#v}" \
+          if ! gh release create "$TAG" --repo "$PUBLIC" --title "Reckless Amphitheater ${TAG#v}" \
               --notes-file promote-notes.md "$mark_latest" promote/*; then
             # The release is a draft until every file is up; a failure before it was published leaves that draft,
             # which is deleted so the next attempt starts clean (the check above deletes one this misses).
@@ -149,7 +149,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PUBLIC_RELEASES_TOKEN }}
         run: |
-          gh api repos/reckless-technology/website/dispatches -f event_type=uci-host-release ||
+          gh api repos/reckless-technology/website/dispatches -f event_type=amphitheater-release ||
             echo "::warning::the website was not woken; its daily deploy will pick $TAG up"
       # The job has no checkout of its own: it works in the runner's workspace for this repository, which the other
       # workflows' kept checkouts share, so what it gathered there goes however the job ended.

@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 namespace
 {
@@ -233,4 +233,4 @@ TEST(UciProtocol, FormatsPositionAndSetOption)
 }
 
 } // namespace
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

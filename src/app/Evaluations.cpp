@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -231,4 +231,4 @@ std::vector<EvalSeries> SeriesOfPgn(const chess::PgnGame &pgn)
     return series;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 namespace
@@ -236,4 +236,4 @@ void EnginePlayer::EndGame(const chess::Game &game)
     pondering_on_.clear();
 }
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

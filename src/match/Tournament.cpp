@@ -8,7 +8,7 @@
 #include <fstream>
 #include <map>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 Tournament::Tournament(TournamentSettings settings) : settings_(std::move(settings))
@@ -226,4 +226,4 @@ void Tournament::Work()
     }
 }
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

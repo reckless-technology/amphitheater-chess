@@ -17,7 +17,7 @@
 #include <random>
 #include <vector>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 using zobrist_t = uint64_t; ///< Zobrist hash value type.
@@ -456,4 +456,4 @@ using gendata_detail::kPieceSquareHashes;
 using gendata_detail::kRookAttacks;
 using gendata_detail::kRookMagics;
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

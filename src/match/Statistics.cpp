@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdio>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 
 namespace
@@ -264,4 +264,4 @@ std::string FormatMatchScore(const std::string &first, const std::string &second
     return text;
 }
 
-} // namespace uci_host::match
+} // namespace amphitheater::match

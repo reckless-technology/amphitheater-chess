@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** The main window's views, laid out to the window's size. */
@@ -262,4 +262,4 @@ class MainView final : public reckless::view::View
     PlayerStripState                            black_;             ///< Black's strip.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

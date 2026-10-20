@@ -59,13 +59,13 @@ runs:
           echo "$(uname -m), $jobs cores, macOS $(sw_vers -productVersion); $(clang --version | head -1)"
           # The packaging scripts' and the suites' Python: a venv of the runner's own Python, kept. The build needs
           # none: the app's icon is committed (tools/make_icon.py).
-          venv="$RUNNER_TOOL_CACHE/reckless-uci-host-python"
+          venv="$RUNNER_TOOL_CACHE/reckless-amphitheater-python"
           [ -x "$venv/bin/python" ] || python3 -m venv "$venv"
           echo "python=$venv/bin/python" >> "$GITHUB_OUTPUT"
           echo "the scripts' Python: $("$venv/bin/python" --version)"
         fi
         cmake --version | head -1; echo "ninja $(ninja --version)"
-        deps="$RUNNER_TOOL_CACHE/reckless-uci-host-deps/$compiler-ninja"
+        deps="$RUNNER_TOOL_CACHE/reckless-amphitheater-deps/$compiler-ninja"
         mkdir -p "$deps"
         echo "dependencies: $deps; build jobs: $jobs"
         { echo "deps=$deps"; echo "jobs=$jobs"; } >> "$GITHUB_OUTPUT"
@@ -91,14 +91,14 @@ runs:
         }
         "Visual Studio: $vs; MSVC $env:VCToolsVersion; $env:NUMBER_OF_PROCESSORS cores"
         cmake --version | Select-Object -First 1; "ninja $(ninja --version)"
-        $deps = Join-Path $env:RUNNER_TOOL_CACHE "reckless-uci-host-deps\msvc$env:VCToolsVersion-ninja"
+        $deps = Join-Path $env:RUNNER_TOOL_CACHE "reckless-amphitheater-deps\msvc$env:VCToolsVersion-ninja"
         New-Item -ItemType Directory -Force -Path $deps | Out-Null
         "dependencies: $deps"
         "deps=$deps" >> $env:GITHUB_OUTPUT
         "jobs=$env:NUMBER_OF_PROCESSORS" >> $env:GITHUB_OUTPUT
         # The packaging scripts' and the suites' Python: a venv of the runner's machine-wide Python, kept. The build
         # needs none: the app's icon is committed (tools/make_icon.py).
-        $venv = Join-Path $env:RUNNER_TOOL_CACHE 'reckless-uci-host-python'
+        $venv = Join-Path $env:RUNNER_TOOL_CACHE 'reckless-amphitheater-python'
         $python = Join-Path $venv 'Scripts/python.exe'
         if (-not (Test-Path $python)) {
           python -m venv $venv

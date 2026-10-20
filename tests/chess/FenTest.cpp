@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 namespace
 {
@@ -129,4 +129,4 @@ TEST(Fen, EqualityComparesEveryField)
 }
 
 } // namespace
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

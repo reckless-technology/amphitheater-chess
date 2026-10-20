@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -111,7 +111,7 @@ reckless::app::MenuBar BuildMenuBar(const MenuState &state)
                          Item("Stop the tournament", kStopTournament, {}, state.is_tournament_running),
                          Item("Standings and crosstable", kShowStandings, {}, state.has_standings), WatchItems(state)}),
         MenuEntry::Menu("View", ViewItems(state)),
-        MenuEntry::Menu("Help", {Item("About Reckless UCI Host", kAbout)}),
+        MenuEntry::Menu("Help", {Item("About Reckless Amphitheater", kAbout)}),
     }};
     for (MenuEntry &menu : bar.menus)
     {
@@ -120,4 +120,4 @@ reckless::app::MenuBar BuildMenuBar(const MenuState &state)
     return bar;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

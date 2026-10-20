@@ -11,7 +11,7 @@
 #include <optional>
 #include <string>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** The pieces, parsed once and drawn into any square. */
@@ -57,4 +57,4 @@ class PieceSet
     std::array<std::optional<reckless::gfx::SvgImage>, 12> drawings_; ///< By IndexOf; empty where unread.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

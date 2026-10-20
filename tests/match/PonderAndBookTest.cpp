@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <thread>
 
-namespace uci_host::match
+namespace amphitheater::match
 {
 namespace
 {
@@ -23,7 +23,7 @@ using namespace std::chrono_literals;
 uci::EngineConfig Fake(std::vector<std::string> arguments, bool does_ponder = false)
 {
     uci::EngineConfig config;
-    config.executable  = UCI_HOST_FAKE_ENGINE;
+    config.executable  = AMPHITHEATER_FAKE_ENGINE;
     config.arguments   = std::move(arguments);
     config.does_ponder = does_ponder;
     return config;
@@ -381,4 +381,4 @@ TEST(Books, ATournamentEnginesOwnBook)
 }
 
 } // namespace
-} // namespace uci_host::match
+} // namespace amphitheater::match

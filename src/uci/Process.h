@@ -28,7 +28,7 @@
 #include <string_view>
 #include <vector>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 /** What to start. */
@@ -125,4 +125,4 @@ class ChildProcess
     std::atomic<int>             open_streams_ = 0; ///< Streams still being read; the last to end closes output_.
 };
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 namespace
@@ -117,4 +117,4 @@ void AnalysisPanel::Paint(reckless::gfx::Canvas &c)
     }
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

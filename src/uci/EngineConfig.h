@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 
 /** How long the host waits for an engine before giving up on it. */
@@ -34,4 +34,4 @@ struct EngineConfig
     EngineTimeouts timeouts;  ///< How long to wait for it.
 };
 
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

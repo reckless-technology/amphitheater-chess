@@ -4,7 +4,7 @@
 
 #include <string_view>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 PieceSet PieceSet::FromEmbedded(std::string *error)
@@ -72,4 +72,4 @@ int PieceSet::IndexOf(chess::Color color, chess::Piece piece)
     return (color == chess::kWhite ? 0 : 6) + static_cast<int>(piece) - 1;
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

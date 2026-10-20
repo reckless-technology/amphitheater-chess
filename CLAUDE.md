@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Reckless UCI Host is a chess GUI and UCI engine host for Windows, macOS and Linux, in C++20. This repository holds its
+Reckless Amphitheater is a chess GUI and UCI engine host for Windows, macOS and Linux, in C++20. This repository holds its
 toolkit-free core and a command-line runner; the README is the long-form reference (the libraries, the threading
 model, the command line, the tests).
 
@@ -26,7 +26,7 @@ statically), and starts every engine with only the system on its PATH.
 the deploy key in the secret `RECKLESS_TOOLKIT_DEPLOY_KEY`, through `.github/actions/toolkit`), added with the
 toolkit's GUI on, its suites off and no audio device layer. Only `src/app/` uses it: the libraries under `src/chess`,
 `src/uci`, `src/match` and `src/cli` depend on nothing of the toolkit or of vst-plugins, so they stay testable on their
-own, and `-DUCI_HOST_GUI=OFF` builds them with no submodule. The toolkit's include namespace is flat (`"View.h"`), so
+own, and `-DAMPHITHEATER_GUI=OFF` builds them with no submodule. The toolkit's include namespace is flat (`"View.h"`), so
 the host's headers are included by their directory (`"chess/Position.h"`) and never take a toolkit header's name. A
 bump of the submodule points at a commit on the toolkit's `main` (the changes job checks).
 
@@ -52,7 +52,7 @@ GUI will save with the toolkit's JSON.
 
 ## Architecture
 
-- `src/chess/` (`uci_host_chess`): the rules. `Position.h`, `Move.h`, `Bitboard.h`, `Square.h`, `AttackTables.h`,
+- `src/chess/` (`amphitheater_chess`): the rules. `Position.h`, `Move.h`, `Bitboard.h`, `Square.h`, `AttackTables.h`,
   `Attacks.h`, `CastlingRights.h`, `Pins.h`, `StackList.h`, `ChessTypes.h` are **adapted from pawnstar** (commit
   `c41099798db594ae2c379cba94d917c9c28d9c04`, each header says so): the board, the legal move generator, copy-make,
   magic attacks and Zobrist keys. pawnstar is GPLv3 with Jonny its sole copyright holder, so its code may go out under
@@ -64,11 +64,11 @@ GUI will save with the toolkit's JSON.
   Roster and 80 columns), `PolyglotBook` (Polyglot .bin books: the format's 781-key table in `PolyglotRandom.cpp`,
   generated from its description; keys checked against its published test keys), `TimeControl` and `Clock`, `Perft`,
   `Result`/`Status`.
-- `src/uci/` (`uci_host_uci`): `ChildProcess` (`ProcessWindows.cpp`: CreateProcessW, a handle list, a kill-on-close
+- `src/uci/` (`amphitheater_uci`): `ChildProcess` (`ProcessWindows.cpp`: CreateProcessW, a handle list, a kill-on-close
   job object; `ProcessPosix.cpp`: posix_spawn, a process group, SIGPIPE ignored), `ThreadSafeQueue`, `UciProtocol`
   (every info field, every option type, `go`/`position`/`setoption` formatting), `Engine` (the session: handshake,
   options, isready, searches, ponder, quit-then-kill), `EngineConfig`, `Utf8Arguments`.
-- `src/match/` (`uci_host_match`): `Player`/`CallbackPlayer`/`EnginePlayer`, `GameRunner` (clocks with a margin,
+- `src/match/` (`amphitheater_match`): `Player`/`CallbackPlayer`/`EnginePlayer`, `GameRunner` (clocks with a margin,
   flag falls - a draw when the opponent cannot mate - illegal moves, crashes, stalls, `Adjudicator`, each side's own
   Polyglot book (`BookSettings`), `GameRecord` with its PGN and per-move comments `{+0.35/18 1.2s}` - the score from
   White's side, `MoveNote::WhiteScore` - and `{book}`), `Openings` (EPD, PGN, a Polyglot book walked to a depth),
@@ -85,7 +85,7 @@ GUI will save with the toolkit's JSON.
   a ponder search left running, and an engine that will not stop is written off (`is_healthy_`) and started afresh.
 - `src/cli/`: `RunCli` (in a library the tests call in-process), `main.cpp`. `src/version/Version.cpp` is the one file
   that reads the generated version header; the command line and the window both link it.
-- `src/app/` (`uci_host_gui`, `RecklessUciHost`, `uci_host_render_main`): the window on the toolkit's app shell. Views
+- `src/app/` (`amphitheater_gui`, `Amphitheater`, `amphitheater_render_main`): the window on the toolkit's app shell. Views
   (`MainView` lays them out as the mockup does; `BoardView`, `PlayerStrip`, `MovesList`, `GameCard`, `AnalysisPanel`,
   `EvalGraph`, `EngineLog`, `StatusBar`) show what they are given and tell what a person does; the
   controllers (`MainController`) hold the game and the engines and set the views each frame, and the menu bar
@@ -99,9 +99,9 @@ GUI will save with the toolkit's JSON.
   (`std::async`), handed to the window's thread, polled with `PollEvent` once a frame, quit by `EngineReaper` on worker
   threads; a new position is a "stop" and, once "bestmove" comes, "position" and "go infinite". A match or a
   tournament is a `CompetitionSession` over `match::Tournament` with `does_report_moves` on; its dialog
-  (`CompetitionDialog`) writes uci-host-cli's arguments and reads them with `cli::ParseTournamentArguments`, so the
+  (`CompetitionDialog`) writes amphitheater-cli's arguments and reads them with `cli::ParseTournamentArguments`, so the
   window and the command line never disagree on an option - add an option to the command line, and to the dialog as an
-  argument. `EngineCatalogue` is the engine list (`reckless-technology/uci-host/engines.json`
+  argument. `EngineCatalogue` is the engine list (`reckless-technology/amphitheater/engines.json`
   in the user's settings folder); `WindowSizes` the View menu's window sizes, held by `AppRoot::SetFixedZoom` and kept
   in `window.json` beside it. `Theme.h` holds the
   mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
@@ -109,7 +109,7 @@ GUI will save with the toolkit's JSON.
   they are included as `"app/BoardView.h"` from outside the directory.
 - `tests/`: one GoogleTest binary per library, the fake engine (`tests/fake_engine/FakeEngine.cpp`, its behaviours
   scripted by arguments), `tests/data/` (pawnstar's perft EPD, assorted PGN), the integration suite (a real engine via
-  `UCI_HOST_TEST_ENGINE`, skipped otherwise).
+  `AMPHITHEATER_TEST_ENGINE`, skipped otherwise).
 
 ## Commands
 
@@ -118,9 +118,9 @@ cmake --preset debug && cmake --build --preset debug && ctest --preset debug    
 cmake --preset release-universal                                                 # macOS: arm64 + x86_64
 powershell -ExecutionPolicy Bypass -File tools\coverage-windows.ps1              # Windows coverage, red under 90 %
 ctest --preset debug -R match                                                    # one suite (CTest name)
-build/debug/tests/uci_host_match_test --gtest_filter='GameRunner.*'              # one test
-UCI_HOST_TEST_ENGINE=/path/to/engine ctest --preset release -R integration      # against a real engine
-build/release/src/cli/uci-host-cli perft startpos 6
+build/debug/tests/amphitheater_match_test --gtest_filter='GameRunner.*'              # one test
+AMPHITHEATER_TEST_ENGINE=/path/to/engine ctest --preset release -R integration      # against a real engine
+build/release/src/cli/amphitheater-cli perft startpos 6
 ```
 
 On Windows everything runs natively (never WSL) in Visual Studio's developer environment: `VsDevCmd.bat -arch=x64
@@ -139,7 +139,7 @@ set a machine up (VS Code: "setup environment"; `-Check` / `--check` only report
   a model of a third-party product, or presented as one. Naming third parties in comparative or reference terms is
   fine: credits and citations, the source of data, test positions or assets, programs it was compared with, and the
   tools and dependencies. So the perft suite's source is credited and the command line is compared with other match
-  runners, but uci-host is never described as a clone of another GUI or match runner.
+  runners, but Reckless Amphitheater is never described as a clone of another GUI or match runner.
 - **Tests:** every new behaviour gets a test; engine behaviours go into the fake engine as a scripted argument.
   Timing-based tests use generous bounds: the CI runners are shared machines.
 - MSVC builds use the static runtime in every configuration (the GUI's prebuilt Skia will need it); macOS floor 13.3.
@@ -159,6 +159,6 @@ and `CI`, the aggregate to require. Documentation-only changes build nothing.
 - `build.yml` also makes every package unsigned and holds it to its stage; `release.yml` (a pushed `vMAJOR.MINOR`, or
   by hand on `main`, `-f dry_run=true` to publish nothing) builds from nothing, signs (eSigner on Windows whenever its
   secrets are set; Developer ID, notarisation and stapling on macOS) and publishes a private release; `promote.yml`
-  copies one to the public `reckless-technology/uci-host-releases` - only on Jonny's word. The signing secrets are the
+  copies one to the public `reckless-technology/amphitheater-releases` - only on Jonny's word. The signing secrets are the
   organisation's; `PUBLIC_RELEASES_TOKEN` is this repository's own.
 - `*.sh` and the hooks stay LF (`.gitattributes`); the piece SVGs are kept byte for byte (`-text`).

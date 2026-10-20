@@ -3,7 +3,7 @@
 /// separate GPLv3 program the host only talks to over UCI - and how they reach a person's engine list.
 ///
 /// The installer lays them out under a folder named engines (in the install folder on Windows and in the portable
-/// Linux archive, in the bundle's Contents/Resources on macOS, /usr/lib/reckless-uci-host/engines from the Debian
+/// Linux archive, in the bundle's Contents/Resources on macOS, /usr/lib/reckless-amphitheater/engines from the Debian
 /// package), with bundled.json beside them: each engine's id, name, version and licence, the defaults it is seeded
 /// with, the options its handshake declared when it was packaged, and its builds in order of preference, each with what
 /// it asks of the CPU (tools/bundled_engines.py writes it). At every start the host reads it and seeds the engine list
@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** What this machine's processor can run of the levels a bundled build may ask for. */
@@ -59,7 +59,7 @@ std::filesystem::path RunningExecutable();
 
 /**
  * Where the bundled engines lie for a host at a place: beside it (Windows, the portable Linux archive), in its bundle's
- * Resources (macOS), or /usr/lib/reckless-uci-host/engines for the Debian package's host in
+ * Resources (macOS), or /usr/lib/reckless-amphitheater/engines for the Debian package's host in
  * /opt/reckless-technology/bin.
  * @param executable The host's own file.
  * @return The folder holding bundled.json; empty where there is none (a build tree's host carries no engines).
@@ -93,4 +93,4 @@ std::vector<BundledEngine> ReadBundledEngines(const std::filesystem::path &folde
  */
 bool SeedBundledEngines(EngineCatalogue &catalogue, const std::vector<BundledEngine> &bundled);
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

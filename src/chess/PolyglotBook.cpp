@@ -5,7 +5,7 @@
 #include <fstream>
 #include <iterator>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 namespace
@@ -254,4 +254,4 @@ std::optional<Move> PolyglotBook::Choose(const Position &position, BookSelection
     return moves.back().first;
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

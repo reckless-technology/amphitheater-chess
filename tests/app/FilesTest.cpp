@@ -22,7 +22,7 @@
 #include <fstream>
 #include <thread>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -90,7 +90,7 @@ const char *const kAnnotated = R"([Event "Club championship"]
 TEST(Files, AGameOpenedFromPgnIsShownAndSavedBackWithItsCommentsAndVariations)
 {
     Rig               rig;
-    const std::string file = WriteFile("uci-host-files/annotated.pgn", kAnnotated);
+    const std::string file = WriteFile("amphitheater-files/annotated.pgn", kAnnotated);
     rig.chosen             = file;
     rig.controller.Command(kOpenPgn);
     EXPECT_EQ(rig.controller.game().PlyCount(), 7);
@@ -103,7 +103,7 @@ TEST(Files, AGameOpenedFromPgnIsShownAndSavedBackWithItsCommentsAndVariations)
     }
     EXPECT_TRUE(has_opening);
 
-    const std::string out = reckless::test::ScratchPath("uci-host-files/saved.pgn").string();
+    const std::string out = reckless::test::ScratchPath("amphitheater-files/saved.pgn").string();
     rig.chosen            = out;
     rig.controller.Command(kSavePgn);
     const auto saved = match::ReadTextFile(out);
@@ -129,7 +129,7 @@ TEST(Files, AFileOfManyGamesOffersAListAndShowsThePickedOne)
     std::string text = kAnnotated;
     text += "[Event \"Second\"]\n[White \"Gamma\"]\n[Black \"Delta\"]\n[Result \"1/2-1/2\"]\n\n1. d4 d5 1/2-1/2\n\n";
     text += "[Event \"Broken\"]\n\n1. e4 Ke7 2. Nf9 *\n\n";
-    rig.controller.OpenPgn(WriteFile("uci-host-files/many.pgn", text));
+    rig.controller.OpenPgn(WriteFile("amphitheater-files/many.pgn", text));
     auto *picker = dynamic_cast<GamePickerDialog *>(rig.controller.dialog());
     ASSERT_NE(picker, nullptr);
     EXPECT_EQ(picker->games().size(), 2u) << "the broken game is skipped";
@@ -143,35 +143,36 @@ TEST(Files, AFileOfManyGamesOffersAListAndShowsThePickedOne)
     EXPECT_EQ(rig.controller.game().PlyCount(), 2);
     EXPECT_EQ(rig.view.bottom_strip().state().name, "Gamma");
 
-    rig.controller.OpenPgn(WriteFile("uci-host-files/empty.pgn", "nothing here"));
+    rig.controller.OpenPgn(WriteFile("amphitheater-files/empty.pgn", "nothing here"));
     EXPECT_NE(rig.controller.last_error().find("no game"), std::string::npos);
-    rig.controller.OpenPgn(reckless::test::ScratchPath("uci-host-files/missing.pgn").string());
+    rig.controller.OpenPgn(reckless::test::ScratchPath("amphitheater-files/missing.pgn").string());
     EXPECT_NE(rig.controller.last_error().find("could not be read"), std::string::npos);
 }
 
 TEST(Files, TheWindowsTitleFollowsTheGameAndItsFile)
 {
     Rig rig;
-    EXPECT_EQ(rig.controller.WindowTitle(), "White vs Black - Reckless UCI Host") << "a fresh window";
-    rig.controller.OpenPgn(WriteFile("uci-host-files/title.pgn", kAnnotated));
-    EXPECT_EQ(rig.controller.WindowTitle(), "Alpha vs Beta - title.pgn - Reckless UCI Host");
+    EXPECT_EQ(rig.controller.WindowTitle(), "White vs Black - Reckless Amphitheater") << "a fresh window";
+    rig.controller.OpenPgn(WriteFile("amphitheater-files/title.pgn", kAnnotated));
+    EXPECT_EQ(rig.controller.WindowTitle(), "Alpha vs Beta - title.pgn - Reckless Amphitheater");
 
-    rig.chosen = reckless::test::ScratchPath("uci-host-files/renamed.pgn").string();
+    rig.chosen = reckless::test::ScratchPath("amphitheater-files/renamed.pgn").string();
     rig.controller.Command(kSavePgn);
-    EXPECT_EQ(rig.controller.WindowTitle(), "Alpha vs Beta - renamed.pgn - Reckless UCI Host") << "saved under a name";
+    EXPECT_EQ(rig.controller.WindowTitle(), "Alpha vs Beta - renamed.pgn - Reckless Amphitheater")
+        << "saved under a name";
 
     rig.clipboard = "8/8/8/8/8/8/8/k3K3 w - - 0 1";
     rig.controller.Command(kPasteFen);
-    EXPECT_EQ(rig.controller.WindowTitle(), "White vs Black - Reckless UCI Host") << "a pasted position is no file";
+    EXPECT_EQ(rig.controller.WindowTitle(), "White vs Black - Reckless Amphitheater") << "a pasted position is no file";
 
     std::string many = kAnnotated;
     many += "[Event \"Second\"]\n[White \"Gamma\"]\n[Black \"Delta\"]\n[Result \"*\"]\n\n1. d4 d5 *\n\n";
-    rig.controller.OpenPgn(WriteFile("uci-host-files/two.pgn", many));
+    rig.controller.OpenPgn(WriteFile("amphitheater-files/two.pgn", many));
     auto *picker = dynamic_cast<GamePickerDialog *>(rig.controller.dialog());
     ASSERT_NE(picker, nullptr);
     picker->Open(1);
     rig.controller.Frame(0.0);
-    EXPECT_EQ(rig.controller.WindowTitle(), "Gamma vs Delta - two.pgn - Reckless UCI Host") << "a game picked";
+    EXPECT_EQ(rig.controller.WindowTitle(), "Gamma vs Delta - two.pgn - Reckless Amphitheater") << "a game picked";
 }
 
 TEST(Files, FenAndPgnGoToTheClipboardAndComeBackFromIt)
@@ -204,10 +205,10 @@ TEST(Files, AGamePlayedOnTheBoardIsSavedWithItsClocksAndScores)
     Rig          rig;
     PlaySettings settings;
     settings.white.is_human                 = false;
-    settings.white.engine.config.executable = UCI_HOST_FAKE_ENGINE;
+    settings.white.engine.config.executable = AMPHITHEATER_FAKE_ENGINE;
     settings.white.engine.config.name       = "Alpha";
     settings.black.is_human                 = false;
-    settings.black.engine.config.executable = UCI_HOST_FAKE_ENGINE;
+    settings.black.engine.config.executable = AMPHITHEATER_FAKE_ENGINE;
     settings.black.engine.config.arguments  = {"--crash-at", "3"};
     settings.black.engine.config.name       = "Beta";
     settings.time_control                   = *chess::TimeControl::Parse("10+0.1");
@@ -281,4 +282,4 @@ TEST(Files, ThePickersRowsButtonsAndKeysOpenAGameOrCloseIt)
     EXPECT_EQ(opened.size(), 2u) << "with no game, Open opens nothing";
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

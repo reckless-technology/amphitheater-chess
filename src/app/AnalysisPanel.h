@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** One line of an engine's search. */
@@ -62,4 +62,4 @@ class AnalysisPanel final : public reckless::view::View
     std::string              empty_text_; ///< What it says with none.
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

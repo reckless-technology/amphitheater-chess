@@ -9,7 +9,7 @@
 #include <filesystem>
 #include <thread>
 
-namespace uci_host::uci
+namespace amphitheater::uci
 {
 namespace
 {
@@ -20,7 +20,7 @@ using Clock = std::chrono::steady_clock;
 EngineConfig FakeEngine(std::vector<std::string> arguments = {})
 {
     EngineConfig config;
-    config.executable = UCI_HOST_FAKE_ENGINE;
+    config.executable = AMPHITHEATER_FAKE_ENGINE;
     config.arguments  = std::move(arguments);
     return config;
 }
@@ -39,7 +39,7 @@ std::vector<std::string> DrainLines(ChildProcess &child, chess::Milliseconds tim
 TEST(ChildProcess, PassesArgumentsWholeIncludingSpacesQuotesAndUnicode)
 {
     ProcessOptions options;
-    options.executable = UCI_HOST_FAKE_ENGINE;
+    options.executable = AMPHITHEATER_FAKE_ENGINE;
     options.arguments = {"--print-arguments", "two words", "", "a\"quote", "back\\slash\\", "caf\xC3\xA9 \xE2\x99\x9E"};
     auto child        = ChildProcess::Start(options);
     ASSERT_TRUE(child) << child.ErrorMessage();
@@ -55,7 +55,7 @@ TEST(ChildProcess, RunsInItsWorkingDirectory)
 {
     const auto     directory = std::filesystem::temp_directory_path();
     ProcessOptions options;
-    options.executable        = UCI_HOST_FAKE_ENGINE;
+    options.executable        = AMPHITHEATER_FAKE_ENGINE;
     options.arguments         = {"--print-directory"};
     const std::u8string text  = directory.u8string();
     options.working_directory = std::string(text.begin(), text.end());
@@ -79,7 +79,7 @@ TEST(ChildProcess, ReportsAProgramThatCannotStart)
 TEST(ChildProcess, CapturesErrorOutputSeparately)
 {
     ProcessOptions options;
-    options.executable = UCI_HOST_FAKE_ENGINE;
+    options.executable = AMPHITHEATER_FAKE_ENGINE;
     options.arguments  = {"--stderr"};
     auto child         = ChildProcess::Start(options);
     ASSERT_TRUE(child);
@@ -102,7 +102,7 @@ TEST(ChildProcess, CapturesErrorOutputSeparately)
 TEST(ChildProcess, DiscardsErrorOutputWhenAsked)
 {
     ProcessOptions options;
-    options.executable                = UCI_HOST_FAKE_ENGINE;
+    options.executable                = AMPHITHEATER_FAKE_ENGINE;
     options.arguments                 = {"--stderr"};
     options.does_capture_error_output = false;
     auto child                        = ChildProcess::Start(options);
@@ -118,7 +118,7 @@ TEST(ChildProcess, DiscardsErrorOutputWhenAsked)
 TEST(ChildProcess, KillsAProcessThatWillNotExit)
 {
     ProcessOptions options;
-    options.executable = UCI_HOST_FAKE_ENGINE;
+    options.executable = AMPHITHEATER_FAKE_ENGINE;
     options.arguments  = {"--hang-on-quit"};
     auto child         = ChildProcess::Start(options);
     ASSERT_TRUE(child);
@@ -134,7 +134,7 @@ TEST(ChildProcess, KillsAProcessThatWillNotExit)
 TEST(ChildProcess, DestroyingARunningProcessKillsIt)
 {
     ProcessOptions options;
-    options.executable = UCI_HOST_FAKE_ENGINE;
+    options.executable = AMPHITHEATER_FAKE_ENGINE;
     options.arguments  = {"--hang-on-quit"};
     auto child         = ChildProcess::Start(options);
     ASSERT_TRUE(child);
@@ -424,7 +424,7 @@ TEST(Engine, QuitKillsAnEngineThatIgnoresIt)
 
 TEST(Engine, ARelativePathIsFromTheHostsDirectory)
 {
-    const auto absolute = std::filesystem::path(UCI_HOST_FAKE_ENGINE);
+    const auto absolute = std::filesystem::path(AMPHITHEATER_FAKE_ENGINE);
     const auto relative = std::filesystem::relative(absolute);
     if (relative.empty() || !relative.has_parent_path())
     {
@@ -439,4 +439,4 @@ TEST(Engine, ARelativePathIsFromTheHostsDirectory)
 }
 
 } // namespace
-} // namespace uci_host::uci
+} // namespace amphitheater::uci

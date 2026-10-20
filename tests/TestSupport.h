@@ -6,7 +6,7 @@
 #include <optional>
 #include <string>
 
-namespace uci_host::testing
+namespace amphitheater::testing
 {
 
 // An environment variable's value, or nothing when it is unset or empty.
@@ -36,4 +36,4 @@ inline std::optional<std::string> EnvironmentVariable(const char *name)
     return text;
 }
 
-} // namespace uci_host::testing
+} // namespace amphitheater::testing

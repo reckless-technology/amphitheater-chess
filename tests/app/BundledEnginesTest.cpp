@@ -17,7 +17,7 @@
 
 #include <fstream>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 namespace
 {
@@ -160,7 +160,7 @@ const EngineEntry *Bundled(const EngineCatalogue &catalogue, const std::string &
 
 TEST(BundledEngines, AFreshListIsSeededWithEveryEngineMarkedBundledAtItsDefaults)
 {
-    const auto folder = reckless::test::ScratchPath("uci-host-bundled-fresh") / "engines";
+    const auto folder = reckless::test::ScratchPath("amphitheater-bundled-fresh") / "engines";
     WriteManifest(folder, "1.0.0");
     const std::vector<BundledEngine> bundled = ReadBundledEngines(folder, kModernCpu);
     ASSERT_EQ(bundled.size(), 3u);
@@ -192,7 +192,7 @@ TEST(BundledEngines, AFreshListIsSeededWithEveryEngineMarkedBundledAtItsDefaults
 
 TEST(BundledEngines, AnUpgradeMovesTheBundledEnginesAndKeepsThePersonsEditsAndEngines)
 {
-    const auto root = reckless::test::ScratchPath("uci-host-bundled-upgrade");
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-upgrade");
     WriteManifest(root / "old" / "engines", "1.0.0");
     EngineCatalogue catalogue;
     catalogue.engines.push_back(OwnEngine());
@@ -230,7 +230,7 @@ TEST(BundledEngines, AnUpgradeMovesTheBundledEnginesAndKeepsThePersonsEditsAndEn
 
 TEST(BundledEngines, AnEngineThePersonRemovedStaysRemoved)
 {
-    const auto folder = reckless::test::ScratchPath("uci-host-bundled-removed") / "engines";
+    const auto folder = reckless::test::ScratchPath("amphitheater-bundled-removed") / "engines";
     WriteManifest(folder, "1.0.0");
     const auto      bundled = ReadBundledEngines(folder, kModernCpu);
     EngineCatalogue catalogue;
@@ -246,7 +246,7 @@ TEST(BundledEngines, AnEngineThePersonRemovedStaysRemoved)
 
 TEST(BundledEngines, AnEngineTheInstallLacksIsLeftOutAndItsEntryLeftAlone)
 {
-    const auto root = reckless::test::ScratchPath("uci-host-bundled-missing");
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-missing");
     WriteManifest(root / "a" / "engines", "1.0.0");
     EngineCatalogue catalogue;
     SeedBundledEngines(catalogue, ReadBundledEngines(root / "a" / "engines", kModernCpu));
@@ -264,7 +264,7 @@ TEST(BundledEngines, AnEngineTheInstallLacksIsLeftOutAndItsEntryLeftAlone)
 
 TEST(BundledEngines, APersonsOwnEntryForTheBundledProgramIsTakenAsItRatherThanListedTwice)
 {
-    const auto folder = reckless::test::ScratchPath("uci-host-bundled-adopt") / "engines";
+    const auto folder = reckless::test::ScratchPath("amphitheater-bundled-adopt") / "engines";
     WriteManifest(folder, "1.0.0");
     EngineCatalogue catalogue;
     EngineEntry     added;
@@ -279,7 +279,7 @@ TEST(BundledEngines, APersonsOwnEntryForTheBundledProgramIsTakenAsItRatherThanLi
 
 TEST(BundledEngines, EachMachineRunsTheBuildItsProcessorTakes)
 {
-    const auto folder = reckless::test::ScratchPath("uci-host-bundled-cpu") / "engines";
+    const auto folder = reckless::test::ScratchPath("amphitheater-bundled-cpu") / "engines";
     WriteManifest(folder, "1.0.0");
     const auto zenith = [&folder](const CpuLevels &cpu) -> std::string {
         for (const BundledEngine &engine : ReadBundledEngines(folder, cpu))
@@ -314,7 +314,7 @@ TEST(BundledEngines, EachMachineRunsTheBuildItsProcessorTakes)
 
 TEST(BundledEngines, AManifestThatCannotBeReadOffersNothing)
 {
-    const auto  folder = reckless::test::ScratchPath("uci-host-bundled-bad");
+    const auto  folder = reckless::test::ScratchPath("amphitheater-bundled-bad");
     std::string error;
     EXPECT_TRUE(ReadBundledEngines(folder, kModernCpu, &error).empty());
     EXPECT_NE(error.find("bundled.json"), std::string::npos);
@@ -325,15 +325,15 @@ TEST(BundledEngines, AManifestThatCannotBeReadOffersNothing)
 
 TEST(BundledEngines, TheManifestIsFoundWhereTheInstallPutsItAndNowhereElse)
 {
-    const auto root = reckless::test::ScratchPath("uci-host-bundled-folder");
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-folder");
     EXPECT_TRUE(BundledEnginesFolder({}).empty());
-    EXPECT_TRUE(BundledEnginesFolder(root / "bare" / "RecklessUciHost").empty()) << "a build tree's app";
+    EXPECT_TRUE(BundledEnginesFolder(root / "bare" / "Amphitheater").empty()) << "a build tree's app";
     WriteManifest(root / "beside" / "engines", "1.0.0");
-    EXPECT_EQ(BundledEnginesFolder(root / "beside" / "RecklessUciHost"), root / "beside" / "engines");
+    EXPECT_EQ(BundledEnginesFolder(root / "beside" / "Amphitheater"), root / "beside" / "engines");
 #if defined(__APPLE__)
-    const auto contents = root / "RecklessUciHost.app" / "Contents";
+    const auto contents = root / "Amphitheater.app" / "Contents";
     WriteManifest(contents / "Resources" / "engines", "1.0.0");
-    EXPECT_EQ(BundledEnginesFolder(contents / "MacOS" / "RecklessUciHost"), contents / "Resources" / "engines");
+    EXPECT_EQ(BundledEnginesFolder(contents / "MacOS" / "Amphitheater"), contents / "Resources" / "engines");
 #endif
     EXPECT_FALSE(RunningExecutable().empty());
     EXPECT_TRUE(std::filesystem::exists(RunningExecutable()));
@@ -341,7 +341,7 @@ TEST(BundledEngines, TheManifestIsFoundWhereTheInstallPutsItAndNowhereElse)
 
 TEST(BundledEngines, TheControllerSeedsAndSavesTheListAsItStartsAndNeverWritesOverOneItCannotRead)
 {
-    const auto root = reckless::test::ScratchPath("uci-host-bundled-controller");
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-controller");
     WriteManifest(root / "engines", "1.0.0");
     MainView        view(Pieces());
     ControllerFiles files;
@@ -382,7 +382,7 @@ TEST(BundledEngines, TheControllerSeedsAndSavesTheListAsItStartsAndNeverWritesOv
 
 TEST(BundledEngines, TheManagerShowsABundledEngineAsSuchAndRemovesItForGood)
 {
-    const auto folder = reckless::test::ScratchPath("uci-host-bundled-manager") / "engines";
+    const auto folder = reckless::test::ScratchPath("amphitheater-bundled-manager") / "engines";
     WriteManifest(folder, "1.0.0");
     EngineCatalogue catalogue;
     catalogue.engines.push_back(OwnEngine());
@@ -399,4 +399,4 @@ TEST(BundledEngines, TheManagerShowsABundledEngineAsSuchAndRemovesItForGood)
     EXPECT_EQ(dialog.catalogue().removed_bundled, std::vector<std::string>{"pawnstar"});
 }
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

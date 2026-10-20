@@ -1,7 +1,7 @@
 #pragma once
 /// @file EngineCatalogue.h The engines a person has configured: each one's program, its UCI options, its own opening
 /// book, a depth limit and pondering, with the options it declared at its last handshake - saved as JSON in the user's
-/// settings folder, reckless-technology/uci-host/engines.json.
+/// settings folder, reckless-technology/amphitheater/engines.json.
 
 #include "uci/EngineConfig.h"
 #include "uci/UciProtocol.h"
@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /** One configured engine. */
@@ -96,7 +96,8 @@ std::vector<uci::EngineOption> DeclaredOptionsFromJson(const reckless::core::jso
 class EngineCatalogue
 {
   public:
-    /** @return reckless-technology/uci-host/engines.json in the user's settings folder; empty where there is none. */
+    /** @return reckless-technology/amphitheater/engines.json in the user's settings folder; empty where there is none.
+     */
     static std::filesystem::path DefaultFile();
 
     /**
@@ -139,4 +140,4 @@ class EngineCatalogue
     void Remove(std::size_t index);
 };
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

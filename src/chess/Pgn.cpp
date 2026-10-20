@@ -4,7 +4,7 @@
 
 #include <cctype>
 
-namespace uci_host::chess
+namespace amphitheater::chess
 {
 
 namespace
@@ -726,4 +726,4 @@ std::string WritePgn(const PgnGame &game)
     return text + writer.Lines() + '\n';
 }
 
-} // namespace uci_host::chess
+} // namespace amphitheater::chess

@@ -5,7 +5,7 @@
 
 #include "MainView.h"
 
-namespace uci_host::app
+namespace amphitheater::app
 {
 
 /**
@@ -14,4 +14,4 @@ namespace uci_host::app
  */
 void ShowSample(MainView &view);
 
-} // namespace uci_host::app
+} // namespace amphitheater::app

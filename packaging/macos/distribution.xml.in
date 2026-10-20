@@ -2,7 +2,7 @@
 <!-- The product package's distribution (packaging/macos/make-installer.sh fills in the version): the licence, macOS 13.3
      and later on either kind of Mac, and the three parts every install takes. -->
 <installer-gui-script minSpecVersion="2">
-    <title>Reckless UCI Host @VERSION@</title>
+    <title>Reckless Amphitheater @VERSION@</title>
     <license file="EULA.txt"/>
     <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
     <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
@@ -16,16 +16,16 @@
         <line choice="cli"/>
         <line choice="uninstaller"/>
     </choices-outline>
-    <choice id="app" title="Reckless UCI Host" visible="false">
-        <pkg-ref id="com.recklesstechnology.ucihost.app"/>
+    <choice id="app" title="Reckless Amphitheater" visible="false">
+        <pkg-ref id="com.recklesstechnology.amphitheater.app"/>
     </choice>
-    <choice id="cli" title="uci-host-cli" visible="false">
-        <pkg-ref id="com.recklesstechnology.ucihost.cli"/>
+    <choice id="cli" title="amphitheater-cli" visible="false">
+        <pkg-ref id="com.recklesstechnology.amphitheater.cli"/>
     </choice>
-    <choice id="uninstaller" title="Uninstall Reckless UCI Host" visible="false">
-        <pkg-ref id="com.recklesstechnology.ucihost.uninstaller"/>
+    <choice id="uninstaller" title="Uninstall Reckless Amphitheater" visible="false">
+        <pkg-ref id="com.recklesstechnology.amphitheater.uninstaller"/>
     </choice>
-    <pkg-ref id="com.recklesstechnology.ucihost.app" version="@VERSION@" onConclusion="none">app.pkg</pkg-ref>
-    <pkg-ref id="com.recklesstechnology.ucihost.cli" version="@VERSION@" onConclusion="none">cli.pkg</pkg-ref>
-    <pkg-ref id="com.recklesstechnology.ucihost.uninstaller" version="@VERSION@" onConclusion="none">uninstaller.pkg</pkg-ref>
+    <pkg-ref id="com.recklesstechnology.amphitheater.app" version="@VERSION@" onConclusion="none">app.pkg</pkg-ref>
+    <pkg-ref id="com.recklesstechnology.amphitheater.cli" version="@VERSION@" onConclusion="none">cli.pkg</pkg-ref>
+    <pkg-ref id="com.recklesstechnology.amphitheater.uninstaller" version="@VERSION@" onConclusion="none">uninstaller.pkg</pkg-ref>
 </installer-gui-script>
