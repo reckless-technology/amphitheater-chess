@@ -205,17 +205,17 @@ Mac), folds it away to the header alone and gives the board its room back, and o
 The log's height and whether it shows are kept in `reckless-technology/amphitheater/layout.json` in the user's
 settings folder (`LayoutSettings.h`), and the next launch opens with them.
 
-View offers five sizes, 50%, 75%, 100%, 125% and 150% of the 1380 x 1120 design size (`WindowSizes.h`): a size chosen
-makes the window that size, its top left kept unless the window would then cross an edge of its screen's work area,
-when it is moved in until all of it stands there, and the layout is drawn at the design size at exactly that scale
-(`AppRoot::SetFixedZoom`). The size drawn is ticked; dragging the frame to any other size ticks none and the layout
-follows the window again as above. A size the window's screen cannot take whole is dim rather than shrunk to fit, so a
-ticked size is always the one drawn. Larger and Smaller step to the next size that fits and stop at the ends. The size
-chosen is kept in `reckless-technology/amphitheater/window.json` in the user's settings folder, and the next launch opens
-at it, held to its screen; with none kept - a first launch, or a window last left at a dragged size - the window opens
-at the design size, held to its screen. The moves
-and the log are a whole number of rows tall, so a list kept on the move shown or the newest line never leaves part of a
-row at its top. The last move lights both its squares, each shade in its own tint of the accent.
+View offers five sizes, 50%, 75%, 100%, 125% and 150% of the 1380 x 1120 design size (the toolkit's `AppWindowSizes.h`,
+the size kept by `WindowSizes.h`): a size chosen makes the window that size, its top left kept unless the window would
+then cross an edge of its screen's work area, when it is moved in until all of it stands there, and the layout is drawn
+at the design size at exactly that scale (`AppRoot::SetFixedZoom`). The size drawn is ticked; dragging the frame to any
+other size ticks none and the layout follows the window again as above. A size the window's screen cannot take whole is
+dim rather than shrunk to fit, so a ticked size is always the one drawn. Larger and Smaller step to the next size that
+fits and stop at the ends. The size chosen is kept in `reckless-technology/amphitheater/window.json` in the user's
+settings folder, and the next launch opens at it, held to its screen; with none kept - a first launch, or a window last
+left at a dragged size - the window opens at the design size, held to its screen. The moves and the log are a whole
+number of rows tall, so a list kept on the move shown or the newest line never leaves part of a row at its top. The last
+move lights both its squares, each shade in its own tint of the accent.
 
 **Scores are from White's side everywhere the host shows or writes one**: + means White is better, - means Black is,
 whichever engine reported it and whichever side it plays. UCI has an engine report its score from the side to move in
