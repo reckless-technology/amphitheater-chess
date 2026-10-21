@@ -5,8 +5,6 @@
 #include "Json.h"
 #include "JsonFile.h"
 
-#include <algorithm>
-#include <cmath>
 #include <utility>
 
 namespace amphitheater::app
@@ -19,48 +17,29 @@ namespace json = reckless::core::json;
 
 constexpr int kFormat = 1; ///< The file's format.
 
-/**
- * @param percent A size, in percent.
- * @return Its zoom: exact for every size offered.
- */
-float ZoomOf(int percent)
-{
-    return static_cast<float>(percent) / 100.0f;
-}
-
 } // namespace
 
 WindowSizes::WindowSizes(reckless::app::AppRoot &root, reckless::gfx::PointI design, std::filesystem::path file)
-    : root_(root), design_(design), file_(std::move(file))
+    : sizes_(root, design), file_(std::move(file))
 {
 }
 
 void WindowSizes::Restore()
 {
-    const int                   percent = file_.empty() ? 100 : Load(file_).value_or(100);
-    const reckless::gfx::PointI size    = root_.SetFixedZoom(design_, ZoomOf(percent));
-    root_.SetBounds({size.x, size.y});
+    sizes_.Restore(file_.empty() ? 100 : Load(file_).value_or(100));
 }
 
 void WindowSizes::SetWindow(reckless::app::AppWindow *window)
 {
-    window_ = window;
-    room_   = {0, 0};
-    RefreshRoom();
+    sizes_.SetWindow(window);
 }
 
 bool WindowSizes::Choose(int percent)
 {
-    if (!IsOffered(percent) || window_ == nullptr || !Fits(percent))
+    if (!sizes_.Choose(percent))
     {
         return false;
     }
-    const reckless::gfx::PointI size = root_.SetFixedZoom(design_, ZoomOf(percent));
-    if (root_.width() != size.x || root_.height() != size.y)
-    {
-        window_->SetContentSizeOnScreen(size.x, size.y); // the root follows the window's resize
-    }
-    RefreshRoom();
     if (!file_.empty())
     {
         Store(file_, percent);
@@ -70,57 +49,17 @@ bool WindowSizes::Choose(int percent)
 
 void WindowSizes::Frame(double seconds)
 {
-    elapsed_ += seconds;
-    if (elapsed_ >= kRefreshSeconds)
-    {
-        RefreshRoom();
-    }
+    sizes_.Frame(seconds);
 }
 
 WindowSizeMenu WindowSizes::Menu() const
 {
-    WindowSizeMenu menu;
-    menu.has_window = window_ != nullptr;
-    menu.in_force   = InForce();
-    for (std::size_t index = 0; index < kWindowSizes.size(); ++index)
-    {
-        menu.fits[index] = menu.has_window && Fits(kWindowSizes[index]);
-    }
-    if (!menu.has_window)
-    {
-        return menu;
-    }
-    // From the size in force, or - dragged to another - from the scale the window is nearest the design at, so a step
-    // from a dragged window goes to the next size past it either way.
-    const double     now = menu.in_force != 0
-                               ? static_cast<double>(menu.in_force)
-                               : 100.0 * std::min(static_cast<double>(root_.width()) / static_cast<double>(design_.x),
-                                                  static_cast<double>(root_.height()) / static_cast<double>(design_.y));
-    constexpr double kTolerance = 0.5; // half a percent: a window a pixel off a size is at it
-    for (std::size_t index = 0; index < kWindowSizes.size(); ++index)
-    {
-        const int percent = kWindowSizes[index];
-        if (menu.larger == 0 && percent > now + kTolerance && menu.fits[index])
-        {
-            menu.larger = percent;
-        }
-        if (percent < now - kTolerance && menu.fits[index])
-        {
-            menu.smaller = percent;
-        }
-    }
-    return menu;
+    return sizes_.Menu();
 }
 
 int WindowSizes::InForce() const
 {
-    const std::optional<float> zoom = root_.fixed_zoom();
-    if (!zoom)
-    {
-        return 0;
-    }
-    const int percent = static_cast<int>(std::lround(*zoom * 100.0f));
-    return IsOffered(percent) ? percent : 0;
+    return sizes_.InForce();
 }
 
 void WindowSizes::Save() const
@@ -134,7 +73,7 @@ void WindowSizes::Save() const
 
 bool WindowSizes::IsOffered(int percent)
 {
-    return std::find(kWindowSizes.begin(), kWindowSizes.end(), percent) != kWindowSizes.end();
+    return reckless::app::WindowSizes::IsOffered(percent);
 }
 
 std::optional<int> WindowSizes::Load(const std::filesystem::path &file)
@@ -167,31 +106,6 @@ std::filesystem::path WindowSizes::DefaultFile()
 {
     const std::filesystem::path folder = SettingsFolder();
     return folder.empty() ? folder : folder / "window.json";
-}
-
-reckless::gfx::PointI WindowSizes::SizeAt(int percent) const
-{
-    return {static_cast<int>(std::lround(static_cast<double>(design_.x) * percent / 100.0)),
-            static_cast<int>(std::lround(static_cast<double>(design_.y) * percent / 100.0))};
-}
-
-bool WindowSizes::Fits(int percent) const
-{
-    if (room_.x <= 0 || room_.y <= 0)
-    {
-        return true;
-    }
-    const reckless::gfx::PointI size = SizeAt(percent);
-    return size.x <= room_.x && size.y <= room_.y;
-}
-
-void WindowSizes::RefreshRoom()
-{
-    elapsed_ = 0.0;
-    if (window_ != nullptr)
-    {
-        room_ = window_->LargestContent();
-    }
 }
 
 } // namespace amphitheater::app

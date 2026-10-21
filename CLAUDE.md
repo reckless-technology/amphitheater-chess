@@ -118,7 +118,8 @@ GUI will save with the toolkit's JSON.
   added (`assets/books`, `make_book.py` writes it; regenerate rather than edit); `MakeBookDialog` is File > Make book from games (`amphitheater-cli makebook` on the command
   line). `EngineCatalogue` is the engine list
   (`reckless-technology/amphitheater/engines.json` in the user's settings folder); `WindowSizes` the View menu's window
-  sizes, held by `AppRoot::SetFixedZoom` and kept in `window.json` beside it; `LayoutSettings` the engine log's height
+  sizes - the toolkit's (`AppWindowSizes.h`), held by `AppRoot::SetFixedZoom` - kept in `window.json` beside it;
+  `LayoutSettings` the engine log's height
   and whether it shows (its header, `LogHeader`, folds it and drags it), the pieces and the book open, kept in
   `layout.json`. `Theme.h` holds the
   mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which

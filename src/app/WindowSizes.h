@@ -1,55 +1,32 @@
 #pragma once
-/// @file WindowSizes.h The window's sizes the View menu offers - 50 % to 150 % of the layout's design size, the
-/// content drawn at exactly that scale - which one is in force, which the window's screen takes, the next up and down,
-/// and the one chosen kept across launches in `reckless-technology/amphitheater/window.json` in the user's settings
-/// folder.
+/// @file WindowSizes.h The window's sizes the View menu offers - the toolkit's (AppWindowSizes.h: 50 % to 150 % of the
+/// layout's design size, the content drawn at exactly that scale, which one is in force, which the window's screen
+/// takes, the next up and down) - with the one chosen kept across launches in
+/// `reckless-technology/amphitheater/window.json` in the user's settings folder.
 
 #include "AppPlatform.h"
 #include "AppRoot.h"
+#include "AppWindowSizes.h"
 #include "Geometry.h"
 
-#include <array>
-#include <cstddef>
 #include <filesystem>
 #include <optional>
 
 namespace amphitheater::app
 {
 
-/** The sizes the View menu offers, in percent of the layout's design size, smallest first. */
-inline constexpr std::array<int, 5> kWindowSizes{50, 75, 100, 125, 150};
-
-/** What the View menu shows of the window's size. */
-struct WindowSizeMenu
-{
-    bool has_window = false; ///< A window to size: none in a suite or the render tool, where every size is dim.
-    /** The size the window is drawn at, one of kWindowSizes; 0 for none - the person dragged its frame to another. */
-    int in_force = 0;
-    /** Whether each size's window, in kWindowSizes' order, stands wholly on the screen the window is on. */
-    std::array<bool, kWindowSizes.size()> fits{};
-    int larger  = 0; ///< The next size up that fits, from the size the window is now; 0 at the top.
-    int smaller = 0; ///< The next size down, likewise; 0 at the bottom.
-
-    /**
-     * Whether two states show the same menu.
-     * @param a One state.
-     * @param b The other.
-     * @return Whether every field is the same.
-     */
-    friend bool operator==(const WindowSizeMenu &a, const WindowSizeMenu &b) = default;
-};
+using reckless::app::kWindowSizes;   ///< The sizes the View menu offers, in percent, smallest first.
+using reckless::app::WindowSizeMenu; ///< What the View menu shows of the window's size.
 
 /**
- * The window's sizes: the root held at a size from the View menu (AppRoot::SetFixedZoom), the window sized to it on
- * its screen (AppWindow::SetContentSizeOnScreen), the sizes its screen takes asked of the window
- * (AppWindow::LargestContent) - a size it does not take is dim rather than shrunk, so a ticked size is always the size
- * drawn - and the size chosen kept in a file, which a launch opens at. Main thread.
+ * The window's sizes (reckless::app::WindowSizes, whose logic they are) and the size chosen kept in a file, which a
+ * launch opens at. Main thread.
  */
 class WindowSizes
 {
   public:
     /** How often the screen's room is asked again while the window is open: it may be moved to another screen. */
-    static constexpr double kRefreshSeconds = 0.5;
+    static constexpr double kRefreshSeconds = reckless::app::WindowSizes::kRefreshSeconds;
 
     /**
      * @param root The window's root; outlives this.
@@ -120,27 +97,8 @@ class WindowSizes
     static std::filesystem::path DefaultFile();
 
   private:
-    /**
-     * @param percent A size.
-     * @return The window's content at it: the design size times the percent, in design pixels.
-     */
-    reckless::gfx::PointI SizeAt(int percent) const;
-
-    /**
-     * @param percent A size.
-     * @return Whether its window stands wholly on the window's screen; true where the screen's room is not known.
-     */
-    bool Fits(int percent) const;
-
-    /** The screen's room asked of the window. */
-    void RefreshRoom();
-
-    reckless::app::AppRoot   &root_;              ///< The window's root.
-    reckless::gfx::PointI     design_;            ///< The layout's design size.
-    std::filesystem::path     file_;              ///< Where the size chosen is kept.
-    reckless::app::AppWindow *window_  = nullptr; ///< The window, while it is open.
-    reckless::gfx::PointI     room_    = {0, 0};  ///< The largest content its screen takes; {0, 0} for not known.
-    double                    elapsed_ = 0.0;     ///< Seconds since the room was last asked.
+    reckless::app::WindowSizes sizes_; ///< The sizes, the window held at them.
+    std::filesystem::path      file_;  ///< Where the size chosen is kept.
 };
 
 } // namespace amphitheater::app
