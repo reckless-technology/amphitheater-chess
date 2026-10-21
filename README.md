@@ -122,6 +122,26 @@ the submodule. The app lands at
 `build/<preset>/src/app/Amphitheater.exe` on Windows, `build/<preset>/src/app/Amphitheater.app` on macOS and
 `build/<preset>/src/app/amphitheater` on Linux.
 
+A plain build builds every target - the app, the command line, the suites and the tools. To build one, name it:
+
+| Target | What it builds |
+|---|---|
+| `Amphitheater` | the app, the window (needs the toolkit submodule) |
+| `amphitheater-cli` | the command line: matches, tournaments, perft, analysis, test suites, opening books |
+| `amphitheater_render_main` | the window drawn to a PNG with no display, for the review images in `docs/design/` |
+| `amphitheater_chess_test`, `amphitheater_uci_test`, `amphitheater_match_test`, `amphitheater_cli_test`, `amphitheater_window_test`, `amphitheater_integration_test` | the suites, one per library (below) |
+| `amphitheater_fake_engine` | the scripted engine the suites play against |
+
+```
+cmake --build build --target Amphitheater        # or, with the Makefile generator: make -C build Amphitheater
+cmake --build build --target amphitheater-cli
+```
+
+`make help` lists many more: the libraries these link (`amphitheater_chess`, `amphitheater_gui` and the rest), the
+toolkit's own libraries, GoogleTest's, and one `reckless_embedded_<hash>` library for each file the window carries
+inside itself (each piece, font, the icon and the opening book: the toolkit compiles each file once however many
+binaries embed it). None of them needs building by hand.
+
 ```
 cmake --preset release && cmake --build --preset release && ctest --preset release
 cmake --preset debug   && cmake --build --preset debug   && ctest --preset debug
