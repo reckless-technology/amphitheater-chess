@@ -221,7 +221,7 @@ TEST(WindowSizes, TheShortcutsStepThroughTheSizesAndStopAtTheEnds)
     services.window_sizes       = [&rig] { return rig.sizes.Menu(); };
     services.choose_window_size = [&rig](int percent) { rig.sizes.Choose(percent); };
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}}, services);
+    MainController controller(view, ControllerFiles::None(), services);
     ASSERT_NE(controller.own_menus(), nullptr);
     reckless::app::MenuBarController &menus = *controller.own_menus();
     const auto                        press = [&](const Shortcut &shortcut) {

@@ -119,7 +119,7 @@ TEST(Menus, TheBarHoldsTheMockupsMenusAndEachItemFollowsTheWindowsState)
 TEST(Menus, EveryShortcutChoosesItsCommandThroughTheBar)
 {
     MainView                         view(Pieces());
-    MainController                   controller(view, ControllerFiles{{}});
+    MainController                   controller(view, ControllerFiles::None());
     std::vector<int>                 told;
     reckless::app::MenuBarController menus;
     MenuState                        state;
@@ -174,7 +174,7 @@ TEST(Menus, AWindowWhoseBarThePlatformShowsDrawsNoneAndLaysOutFromTheTop)
         chosen = std::move(on_chosen);
     };
     view.SetMenuBarView(nullptr);
-    MainController controller(view, ControllerFiles{{}}, services);
+    MainController controller(view, ControllerFiles::None(), services);
     EXPECT_EQ(controller.own_menus(), nullptr);
     EXPECT_EQ(view.menu_bar(), nullptr);
     ASSERT_EQ(set.size(), 1u) << "the platform's bar set once the window is made";
@@ -195,7 +195,7 @@ TEST(Menus, AWindowWhoseBarThePlatformShowsDrawsNoneAndLaysOutFromTheTop)
 TEST(Menus, TheUpdateChecksMenuStandsUnderHelpAndFollowsTheCheck)
 {
     MainView          view(Pieces());
-    MainController    controller(view, ControllerFiles{{}});
+    MainController    controller(view, ControllerFiles::None());
     const std::size_t rows_before = controller.menu_bar().menus.back().submenu.size();
 
     // A check that never reaches the network: switched off, as the environment switches it off on a runner.

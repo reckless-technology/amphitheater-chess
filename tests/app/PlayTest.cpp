@@ -50,7 +50,7 @@ EngineEntry Fake(std::vector<std::string> arguments = {}, std::string name = "Fa
 struct Rig
 {
     MainView       view{Pieces()};
-    MainController controller{view, ControllerFiles{{}}};
+    MainController controller{view, ControllerFiles::None()};
 
     /**
      * Frames until a condition holds, or ten seconds.

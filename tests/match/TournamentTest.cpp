@@ -340,6 +340,8 @@ TEST(Tournament, ARoundRobinPlaysEveryGameInParallelAndReportsEach)
         case TournamentEvent::Kind::kFinished:
             has_ended = true;
             break;
+        case TournamentEvent::Kind::kMoveMade:
+            break; // not asked for: does_report_moves is off
         }
     }
     tournament.Wait();

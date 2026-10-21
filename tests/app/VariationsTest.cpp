@@ -34,7 +34,7 @@ const PieceSet &Pieces()
 struct Rig
 {
     MainView       view{Pieces()};
-    MainController controller{view, ControllerFiles{{}}};
+    MainController controller{view, ControllerFiles::None()};
 
     Rig()
     {

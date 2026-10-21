@@ -120,6 +120,11 @@ class AnalysisSession
     /** One engine and its state. */
     struct Analyser
     {
+        /** @param engine The engine; its search followed under its name. */
+        explicit Analyser(EngineEntry engine) : entry(std::move(engine)), tracker(entry.DisplayName())
+        {
+        }
+
         EngineEntry                               entry;                ///< The engine.
         std::future<std::unique_ptr<uci::Engine>> starting;             ///< Its start, while under way.
         std::unique_ptr<uci::Engine>              engine;               ///< The engine, once started.

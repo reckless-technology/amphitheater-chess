@@ -8,7 +8,7 @@ namespace amphitheater::app
 GameAnalysisDialog::GameAnalysisDialog(const std::vector<EngineEntry> &engines)
     : DialogFrame("Analyse the game", 560, 400), engines_(engines), engine_label_("Engine"),
       seconds_label_("Seconds a move"), seconds_(FieldStyle()), depth_label_("Or a depth"), depth_(FieldStyle()),
-      mark_("Mark inaccuracies, mistakes and blunders (?!, ?, ??)"),
+      mark_("Mark inaccuracies, mistakes and blunders (?!, ?, ?\?)"), // "?\?": a question mark twice, never a trigraph
       lines_("Add the engine's line where a move was a mistake or a blunder"), note_({}, true)
 {
     std::vector<std::string> names;

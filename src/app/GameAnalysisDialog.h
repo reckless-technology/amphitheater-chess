@@ -1,7 +1,8 @@
 #pragma once
 /// @file GameAnalysisDialog.h Game > Analyse the game: the engine that goes over every position of the line shown, how
-/// long it thinks on each - seconds or a depth - whether each move it judges to have cost its mover is marked (?!, ?,
-/// ??), and whether the engine's best line is added as a variation where a move was a mistake or a blunder.
+/// long it thinks on each - seconds or a depth - whether each move it judges to have cost its mover is marked (?! an
+/// inaccuracy, ? a mistake, ?? a blunder), and whether the engine's best line is added as a variation where a move was
+/// a mistake or a blunder.
 
 #include "Controls.h"
 #include "EngineCatalogue.h"

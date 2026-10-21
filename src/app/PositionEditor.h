@@ -242,7 +242,6 @@ class PositionEditorDialog final : public DialogFrame
     /** Every control set from the setup, and the message from whether its position is legal. */
     void Refresh();
 
-    const PieceSet                          &pieces_;            ///< The pieces.
     chess::BoardSetup                        setup_;             ///< The setup being edited.
     SetupBoardView                           board_;             ///< The board.
     PiecePalette                             palette_;           ///< The pieces to put.

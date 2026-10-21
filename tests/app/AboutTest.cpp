@@ -118,7 +118,7 @@ TEST(About, HelpAboutOpensOverTheWindowWithTheNameAndVersionAndClosesOnEscape)
     std::vector<std::string> opened;
     ControllerServices       services;
     services.open_url = [&](const std::string &url) { opened.push_back(url); };
-    MainController controller(view, ControllerFiles{{}}, services);
+    MainController controller(view, ControllerFiles::None(), services);
     view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
 
     ASSERT_TRUE(ChooseAbout(controller)) << "Help holds About and the bar chooses it";
@@ -181,7 +181,7 @@ TEST(About, TheEnginesTheInstallCarriesAreListedWithTheirVersionsAndLicences)
     const std::filesystem::path folder = reckless::test::ScratchPath("amphitheater-about") / "engines";
     WriteManifest(folder);
     MainView        view(Pieces());
-    ControllerFiles files{{}};
+    ControllerFiles files = ControllerFiles::None();
     files.bundled_engines = folder;
     MainController controller(view, files);
     view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
@@ -223,7 +223,7 @@ TEST(About, ItsMarkIsTheAppsIconCarriedInTheBinary)
 TEST(About, TheMacAppMenusAboutItemOpensThisWindow)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
     EXPECT_EQ(controller.menu_bar().about_id, kAbout) << "the bar names Help > About for the app menu's item";
     reckless::app::MenuBarController *menus = controller.own_menus();

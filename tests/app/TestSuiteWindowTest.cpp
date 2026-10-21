@@ -42,7 +42,7 @@ constexpr const char *kQueenTrade = "3q3k/8/8/8/8/8/8/3Q3K w - -";
 struct Rig
 {
     MainView              view{Pieces()};
-    MainController        controller{view, ControllerFiles{{}}};
+    MainController        controller{view, ControllerFiles::None()};
     std::filesystem::path suite;
 
     Rig()
@@ -144,7 +144,7 @@ TEST(TestSuiteWindow, TheDialogRefusesATimeOrADepthItCannotUse)
 TEST(TestSuiteWindow, TheEnginesMenuOffersATestSuiteOnceAnEngineIsConfigured)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     const auto     item = [&controller]() -> const reckless::app::MenuEntry     *{
         for (const auto &menu : controller.menu_bar().menus)
         {

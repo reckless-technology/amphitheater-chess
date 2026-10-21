@@ -198,7 +198,7 @@ TEST(Evaluations, APgnWrittenFromAGameReadsBackAsTheSameSeries)
 TEST(Evaluations, APgnWithScoresOpensWithItsSeriesOnTheGraph)
 {
     MainView       view{Pieces()};
-    MainController controller{view, ControllerFiles{{}}};
+    MainController controller{view, ControllerFiles::None()};
     const auto     games = chess::ReadPgn(R"([White "Alpha"]
 [Black "Beta"]
 

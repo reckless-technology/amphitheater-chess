@@ -60,8 +60,8 @@ TEST(Pieces, TheBoardIsDrawnWithCburnettAndViewPiecesChoosesStaunton)
     const auto file = folder / "layout.json";
     {
         MainView        view(Pieces());
-        ControllerFiles files{{}};
-        files.layout = file;
+        ControllerFiles files = ControllerFiles::None();
+        files.layout          = file;
         MainController controller(view, files);
         EXPECT_EQ(controller.piece_set(), "cburnett");
         const auto &menu = PiecesMenu(controller.menu_bar());
@@ -81,8 +81,8 @@ TEST(Pieces, TheBoardIsDrawnWithCburnettAndViewPiecesChoosesStaunton)
     }
     {
         MainView        view(Pieces());
-        ControllerFiles files{{}};
-        files.layout = file;
+        ControllerFiles files = ControllerFiles::None();
+        files.layout          = file;
         MainController controller(view, files);
         EXPECT_EQ(controller.piece_set(), "staunton") << "the next launch draws with it";
     }

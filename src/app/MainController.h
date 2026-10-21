@@ -81,6 +81,15 @@ struct ControllerFiles
         resizes the engine log; empty to keep none - the suites' and the render tool's - where the app names
         LayoutSettings::DefaultFile(). */
     std::filesystem::path layout;
+
+    /** @return Files that keep nothing - no engine list, no bundled engines, no layout - the suites' and the render
+        tool's. */
+    static ControllerFiles None()
+    {
+        ControllerFiles files;
+        files.engines.clear();
+        return files;
+    }
 };
 
 /** The main window's controller. */

@@ -45,7 +45,7 @@ struct Rig
     std::string    clipboard;
     std::string    chosen; ///< What the file dialog answers.
     MainView       view{Pieces()};
-    MainController controller{view, ControllerFiles{{}}, Services()};
+    MainController controller{view, ControllerFiles::None(), Services()};
 
     /** @return The services, on this rig's clipboard and dialog. */
     ControllerServices Services()

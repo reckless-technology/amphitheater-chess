@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     RenderHost                  host;
     amphitheater::app::MainView view(pieces);
     view.SetHost(&host);
-    amphitheater::app::MainController controller(view, amphitheater::app::ControllerFiles{{}});
+    amphitheater::app::MainController controller(view, amphitheater::app::ControllerFiles::None());
     if (!is_empty)
     {
         amphitheater::app::ShowSample(view);

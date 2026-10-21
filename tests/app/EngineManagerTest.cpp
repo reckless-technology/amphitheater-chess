@@ -149,10 +149,12 @@ TEST(EngineManager, EveryOptionTypeIsEditedAsItsControlAndSavedWithTheLimitsAndT
 
 TEST(EngineManager, TheControllerWritesTheListWhereItKeepsIt)
 {
-    const auto     scratch = reckless::test::ScratchPath("amphitheater-manager");
-    const auto     file    = scratch / "engines.json";
-    MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{file});
+    const auto      scratch = reckless::test::ScratchPath("amphitheater-manager");
+    const auto      file    = scratch / "engines.json";
+    MainView        view(Pieces());
+    ControllerFiles files = ControllerFiles::None();
+    files.engines         = file;
+    MainController controller(view, files);
     controller.Command(kEngineManager);
     auto *dialog = dynamic_cast<EngineManagerDialog *>(controller.dialog());
     ASSERT_NE(dialog, nullptr);

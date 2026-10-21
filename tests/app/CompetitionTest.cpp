@@ -46,11 +46,22 @@ EngineEntry Fake(std::string name, std::vector<std::string> arguments = {})
     return entry;
 }
 
+/**
+ * @param config An engine's configuration.
+ * @return It as a tournament's engine, with the tournament's time control and no book of its own.
+ */
+match::TournamentEngine Entrant(uci::EngineConfig config)
+{
+    match::TournamentEngine engine;
+    engine.config = std::move(config);
+    return engine;
+}
+
 /** A window and its controller, with no engine list on disk. */
 struct Rig
 {
     MainView       view{Pieces()};
-    MainController controller{view, ControllerFiles{{}}};
+    MainController controller{view, ControllerFiles::None()};
 
     /** Frames until a condition holds, or thirty seconds. */
     bool FramesUntil(const std::function<bool()> &condition)
@@ -142,7 +153,7 @@ TEST(Competition, AGameInProgressIsChosenToWatch)
 {
     Rig                       rig;
     match::TournamentSettings settings;
-    settings.engines                      = {{Fake("Alpha").config}, {Fake("Beta", {"--seed", "5"}).config}};
+    settings.engines = {Entrant(Fake("Alpha").config), Entrant(Fake("Beta", {"--seed", "5"}).config)};
     settings.engines[0].config.arguments  = {"--think", "30"};
     settings.engines[1].config.arguments  = {"--think", "30"};
     settings.time_control                 = *chess::TimeControl::Parse("10+0.1");
@@ -221,7 +232,7 @@ TEST(Competition, TheDialogsRefuseWhatTheCommandLineRefuses)
     dialog->on_cancel();
 
     match::TournamentSettings lonely;
-    lonely.engines = {{Fake("Alpha").config}};
+    lonely.engines = {Entrant(Fake("Alpha").config)};
     rig.controller.StartCompetition(lonely, true);
     EXPECT_FALSE(rig.controller.last_error().empty());
     EXPECT_EQ(PointsText(2.5), "2\xc2\xbd");

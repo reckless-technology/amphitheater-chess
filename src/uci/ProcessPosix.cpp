@@ -245,8 +245,13 @@ void ChildProcess::JoinReaders()
     }
     if (!output_.IsClosed())
     {
+        // One byte wakes them; a wake that cannot be written leaves them to end with their pipes.
         const char wake = 1;
-        static_cast<void>(write(platform_->wake[1], &wake, 1));
+        ssize_t    woken;
+        do
+        {
+            woken = write(platform_->wake[1], &wake, 1);
+        } while (woken < 0 && errno == EINTR);
     }
     for (std::thread *reader : {&platform_->output_reader, &platform_->error_reader})
     {

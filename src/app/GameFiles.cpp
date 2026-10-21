@@ -76,7 +76,7 @@ std::string TodayInPgn()
 #else
     localtime_r(&now, &local);
 #endif
-    char text[16];
+    char text[40]; // room for any three ints, so the compiler can see nothing is cut
     std::snprintf(text, sizeof text, "%04d.%02d.%02d", local.tm_year + 1900, local.tm_mon + 1, local.tm_mday);
     return text;
 }

@@ -114,7 +114,7 @@ AnalysisSession::AnalysisSession(const std::vector<EngineEntry> &engines, int mu
 {
     for (const EngineEntry &entry : engines)
     {
-        auto analyser = std::make_unique<Analyser>(Analyser{entry, {}, nullptr, SearchTracker(entry.DisplayName())});
+        auto analyser = std::make_unique<Analyser>(entry);
         analyser->starting =
             std::async(std::launch::async, &AnalysisSession::StartEngine, entry, multipv, log_lock_, log_);
         analysers_.push_back(std::move(analyser));

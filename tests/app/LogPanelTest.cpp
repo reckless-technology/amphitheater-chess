@@ -119,7 +119,7 @@ TEST(LogPanel, OpensSevenRowsTallUnderItsHeaderBelowTheAnalysis)
 TEST(LogPanel, AClickOnTheHeaderFoldsTheLogAwayAndGivesTheBoardTheRoom)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     ShowSample(view);
     view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
     const float open_square = view.board().SquareSize();
@@ -204,8 +204,8 @@ TEST(LogPanel, ViewEngineLogFoldsItAndTheLayoutIsKeptAcrossLaunches)
     const auto file = FreshFile("amphitheater-log-layout");
     {
         MainView        view(Pieces());
-        ControllerFiles files{{}};
-        files.layout = file;
+        ControllerFiles files = ControllerFiles::None();
+        files.layout          = file;
         MainController controller(view, files);
         view.SetBounds({MainView::kDesignWidth, MainView::kDesignHeight});
         const reckless::app::MenuEntry *item = Find(controller.menu_bar(), kShowLog);
@@ -222,8 +222,8 @@ TEST(LogPanel, ViewEngineLogFoldsItAndTheLayoutIsKeptAcrossLaunches)
     }
     {
         MainView        view(Pieces());
-        ControllerFiles files{{}};
-        files.layout = file;
+        ControllerFiles files = ControllerFiles::None();
+        files.layout          = file;
         MainController controller(view, files);
         EXPECT_FALSE(view.is_log_open()) << "the next launch opens as it was left";
         EXPECT_EQ(view.log_height(), LayoutSettings::Load(file).log_height);
@@ -236,7 +236,7 @@ TEST(LogPanel, ViewEngineLogFoldsItAndTheLayoutIsKeptAcrossLaunches)
 TEST(LogPanel, AControllerWithNoLayoutFileKeepsNothing)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     controller.Command(kShowLog);
     EXPECT_FALSE(view.is_log_open());
     EXPECT_TRUE(controller.last_error().empty());

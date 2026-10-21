@@ -51,7 +51,7 @@ EngineEntry Fake(std::vector<std::string> arguments)
 struct Rig
 {
     MainView       view{Pieces()};
-    MainController controller{view, ControllerFiles{{}}};
+    MainController controller{view, ControllerFiles::None()};
 
     Rig()
     {

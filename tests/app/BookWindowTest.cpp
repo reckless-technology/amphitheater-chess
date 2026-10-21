@@ -88,7 +88,7 @@ std::vector<std::string> Sans(const MainController &controller)
 TEST(BookWindow, ABooksMovesAreListedUnderTheCardTheHeaviestFirstWithTheirShares)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     const int      card_alone = view.card().height();
     EXPECT_FALSE(view.is_book_shown());
     EXPECT_FALSE(view.book().view().visible());
@@ -117,7 +117,7 @@ TEST(BookWindow, ABooksMovesAreListedUnderTheCardTheHeaviestFirstWithTheirShares
 TEST(BookWindow, TheHeaviestMovesAreDrawnFaintlyOnTheBoardTheHeaviestClearest)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     ASSERT_TRUE(controller.OpenBook(WriteBook("amphitheater-book-arrows").string()));
     controller.Frame(0.0);
     const std::vector<BoardArrow> &arrows = view.board().arrows();
@@ -132,7 +132,7 @@ TEST(BookWindow, TheHeaviestMovesAreDrawnFaintlyOnTheBoardTheHeaviestClearest)
 TEST(BookWindow, AMovePressedInTheListIsPlayedAndTheListFollowsThePosition)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     ASSERT_TRUE(controller.OpenBook(WriteBook("amphitheater-book-play").string()));
     view.book().view().on_click(1, 0);
     controller.Frame(0.0);
@@ -149,7 +149,7 @@ TEST(BookWindow, AMovePressedInTheListIsPlayedAndTheListFollowsThePosition)
 TEST(BookWindow, CloseBookTakesItAwayAndTheMenuFollows)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     const auto     close_item = [&controller]() -> const reckless::app::MenuEntry     *{
         for (const auto &entry : controller.menu_bar().menus[0].submenu)
         {
@@ -175,7 +175,7 @@ TEST(BookWindow, CloseBookTakesItAwayAndTheMenuFollows)
 TEST(BookWindow, ABookThatCannotBeReadIsRefusedAndTheOneOpenStays)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     const auto     book = WriteBook("amphitheater-book-refused");
     ASSERT_TRUE(controller.OpenBook(book.string()));
     EXPECT_FALSE(controller.OpenBook((book.parent_path() / "missing.bin").string()));
@@ -191,8 +191,8 @@ TEST(BookWindow, TheBookOpenIsKeptForTheNextLaunch)
     std::filesystem::remove(layout);
     {
         MainView        view(Pieces());
-        ControllerFiles files{{}};
-        files.layout = layout;
+        ControllerFiles files = ControllerFiles::None();
+        files.layout          = layout;
         MainController controller(view, files);
         ASSERT_TRUE(controller.OpenBook(book.string()));
         controller.Command(kShowLog); // any change of the layout writes it, the book with it
@@ -200,8 +200,8 @@ TEST(BookWindow, TheBookOpenIsKeptForTheNextLaunch)
     EXPECT_EQ(LayoutSettings::Load(layout).book, book.string());
     {
         MainView        view(Pieces());
-        ControllerFiles files{{}};
-        files.layout = layout;
+        ControllerFiles files = ControllerFiles::None();
+        files.layout          = layout;
         MainController controller(view, files);
         EXPECT_TRUE(view.is_book_shown());
         EXPECT_EQ(Sans(controller).size(), 4u);
@@ -214,14 +214,14 @@ TEST(BookWindow, AFirstLaunchOpensTheBuiltInBookAndASuiteKeepingNoLayoutOpensNon
 {
     {
         MainView       view(Pieces());
-        MainController controller(view, ControllerFiles{{}});
+        MainController controller(view, ControllerFiles::None());
         EXPECT_FALSE(view.is_book_shown()) << "no layout file: no book";
     }
     const auto folder = reckless::test::ScratchPath("amphitheater-book-first-launch");
     std::filesystem::remove_all(folder);
     MainView        view(Pieces());
-    ControllerFiles files{{}};
-    files.layout = folder / "layout.json";
+    ControllerFiles files = ControllerFiles::None();
+    files.layout          = folder / "layout.json";
     MainController controller(view, files);
     EXPECT_TRUE(view.is_book_shown());
     EXPECT_EQ(controller.book_path(), kBuiltInBook);
@@ -237,7 +237,7 @@ TEST(BookWindow, AFirstLaunchOpensTheBuiltInBookAndASuiteKeepingNoLayoutOpensNon
 TEST(BookWindow, BuiltInBookOpensZenithsBookAndIsTickedWhileItIsOpen)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     const auto     built_in_item = [&controller]() -> const reckless::app::MenuEntry     *{
         for (const auto &entry : controller.menu_bar().menus[0].submenu)
         {
@@ -265,7 +265,7 @@ TEST(BookWindow, APgnFileOpensAsABookOfItsGamesOpenings)
     std::ofstream(file, std::ios::trunc) << "[Event \"a\"]\n\n1. d4 d5 2. c4 *\n\n[Event \"b\"]\n\n1. d4 Nf6 *\n\n"
                                          << "[Event \"c\"]\n\n1. c4 *\n";
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     ASSERT_TRUE(controller.OpenBook(file.string())) << controller.last_error();
     EXPECT_EQ(view.book_label().detail(), "Repertoire.PGN");
     EXPECT_EQ(Sans(controller), (std::vector<std::string>{"d4", "c4"}));

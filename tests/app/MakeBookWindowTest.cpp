@@ -42,7 +42,7 @@ std::string Library()
 TEST(MakeBookWindow, ABookIsMadeFromALibrarySavedAndOpened)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     controller.Command(kMakeBook);
     auto *dialog = dynamic_cast<MakeBookDialog *>(controller.dialog());
     ASSERT_NE(dialog, nullptr);
@@ -77,7 +77,7 @@ TEST(MakeBookWindow, ABookIsMadeFromALibrarySavedAndOpened)
 TEST(MakeBookWindow, TheDialogRefusesWhatItCannotMakeABookFrom)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     controller.Command(kMakeBook);
     auto *dialog = dynamic_cast<MakeBookDialog *>(controller.dialog());
     ASSERT_NE(dialog, nullptr);
@@ -111,7 +111,7 @@ TEST(MakeBookWindow, TheDialogRefusesWhatItCannotMakeABookFrom)
 TEST(MakeBookWindow, TheFileMenuOffersIt)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     bool           is_offered = false;
     for (const auto &entry : controller.menu_bar().menus[0].submenu)
     {

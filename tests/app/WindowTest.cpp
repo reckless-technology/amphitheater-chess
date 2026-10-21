@@ -428,7 +428,7 @@ TEST(EvalGraph, TheScaleGrowsWithTheLargestScoreAndAPressPicksAPly)
 TEST(MainController, NavigationStepsThroughTheGameAndFlipTurnsTheBoard)
 {
     MainView       view(Pieces());
-    MainController controller(view, ControllerFiles{{}});
+    MainController controller(view, ControllerFiles::None());
     chess::Game    game;
     for (const char *san : {"e4", "e5", "Nf3", "Nc6"})
     {

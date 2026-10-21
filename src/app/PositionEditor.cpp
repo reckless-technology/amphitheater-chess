@@ -270,10 +270,10 @@ void PiecePalette::MouseDown(const reckless::view::MouseEvent &e)
 }
 
 PositionEditorDialog::PositionEditorDialog(const PieceSet &pieces, const chess::Position &position, bool is_flipped)
-    : DialogFrame("Set up position", kCardWidth, kCardHeight), pieces_(pieces),
-      setup_(chess::BoardSetup::FromPosition(position)), board_(pieces, setup_), palette_(pieces),
-      side_label_("Side to move"), castling_label_("Castling"), en_passant_label_("En passant"),
-      move_number_(FieldStyle()), move_number_label_("Move number"), fen_label_("FEN"), fen_(FieldStyle()),
+    : DialogFrame("Set up position", kCardWidth, kCardHeight), setup_(chess::BoardSetup::FromPosition(position)),
+      board_(pieces, setup_), palette_(pieces), side_label_("Side to move"), castling_label_("Castling"),
+      en_passant_label_("En passant"), move_number_label_("Move number"), move_number_(FieldStyle()), fen_label_("FEN"),
+      fen_(FieldStyle()),
       hint_("Click a square to put the chosen piece there, and again to take it off; right-click to empty a "
             "square; drag a piece to move it, or off the board to take it off.",
             true)
