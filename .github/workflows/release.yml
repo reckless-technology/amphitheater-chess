@@ -203,7 +203,7 @@ jobs:
             "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" | tee build/configure.log
           grep -q "Reckless Amphitheater $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
       - name: Build
-        run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
+        run: cmake --build build/release-ci --target amphitheater_everything -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
         run: ctest --test-dir build/release-ci --output-on-failure -j "$(nproc)" -LE '^window$'
       - name: Test the window on a display (xvfb-run)
@@ -304,7 +304,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "the configure failed" }
           if ($out -notmatch [regex]::Escape("Reckless Amphitheater $env:VERSION")) { throw "the configure does not report $env:VERSION" }
       - name: Build
-        run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
+        run: cmake --build build/release-ci --target amphitheater_everything -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
         run: ctest --test-dir build/release-ci --output-on-failure -j $env:NUMBER_OF_PROCESSORS
       - name: The binaries report the version
@@ -403,7 +403,7 @@ jobs:
             | tee build/configure.log
           grep -q "Reckless Amphitheater $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
       - name: Build
-        run: cmake --build build/release-ci -j ${{ steps.cpp.outputs.jobs }}
+        run: cmake --build build/release-ci --target amphitheater_everything -j ${{ steps.cpp.outputs.jobs }}
       - name: Both slices, the floor, the version and the icon
         run: |
           app=build/release-ci/src/app/Amphitheater.app

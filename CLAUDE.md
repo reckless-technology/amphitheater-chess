@@ -132,6 +132,8 @@ GUI will save with the toolkit's JSON.
 
 ```
 cmake --preset debug && cmake --build --preset debug && ctest --preset debug     # also release, coverage, asan
+cmake -S . -B build && cmake --build build      # the default target: the app alone (amphitheater_everything: all;
+                                                 #   the presets, CI and ctest's build_everything fixture build it)
 cmake --preset release-universal                                                 # macOS: arm64 + x86_64
 powershell -ExecutionPolicy Bypass -File tools\coverage-windows.ps1              # Windows coverage, red under 90 %
 ctest --preset debug -R match                                                    # one suite (CTest name)

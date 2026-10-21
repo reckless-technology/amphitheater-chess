@@ -65,13 +65,13 @@
         }
     ],
     "buildPresets": [
-        {"name": "debug", "configurePreset": "debug"},
-        {"name": "release", "configurePreset": "release"},
-        {"name": "release-universal", "configurePreset": "release-universal"},
-        {"name": "coverage", "configurePreset": "coverage"},
-        {"name": "asan", "configurePreset": "asan"},
-        {"name": "coverage-windows", "configurePreset": "coverage-windows"},
-        {"name": "asan-windows", "configurePreset": "asan-windows"}
+        {"name": "debug", "configurePreset": "debug", "targets": ["amphitheater_everything"]},
+        {"name": "release", "configurePreset": "release", "targets": ["amphitheater_everything"]},
+        {"name": "release-universal", "configurePreset": "release-universal", "targets": ["amphitheater_everything"]},
+        {"name": "coverage", "configurePreset": "coverage", "targets": ["amphitheater_everything"]},
+        {"name": "asan", "configurePreset": "asan", "targets": ["amphitheater_everything"]},
+        {"name": "coverage-windows", "configurePreset": "coverage-windows", "targets": ["amphitheater_everything"]},
+        {"name": "asan-windows", "configurePreset": "asan-windows", "targets": ["amphitheater_everything"]}
     ],
     "testPresets": [
         {"name": "debug", "configurePreset": "debug", "output": {"outputOnFailure": true}},

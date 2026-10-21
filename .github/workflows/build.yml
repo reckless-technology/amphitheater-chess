@@ -108,7 +108,7 @@ jobs:
           cmake -S . -B build/ci-linux -G Ninja -DCMAKE_BUILD_TYPE=Release
           "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
-        run: cmake --build build/ci-linux -j ${{ steps.cpp.outputs.jobs }}
+        run: cmake --build build/ci-linux --target amphitheater_everything -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
         run: ctest --test-dir build/ci-linux --output-on-failure -j "$(nproc)" -LE '^window$'
       # The window's suites (label window) on a display of their own, one at a time.
@@ -154,7 +154,7 @@ jobs:
           cmake -S . -B build/ci-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAMPHITHEATER_ASAN=ON
           "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
-        run: cmake --build build/ci-asan -j ${{ steps.cpp.outputs.jobs }}
+        run: cmake --build build/ci-asan --target amphitheater_everything -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
         env:
           ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
@@ -191,7 +191,7 @@ jobs:
           cmake -S . -B build/ci-coverage -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAMPHITHEATER_COVERAGE=ON
           "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
-        run: cmake --build build/ci-coverage -j ${{ steps.cpp.outputs.jobs }}
+        run: cmake --build build/ci-coverage --target amphitheater_everything -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
         run: ctest --test-dir build/ci-coverage --output-on-failure -j "$(nproc)" -LE '^window$'
       - name: Coverage, 90 % of lines or red
@@ -235,7 +235,7 @@ jobs:
           cmake -S . -B build/ci-windows -G Ninja -DCMAKE_BUILD_TYPE=Release
           "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
-        run: cmake --build build/ci-windows -j ${{ steps.cpp.outputs.jobs }}
+        run: cmake --build build/ci-windows --target amphitheater_everything -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
         run: ctest --test-dir build/ci-windows --output-on-failure -j $env:NUMBER_OF_PROCESSORS
       # The Windows installer, unsigned, from this tree: the stage (each bundled engine downloaded by its pin, held to its
@@ -278,7 +278,7 @@ jobs:
           cmake -S . -B build/ci-macos -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
           -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
-        run: cmake --build build/ci-macos -j ${{ steps.cpp.outputs.jobs }}
+        run: cmake --build build/ci-macos --target amphitheater_everything -j ${{ steps.cpp.outputs.jobs }}
       - name: Every binary holds arm64 and x86_64, for macOS 13.3 on
         run: |
           for binary in build/ci-macos/src/cli/amphitheater-cli build/ci-macos/tests/amphitheater_*                         build/ci-macos/src/app/Amphitheater.app/Contents/MacOS/Amphitheater; do

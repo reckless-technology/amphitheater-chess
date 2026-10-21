@@ -118,5 +118,6 @@ if(AMPHITHEATER_BUILD_TESTS)
     # The app's own launch: its window opened, a few frames drawn, closed. On a display (label window): Linux runs it
     # under xvfb-run, macOS on its window server, Windows on whatever window station the runner has.
     add_test(NAME app_smoke COMMAND Amphitheater --smoke)
-    set_tests_properties(app_smoke PROPERTIES LABELS window RESOURCE_LOCK display TIMEOUT 120)
+    set_tests_properties(app_smoke PROPERTIES LABELS window RESOURCE_LOCK display TIMEOUT 120
+                                              FIXTURES_REQUIRED amphitheater_built)
 endif()

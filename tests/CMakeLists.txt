@@ -125,3 +125,15 @@ if(AMPHITHEATER_GUI AND Python3_Interpreter_FOUND)
     add_test(NAME notices
              COMMAND Python3::Interpreter -I "${PROJECT_SOURCE_DIR}/tools/third_party_notices.py" "${CMAKE_BINARY_DIR}" --check)
 endif()
+
+# A plain build makes the app alone (the default target, CMakeLists.txt), so every test first builds everything the
+# suites run - amphitheater_everything, a step that does nothing when it is built already - as the fixture
+# amphitheater_built, which CTest runs before any test that needs it, whatever labels or names select the tests.
+add_test(NAME build_everything
+         COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}" --target amphitheater_everything
+                 "$<$<BOOL:$<CONFIG>>:--config;$<CONFIG>>"
+         COMMAND_EXPAND_LISTS)
+set_tests_properties(build_everything PROPERTIES FIXTURES_SETUP amphitheater_built RESOURCE_LOCK build TIMEOUT 3600)
+get_property(suite_tests DIRECTORY PROPERTY TESTS)
+list(REMOVE_ITEM suite_tests build_everything)
+set_tests_properties(${suite_tests} PROPERTIES FIXTURES_REQUIRED amphitheater_built)
