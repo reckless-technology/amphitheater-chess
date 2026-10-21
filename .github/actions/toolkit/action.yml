@@ -2,10 +2,9 @@ name: The toolkit submodule
 description: >
   The toolkit (reckless-technology/reckless-toolkit, a private repository) checked out at external/reckless-toolkit at
   the commit this repository pins, through the toolkit's read-only deploy key: the workflow's token reads this
-  repository alone. Made for the kept workspaces of the organisation's self-hosted runners, where a checkout is
-  clean: false - the submodule is put at the pinned commit every run whatever an earlier run left in it. With
-  require-on-main, the pinned commit must also be on the toolkit's main: a pointer to a commit only a branch holds
-  would build here and vanish there.
+  repository alone. A pull request from a fork gets no secrets, so its run stops here until the change is pushed to a
+  branch of this repository. With require-on-main, the pinned commit must also be on the toolkit's main: a pointer to
+  a commit only a branch holds would build here and vanish there.
 inputs:
   deploy-key:
     description: The private half of the toolkit's read-only deploy key (secrets.RECKLESS_TOOLKIT_DEPLOY_KEY)
@@ -39,10 +38,7 @@ runs:
         trap 'rm -f "$key"' EXIT
         (umask 077; printf '%s\n' "$DEPLOY_KEY" > "$key")
         export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
-        git submodule sync --recursive
-        # --force: the pinned commit's files whatever an earlier run changed in them; then nothing untracked kept.
-        git submodule update --init --recursive --force
-        git submodule foreach --quiet --recursive 'git clean -ffdxq'
+        git submodule update --init --recursive
         pinned=$(git -C "$path" rev-parse HEAD)
         if [ "$REQUIRE_ON_MAIN" = "true" ]; then
           git -C "$path" fetch --quiet origin main

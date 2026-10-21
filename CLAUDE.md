@@ -6,12 +6,13 @@ Reckless Amphitheater is a chess GUI and UCI engine host for Windows, macOS and 
 toolkit-free core and a command-line runner; the README is the long-form reference (the libraries, the threading
 model, the command line, the tests).
 
-**Licence:** closed-source and free - `LICENSE` (proprietary) for the repository, `EULA.txt` for the releases'
-users. The window links the proprietary toolkit; its third-party parts are in `THIRD-PARTY-NOTICES.txt`, written by
-`tools/third_party_notices.py <build-dir>` (CTest `notices` checks it). The installers carry Jonny's five GPLv3 chess
-engines as separate programs - aggregation, never linking: the host only talks to them over UCI pipes and no engine
-code may come into this tree - and the notices give each one's version, copyright, the GPL's text once and its
-corresponding source (the public repository at the tag, and the release's source archive where it has one).
+**Licence:** source-available and free, not open source - the repository is public for anyone to read, but `LICENSE`
+(proprietary, all rights reserved) grants no licence to use, copy, modify or distribute it; `EULA.txt` is for the
+releases' users. The window links the proprietary toolkit; its third-party parts are in `THIRD-PARTY-NOTICES.txt`,
+written by `tools/third_party_notices.py <build-dir>` (CTest `notices` checks it). The installers carry Jonny's five
+GPLv3 chess engines as separate programs - aggregation, never linking: the host only talks to them over UCI pipes and
+no engine code may come into this tree - and the notices give each one's version, copyright, the GPL's text once and
+its corresponding source (the public repository at the tag, and the release's source archive where it has one).
 
 **The bundled engines** (README, "The bundled engines" and "Packages and releases"): pinned in
 `packaging/engines.json` (tag, asset, SHA-256 per platform; `tools/update-engines.sh`/`.ps1` moves them to the latest
@@ -22,8 +23,9 @@ engine may ship that needs more than the system: the stage refuses a Windows eng
 compiler's runtime) unless a pinned companion lies beside it (none is needed: every pinned release links its runtime
 statically), and starts every engine with only the system on its PATH.
 
-**The GUI is built on reckless-toolkit**, a git submodule at `external/reckless-toolkit` (private; CI reads it with
-the deploy key in the secret `RECKLESS_TOOLKIT_DEPLOY_KEY`, through `.github/actions/toolkit`), added with the
+**The GUI is built on reckless-toolkit**, a git submodule at `external/reckless-toolkit` (private, though this
+repository is public; CI reads it with the deploy key in the secret `RECKLESS_TOOLKIT_DEPLOY_KEY`, through
+`.github/actions/toolkit`, and a fork's pull request, given no secrets, cannot), added with the
 toolkit's GUI on, its suites off and no audio device layer. Only `src/app/` uses it: the libraries under `src/chess`,
 `src/uci`, `src/match` and `src/cli` depend on nothing of the toolkit or of vst-plugins, so they stay testable on their
 own, and `-DAMPHITHEATER_GUI=OFF` builds them with no submodule. The toolkit's include namespace is flat (`"View.h"`), so
@@ -161,10 +163,13 @@ set a machine up (VS Code: "setup environment"; `-Check` / `--check` only report
 
 ## CI and repository rules
 
-Every job runs on the organisation's self-hosted runners (`[self-hosted, Linux, X64]`, `[self-hosted, Windows, X64]`,
-`[self-hosted, macOS, ARM64]`), never on hosted images. `build.yml`: Linux gcc, Linux sanitizers, Linux coverage
+Every job runs on a GitHub-hosted runner, free for a public repository, its image pinned by version: `ubuntu-24.04`,
+`windows-2025` (Visual Studio 2026's MSVC) and `macos-15` (Apple silicon). Each job starts on a fresh machine:
+`.github/actions/cpp` installs what the image lacks (apt's Ninja, X11, FreeType, fontconfig and Xvfb on Linux) and
+Python 3.13 with `tools/requirements.txt`, and FetchContent fetches every pin afresh into each build tree. `build.yml`: Linux gcc, Linux sanitizers, Linux coverage
 (gcovr 8.3, `--fail-under-line 90` on `src/`), Windows MSVC, macOS universal (lipo and minos checks), clang-format,
-and `CI`, the aggregate to require. Documentation-only changes build nothing.
+and `CI`, the aggregate to require. Documentation-only changes build nothing. The organisation allows GitHub's own
+actions, verified creators' and a short list of others; any other third-party action fails the run.
 
 - Every commit is authored and committed as `Jonny Reckless <jonny@recklesstechnology.com>`, checked by `.githooks/`
   (pre-commit: identity and formatting; pre-push: every outgoing commit's identity). In a fresh clone:
@@ -172,8 +177,12 @@ and `CI`, the aggregate to require. Documentation-only changes build nothing.
   git config core.hooksPath .githooks`.
 - Work on a branch and open a pull request; `main` holds only what built and passed.
 - `build.yml` also makes every package unsigned and holds it to its stage; `release.yml` (a pushed `vMAJOR.MINOR`, or
-  by hand on `main`, `-f dry_run=true` to publish nothing) builds from nothing, signs (eSigner on Windows whenever its
-  secrets are set; Developer ID, notarisation and stapling on macOS) and publishes a private release; `promote.yml`
-  copies one to the public `reckless-technology/amphitheater-releases` - only on Jonny's word. The signing secrets are the
-  organisation's; `PUBLIC_RELEASES_TOKEN` is this repository's own.
+  by hand on `main`, `-f dry_run=true` to release nothing) builds from nothing, signs (eSigner on Windows whenever its
+  secrets are set; Developer ID, notarisation and stapling on macOS), uploads the four packages to a draft release and
+  pushes the tag, and never publishes it: the repository is public, so a published release would be public at once,
+  while a draft is seen only by collaborators. A draft with its four packages and its tag pushed is finished and never
+  replaced; one short of either is replaced by the next run for that version. `promote.yml` copies a finished draft's
+  files and notes to the public `reckless-technology/amphitheater-releases` - only on Jonny's word - and is the one way
+  a release reaches the public. The signing secrets are the organisation's; `PUBLIC_RELEASES_TOKEN` is this
+  repository's own.
 - `*.sh` and the hooks stay LF (`.gitattributes`); the piece SVGs are kept byte for byte (`-text`).

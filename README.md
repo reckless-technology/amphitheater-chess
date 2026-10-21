@@ -5,7 +5,9 @@ the rules of chess, UCI engines as child processes, games, matches and tournamen
 command-line match and tournament runner on that core, and the window, `Amphitheater`, drawn with Skia on
 reckless-toolkit (a git submodule at `external/reckless-toolkit`), which drives the same libraries.
 
-Proprietary and free: see [LICENSE](LICENSE); the releases are licensed to their users under [EULA.txt](EULA.txt).
+Source-available and free, not open source: anyone may read the code here, but [LICENSE](LICENSE) reserves every right
+and grants no licence to use, copy, modify or distribute it; the releases are licensed to their users under
+[EULA.txt](EULA.txt).
 Everything in it is Jonny Reckless's own work, the piece set in `assets/pieces/staunton/` for the GUI among it (twelve
 SVGs, the generator that wrote them and a preview); the tests fetch GoogleTest, which no product ships. The window
 links the toolkit's third-party parts (Skia and the libraries it bundles, two typefaces), each under the licence
@@ -112,9 +114,11 @@ renderer, below, and the suites' Python), the libraries the window links on Linu
 hooks and the editor's extensions; `-Check` / `--check` only reports. In VS Code these are the "setup environment" and "check environment"
 tasks.
 
-The window is built on the toolkit, a private repository at `external/reckless-toolkit`: clone with
-`git clone --recurse-submodules`, or `git submodule update --init` after a plain clone. `-DAMPHITHEATER_GUI=OFF` builds
-the core, the command line and their suites alone, with no submodule. The app lands at
+The window is built on the toolkit, a private repository at `external/reckless-toolkit`, which only the organisation
+can read: clone with `git clone --recurse-submodules`, or `git submodule update --init` after a plain clone. Without
+it, as anyone outside the organisation is, `-DAMPHITHEATER_GUI=OFF` builds the core libraries, `amphitheater-cli` and
+their suites from a plain clone (`cmake --preset release -DAMPHITHEATER_GUI=OFF`); the window cannot be built without
+the submodule. The app lands at
 `build/<preset>/src/app/Amphitheater.exe` on Windows, `build/<preset>/src/app/Amphitheater.app` on macOS and
 `build/<preset>/src/app/amphitheater` on Linux.
 
@@ -475,21 +479,28 @@ and removes it like any other, for good.
 `.github/workflows/build.yml` makes all of them unsigned on every pull request that changes code. `release.yml` makes
 them from nothing on a pushed `vMAJOR.MINOR` tag, or by hand on `main` (`gh workflow run release.yml --ref main`;
 `-f dry_run=true` builds, tests, signs, notarises and packages and publishes nothing, on any branch, as 0.0.0 with no
-tag), uploads them onto a draft and publishes it with `release-notes.md`. The Windows installer is signed whenever the
-eSigner secrets are set, a dry run's included, at two of the account's signings. `promote.yml`
-(`gh workflow run promote.yml --ref main -f tag=vX.Y.Z`) copies a published release's four files to the public
-`reckless-technology/amphitheater-releases`, under their names and fixed ones, with `SHA256SUMS`, and wakes the website,
-which writes `updates/amphitheater.json`; it needs the secret `PUBLIC_RELEASES_TOKEN`.
+tag), uploads them onto a draft with `release-notes.md` as its notes and pushes the version's tag. The release stays
+a draft, which only the repository's collaborators see: the repository is public, so a published release here would
+be public at once. A draft with all four packages on it and its tag pushed is finished, and a later run for the same
+version fails rather than replace it; a draft short of either, left by a run that stopped part-way, is replaced by the
+next run for that version. The Windows installer is signed whenever the eSigner secrets are set, a dry run's included,
+at two of the account's signings. `promote.yml` (`gh workflow run promote.yml --ref main -f tag=vX.Y.Z`), the one way
+a release reaches the public, copies a finished draft's four files to the public
+`reckless-technology/amphitheater-releases`, under their names and fixed ones, with `SHA256SUMS` and the notes, and
+wakes the website, which writes `updates/amphitheater.json`; it needs the secret `PUBLIC_RELEASES_TOKEN`.
 
 ## CI
 
-`.github/workflows/build.yml`, on the organisation's self-hosted runners only: Linux (gcc, Release), Linux under
-AddressSanitizer and UndefinedBehaviorSanitizer, Linux coverage (gcovr, red under 90 % of `src/`'s lines but the app's
-entry point, `src/app/Main.cpp`, which opens a window and runs in the window suites), Windows (MSVC, Release), macOS
-(universal, each binary held to arm64 and x86_64 and to macOS 13.3, the app's bundle to its signature, the icon its
-plist names - `assets/icon/Icon.icns` byte for byte - and a plist that asks for no microphone), each platform's packages unsigned (above), clang-format 22.1.8, and `CI`, the one
-job to require. Every job checks the toolkit
-submodule out with its read-only deploy key (`.github/actions/toolkit`) and runs the suites' scripts with a venv kept
-on the runner holding `tools/requirements.txt` (`.github/actions/cpp`), so the `icon` and `pieces_cburnett` checks run
-there rather than skip; the window suites (label `window`) run under
-`xvfb-run` on Linux and on the runners' own displays elsewhere.
+`.github/workflows/build.yml`, on GitHub-hosted runners (free for a public repository) whose images are pinned by
+version, `ubuntu-24.04`, `windows-2025` and `macos-15`: Linux (gcc, Release), Linux under AddressSanitizer and
+UndefinedBehaviorSanitizer, Linux coverage (gcovr, red under 90 % of `src/`'s lines but the app's entry point,
+`src/app/Main.cpp`, which opens a window and runs in the window suites), Windows (MSVC, Release), macOS (universal on
+Apple silicon, each binary held to arm64 and x86_64 and to macOS 13.3, the x86_64 slice run under Rosetta, the app's
+bundle to its signature, the icon its plist names - `assets/icon/Icon.icns` byte for byte - and a plist that asks for
+no microphone), each platform's packages unsigned (above), clang-format 22.1.8, and `CI`, the one job to require.
+Every job starts on a fresh machine. Each checks the toolkit submodule out with its read-only deploy key
+(`.github/actions/toolkit`; a fork's pull request is given no secrets, so its run stops there), and
+`.github/actions/cpp` installs what the image lacks - Ninja, the X11, FreeType and fontconfig headers and Xvfb from
+apt on Linux - and Python 3.13 with `tools/requirements.txt`, so the `icon` and `pieces_cburnett` checks run rather
+than skip. FetchContent fetches GoogleTest, Skia's prebuilt libraries and the toolkit's other dependencies afresh into
+each build tree, every one held to its hash. The window suites (label `window`) run under `xvfb-run` on Linux and on the runners' own displays elsewhere.

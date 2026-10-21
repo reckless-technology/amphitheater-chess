@@ -1,99 +1,75 @@
 name: C++ toolchain
 description: >
-  What every C++ job of the host needs on a self-hosted runner: on Linux g++, CMake and Ninja, and the libraries the
-  window's toolkit links (X11, FreeType, fontconfig, found by pkg-config) with xvfb for a display, installed with the
-  runner's passwordless sudo where they are missing; on macOS Xcode's clang and Homebrew's CMake and Ninja; on Windows
-  the MSVC developer environment of the Visual Studio vswhere finds, exported to the job's later steps; on every
-  platform a Python for the packaging scripts and the suites, a venv under the tool cache holding
-  tools/requirements.txt, so the suites' icon and pieces checks run rather than skip; and a directory under the
-  runner's tool cache, keyed by compiler, where FetchContent keeps GoogleTest, Skia and the toolkit's other fetches
-  between runs.
+  What every C++ job of the host needs on a GitHub-hosted runner, a fresh machine each job: on Linux (ubuntu-24.04) the
+  image's g++, CMake and pkg-config, with Ninja, the libraries the window's toolkit links (X11, FreeType, fontconfig)
+  and Xvfb installed from apt; on macOS (macos-15) Xcode's clang and the image's CMake, with Homebrew's Ninja where the
+  image has none; on Windows (windows-2025) the MSVC developer environment of the Visual Studio vswhere finds, exported
+  to the job's later steps; on every platform Python 3.13 (actions/setup-python) holding tools/requirements.txt, for
+  the packaging scripts and the suites, so the suites' icon and pieces checks run rather than skip. FetchContent fetches
+  GoogleTest, Skia's prebuilt libraries and the toolkit's other dependencies into each build tree afresh, every one
+  held to its hash: 5 to 20 seconds of a job's several minutes on the hosted runners, too little for an Actions cache
+  of them to be worth keeping.
 outputs:
-  deps:
-    description: The FetchContent directory for this runner's compiler
-    value: ${{ steps.unix.outputs.deps || steps.windows.outputs.deps }}
   jobs:
     description: The build's parallelism for this runner
     value: ${{ steps.unix.outputs.jobs || steps.windows.outputs.jobs }}
   python:
     description: The Python the packaging scripts and the suites run with, tools/requirements.txt installed
-    value: ${{ steps.unix.outputs.python || steps.windows.outputs.python }}
+    value: ${{ steps.python.outputs.python-path }}
 runs:
   using: composite
   steps:
+    # Python 3.10 or later is what tools/requirements.txt's wheels are built for; the build itself needs none, the icon
+    # and the pieces being committed.
+    - name: Python 3.13
+      id: python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.13"
+
     - name: Toolchain (Linux, macOS)
       if: runner.os != 'Windows'
       id: unix
       shell: bash
+      env:
+        PYTHON: ${{ steps.python.outputs.python-path }}
       run: |
         set -euo pipefail
         if [ "$(uname -s)" = "Linux" ]; then
-          apt_line="build-essential cmake ninja-build pkg-config libx11-dev libfreetype-dev libfontconfig1-dev xvfb xauth"
-          find_missing() {
-            missing=""
-            for tool in g++ cmake ninja pkg-config xvfb-run; do
-              command -v "$tool" > /dev/null || missing="$missing $tool"
-            done
-            if command -v pkg-config > /dev/null; then
-              for library in x11 freetype2 fontconfig; do pkg-config --exists "$library" || missing="$missing $library"; done
-            fi
-          }
-          find_missing
-          if [ -n "$missing" ] && sudo -n true 2> /dev/null; then
-            echo "the runner lacks:$missing - installing with the runner's passwordless sudo"
-            sudo -n apt-get update -qq
-            sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $apt_line
-            find_missing
-          fi
-          if [ -n "$missing" ]; then echo "::error::the runner lacks:$missing. sudo apt install $apt_line"; exit 1; fi
-          compiler="gcc$(g++ -dumpversion | cut -d. -f1)"
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ninja-build pkg-config libx11-dev libfreetype-dev libfontconfig1-dev xvfb xauth > /dev/null
+          for tool in g++ cmake ninja pkg-config xvfb-run; do
+            command -v "$tool" > /dev/null || { echo "::error::$tool is not on the runner's PATH"; exit 1; }
+          done
+          for library in x11 freetype2 fontconfig; do
+            pkg-config --exists "$library" || { echo "::error::pkg-config finds no $library"; exit 1; }
+          done
           mem_gb=$(( $(grep MemTotal /proc/meminfo | awk '{print $2}') / 1048576 ))
           # A job per two thirds of a gigabyte, never more than the cores.
           jobs=$(( mem_gb * 2 / 3 )); [ "$jobs" -gt "$(nproc)" ] && jobs=$(nproc); [ "$jobs" -lt 1 ] && jobs=1
           echo "$(nproc) cores, $mem_gb GB, $(. /etc/os-release && echo "$PRETTY_NAME"); $(g++ --version | head -1)"
         else
+          command -v ninja > /dev/null || brew install --quiet ninja
           for tool in clang cmake ninja xcrun lipo vtool; do
             command -v "$tool" > /dev/null || { echo "::error::$tool is not on the runner's PATH"; exit 1; }
           done
-          compiler="appleclang$(clang --version | sed -nE '1s/.*version ([0-9]+).*/\1/p')"
           jobs=$(sysctl -n hw.ncpu)
-          echo "$(uname -m), $jobs cores, macOS $(sw_vers -productVersion); $(clang --version | head -1)"
+          echo "$(uname -m), $jobs cores, macOS $(sw_vers -productVersion); Xcode at $(xcode-select -p); $(clang --version | head -1)"
         fi
-        # The packaging scripts' and the suites' Python: a venv of the runner's newest Python 3.10 or later (the oldest
-        # tools/requirements.txt's wheels are built for; macOS's own python3 is older), kept per version, with the
-        # packages the icon's and the pieces' checks render with. On macOS Homebrew's Python is installed where there
-        # is none. The build needs none: the icon and the pieces are committed.
-        is_recent() { "$1" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2> /dev/null; }
-        find_python() {
-          base=""
-          for candidate in python3.14 python3.13 python3.12 python3.11 python3.10 /opt/homebrew/bin/python3 python3; do
-            if command -v "$candidate" > /dev/null && is_recent "$candidate"; then base=$(command -v "$candidate"); return; fi
-          done
-        }
-        find_python
-        if [ -z "$base" ] && [ "$(uname -s)" = "Darwin" ] && command -v brew > /dev/null; then
-          echo "the runner has no Python 3.10 or later - installing Homebrew's python@3.13"
-          brew install --quiet python@3.13
-          find_python
-        fi
-        if [ -z "$base" ]; then echo "::error::the runner has no Python 3.10 or later for the suites' scripts"; exit 1; fi
-        version=$("$base" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
-        venv="$RUNNER_TOOL_CACHE/reckless-amphitheater-python-$version"
-        [ -x "$venv/bin/python" ] || "$base" -m venv "$venv"
-        "$venv/bin/python" -m pip install --quiet --disable-pip-version-check -r tools/requirements.txt
-        "$venv/bin/python" -c "import resvg_py, PIL, svgelements, pathops"
-        echo "python=$venv/bin/python" >> "$GITHUB_OUTPUT"
-        echo "the scripts' Python: $("$venv/bin/python" --version), tools/requirements.txt installed"
+        "$PYTHON" -m pip install --quiet --disable-pip-version-check -r tools/requirements.txt
+        "$PYTHON" -c "import resvg_py, PIL, svgelements, pathops"
+        echo "the scripts' Python: $("$PYTHON" --version), tools/requirements.txt installed"
         cmake --version | head -1; echo "ninja $(ninja --version)"
-        deps="$RUNNER_TOOL_CACHE/reckless-amphitheater-deps/$compiler-ninja"
-        mkdir -p "$deps"
-        echo "dependencies: $deps; build jobs: $jobs"
-        { echo "deps=$deps"; echo "jobs=$jobs"; } >> "$GITHUB_OUTPUT"
+        echo "build jobs: $jobs"
+        echo "jobs=$jobs" >> "$GITHUB_OUTPUT"
 
     - name: Toolchain (Windows)
       if: runner.os == 'Windows'
       id: windows
       shell: pwsh
+      env:
+        PYTHON: ${{ steps.python.outputs.python-path }}
       run: |
         $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
         $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
@@ -111,28 +87,10 @@ runs:
         }
         "Visual Studio: $vs; MSVC $env:VCToolsVersion; $env:NUMBER_OF_PROCESSORS cores"
         cmake --version | Select-Object -First 1; "ninja $(ninja --version)"
-        $deps = Join-Path $env:RUNNER_TOOL_CACHE "reckless-amphitheater-deps\msvc$env:VCToolsVersion-ninja"
-        New-Item -ItemType Directory -Force -Path $deps | Out-Null
-        "dependencies: $deps"
-        "deps=$deps" >> $env:GITHUB_OUTPUT
+        & $env:PYTHON -m pip install --quiet --disable-pip-version-check -r tools/requirements.txt
+        if ($LASTEXITCODE -ne 0) { throw "tools/requirements.txt could not be installed" }
+        & $env:PYTHON -c "import resvg_py, PIL, svgelements, pathops"
+        if ($LASTEXITCODE -ne 0) { throw "the scripts' Python lacks a package of tools/requirements.txt" }
+        "the scripts' Python: $(& $env:PYTHON --version), tools/requirements.txt installed"
+        "build jobs: $env:NUMBER_OF_PROCESSORS"
         "jobs=$env:NUMBER_OF_PROCESSORS" >> $env:GITHUB_OUTPUT
-        # The packaging scripts' and the suites' Python: a venv of the runner's machine-wide Python, kept, with the
-        # packages the icon's and the pieces' checks render with (tools/requirements.txt). The build needs none: the
-        # icon and the pieces are committed.
-        # Python 3.10 or later, the oldest tools/requirements.txt's wheels are built for; the venv is kept per version.
-        $version = & python -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")'
-        if ($LASTEXITCODE -ne 0 -or [version]$version -lt [version]'3.10') {
-          throw "The runner's Python is $version; the suites' scripts need 3.10 or later"
-        }
-        $venv = Join-Path $env:RUNNER_TOOL_CACHE "reckless-amphitheater-python-$version"
-        $python = Join-Path $venv 'Scripts/python.exe'
-        if (-not (Test-Path $python)) {
-          python -m venv $venv
-          if ($LASTEXITCODE -ne 0) { throw "No Python on the runner to make the scripts' venv with" }
-        }
-        & $python -m pip install --quiet --disable-pip-version-check -r tools/requirements.txt
-        if ($LASTEXITCODE -ne 0) { throw "tools/requirements.txt could not be installed in $venv" }
-        & $python -c "import resvg_py, PIL, svgelements, pathops"
-        if ($LASTEXITCODE -ne 0) { throw "the scripts' venv lacks a package of tools/requirements.txt" }
-        "the scripts' Python: $(& $python --version), tools/requirements.txt installed"
-        "python=$python" >> $env:GITHUB_OUTPUT

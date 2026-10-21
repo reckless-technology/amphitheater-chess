@@ -1,9 +1,10 @@
 name: promote
 
-# A release reaches the public only when it is promoted. This repository is private, so its releases are Jonny's alone;
-# promote copies one to the public reckless-technology/amphitheater-releases - a repository of a README and releases and
-# nothing else, which recklesstechnology.com's download page links to - as IR Capture's promote.yml copies its releases
-# to reckless-technology/ir-capture-releases. Run it by hand with a published tag:
+# A release reaches the public only when it is promoted. This repository is public, so release.yml leaves each of its
+# releases a draft, which only the repository's collaborators see; promote copies a finished one - its four packages on
+# it and its tag pushed - to the public reckless-technology/amphitheater-releases - a repository of a README and
+# releases and nothing else, which recklesstechnology.com's download page links to - as IR Capture's promote.yml copies
+# its releases to reckless-technology/ir-capture-releases. The draft here stays a draft. Run it by hand with the tag:
 #
 #   gh workflow run promote.yml --ref main -f tag=v1.0.3                    # promote
 #   gh workflow run promote.yml --ref main -f tag=v1.0.3 -f dry_run=true    # gather and check, publish nothing
@@ -21,7 +22,9 @@ name: promote
 # Every installer carries the five bundled chess engines, GPLv3 programs whose corresponding source the notices point
 # at in each engine's own public repository, at the tag the installer carries.
 #
-# The job writes to the other repositories with the secret PUBLIC_RELEASES_TOKEN: a fine-grained token of Jonny's with
+# The job runs on a GitHub-hosted runner, ubuntu-24.04, a fresh machine each run. It reads the draft with the workflow's
+# token, which lists and downloads a draft only with Contents write (a draft is shown to those who may push), and
+# writes to the other repositories with the secret PUBLIC_RELEASES_TOKEN: a fine-grained token of Jonny's with
 # Contents write on reckless-technology/amphitheater-releases and on reckless-technology/website for the wake. It checks
 # before anything is gathered that the token can reach both, and refuses a tag the public repository has published
 # already; a draft of the tag left there by an attempt that failed part-way is deleted and made again.
@@ -29,15 +32,16 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "The release to promote, as published here: vMAJOR.MINOR.BUILD"
+        description: "The release to promote, a finished draft here: vMAJOR.MINOR.BUILD"
         required: true
       dry_run:
         description: "Gather and check the files, publish nothing"
         type: boolean
         default: false
 
+# Contents write, though the job writes nothing here: the workflow's token sees a draft release only with it.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: promote
@@ -46,21 +50,25 @@ concurrency:
 jobs:
   promote:
     name: Promote to the public releases
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       TAG: ${{ inputs.tag }}
       PUBLIC: reckless-technology/amphitheater-releases
     steps:
-      - name: The tag is a published release
+      # A finished release: release.yml pushes the tag only once all four packages are on the draft, so a draft whose
+      # tag is not pushed is one a run left part-way. The packages themselves are held to the four below.
+      - name: The tag is a finished release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not vMAJOR.MINOR.BUILD"; exit 1; }
-          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft) ||
-            { echo "::error::no release $TAG here"; exit 1; }
-          [ "$draft" = "false" ] || { echo "::error::$TAG is still a draft: publish it first"; exit 1; }
+          is_draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft) ||
+            { echo "::error::no release $TAG here, draft or published"; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq .ref > /dev/null 2>&1 ||
+            { echo "::error::$TAG is not pushed: release.yml has not finished it"; exit 1; }
+          echo "$TAG here: draft $is_draft, its tag pushed"
       # The token's reach, checked before anything is gathered: Contents write on the public repository, and on the
       # website, whose repository_dispatch needs it. Any token reads a public repository, so seeing one proves nothing;
       # its permissions as the token reaches them say whether the token may push.
@@ -151,8 +159,3 @@ jobs:
         run: |
           gh api repos/reckless-technology/website/dispatches -f event_type=amphitheater-release ||
             echo "::warning::the website was not woken; its daily deploy will pick $TAG up"
-      # The job has no checkout of its own: it works in the runner's workspace for this repository, which the other
-      # workflows' kept checkouts share, so what it gathered there goes however the job ended.
-      - name: The workspace left clean
-        if: always()
-        run: rm -rf promote promote-notes.md SHA256SUMS

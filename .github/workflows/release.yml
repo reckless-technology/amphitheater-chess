@@ -1,21 +1,31 @@
 name: release
 
 # One release of the host. Push a tag vMAJOR.MINOR (v0.1, v1.0) and the host is built from nothing, tested and packaged
-# on Linux, Windows and macOS, signed, and published as GitHub release vMAJOR.MINOR.0 with an installer for each
-# platform and the portable Linux zip. Run the workflow by hand (workflow_dispatch) and the same happens at the head of
-# main, published as vMAJOR.MINOR.BUILD where BUILD is the number of commits since the nearest vMAJOR.MINOR tag - the
-# version the binaries report (cmake/AmphitheaterVersion.cmake). The workflow creates that three-component tag; only
-# two-component tags are version marks. A dispatch at a commit already released fails rather than overwrite. Releases
-# are cut from main and nowhere else: verify refuses a dispatch on another branch and a tag on a commit main does not
-# hold, before anything is built. A dry run (dispatch with dry_run) builds, tests, signs and packages exactly as a
-# release does, on any branch and with no version mark at all (as 0.0.0), and publishes nothing: its files are kept as
-# the run's artifacts for a day.
+# on Linux, Windows and macOS, signed, and released as the draft GitHub release vMAJOR.MINOR.0 with an installer for
+# each platform and the portable Linux zip. Run the workflow by hand (workflow_dispatch) and the same happens at the
+# head of main, released as vMAJOR.MINOR.BUILD where BUILD is the number of commits since the nearest vMAJOR.MINOR tag
+# - the version the binaries report (cmake/AmphitheaterVersion.cmake). The workflow creates that three-component tag;
+# only two-component tags are version marks. A dispatch at a commit already released fails rather than overwrite.
+# Releases are cut from main and nowhere else: verify refuses a dispatch on another branch and a tag on a commit main
+# does not hold, before anything is built. A dry run (dispatch with dry_run) builds, tests, signs and packages exactly
+# as a release does, on any branch and with no version mark at all (as 0.0.0), and releases nothing: its files are kept
+# as the run's artifacts for a day.
 #
-# IR Capture's release is the model, step for step. verify opens the release as a draft before anything is built and
-# each package job uploads its files straight onto it, so no workflow artifact - the organisation's shared storage
-# quota - stands between a build and its release; the publish job checks all four are there, pushes the tag and takes
-# the draft public with release-notes.md. A run that fails before it publishes leaves only a draft, which the next run
-# replaces.
+# IR Capture's release is the model, step for step, but for its end. verify opens the release as a draft before
+# anything is built and each package job uploads its files straight onto it, so no workflow artifact - the
+# organisation's shared storage quota - stands between a build and its release; the last job checks all four are there
+# and pushes the tag. The release stays a draft, which only the repository's collaborators see: the repository is
+# public, so a published release here would be public at once. A release reaches the public only through promote.yml,
+# which copies a finished draft's files and notes to reckless-technology/amphitheater-releases, on Jonny's word.
+#
+# A draft with all four packages on it and its tag pushed is finished, and a run for the same version fails rather than
+# replace it. A draft short of either was left by a run that stopped part-way: the next run for that version deletes it
+# and opens it afresh, while re-running the last job alone finishes a draft whose four packages are all there.
+#
+# Every job runs on a GitHub-hosted runner (free for a public repository), its image pinned by version rather than
+# -latest: ubuntu-24.04, windows-2025 and macos-15 (Apple silicon). Each job starts on a fresh machine, so every
+# FetchContent pin is fetched afresh and held to its hash; it never runs for a pull request, this workflow holding the
+# signing secrets.
 #
 # Every package carries the five bundled chess engines (packaging/engines.json: each one's public release, every asset
 # downloaded by its pin and refused on a hash that differs), each a separate GPLv3 program; THIRD-PARTY-NOTICES.txt
@@ -34,14 +44,14 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Build, test, sign and package only; publish nothing"
+        description: "Build, test, sign and package only; release nothing"
         type: boolean
         default: false
 
 permissions:
   contents: write       # create the release and its tag
 
-# One release run at a time: a tag push and a dispatch at once would each open, replace and publish drafts under the
+# One release run at a time: a tag push and a dispatch at once would each open, replace and finish drafts under the
 # other. A run waits for the one in progress rather than cancel it, which could leave a half-uploaded draft behind.
 concurrency:
   group: release
@@ -55,7 +65,7 @@ jobs:
   # Which version: the build's own rule, so the release page and the binaries agree by construction.
   verify:
     name: Version from the tags
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -66,7 +76,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
       - name: Derive MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag, and open the draft
         id: version
         shell: bash
@@ -116,16 +125,36 @@ jobs:
           [ "$is_dry_run" = true ] && publish=false
           release_id=""
           if [ "$publish" = "true" ]; then
-            if draft=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null); then
-              if [ "$draft" = "true" ]; then
-                echo "A draft of $tag is left from a run that did not publish; replacing it"
-                gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes
-              else
-                echo "Release $tag already exists: this commit has been released. Push a commit (the build" >&2
-                echo "number moves on) or a new vMAJOR.MINOR tag, then release again." >&2
+            # Every release of this version already here, drafts included (the token may push, so it lists them): a
+            # published one, or a finished draft - all four packages uploaded and the tag pushed, which the last job
+            # does only once the four are there - is this version released, and the run fails rather than replace it.
+            # A draft short of either was left by a run that stopped part-way, and is deleted and opened afresh.
+            is_tag_pushed=false
+            git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null && is_tag_pushed=true
+            ids=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$tag\") | .id")
+            for id in $ids; do
+              release="repos/$GITHUB_REPOSITORY/releases/$id"
+              if [ "$(gh api "$release" --jq .draft)" != "true" ]; then
+                echo "Release $tag is published: this commit has been released. Push a commit (the build number moves" >&2
+                echo "on) or a new vMAJOR.MINOR tag, then release again." >&2
                 exit 1
               fi
-            fi
+              assets=$(gh api "$release" --jq '.assets[] | select(.state == "uploaded") | .name')
+              missing=""
+              for file in "reckless-amphitheater-$version-linux-x64.zip" "reckless-amphitheater-$version-linux-amd64.deb" \
+                          "reckless-amphitheater-$version-win64-setup.exe" "reckless-amphitheater-$version-macos.pkg"; do
+                grep -qx "$file" <<< "$assets" || missing="$missing $file"
+              done
+              if [ -z "$missing" ] && [ "$is_tag_pushed" = true ]; then
+                echo "Release $tag is a finished draft (id $id): its four packages are on it and its tag is pushed, so" >&2
+                echo "this commit has been released. Promote it (promote.yml), or push a commit (the build number moves" >&2
+                echo "on) or a new vMAJOR.MINOR tag, then release again." >&2
+                exit 1
+              fi
+              echo "A draft of $tag (id $id) is left from a run that did not finish it (lacking:${missing:- no package};" \
+                "tag pushed: $is_tag_pushed); replacing it"
+              gh api -X DELETE "$release"
+            done
             # Through the REST API, whose answer carries the draft's numeric id - what the package jobs upload to,
             # since a draft has no tag to be named by.
             release_id=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$tag" \
@@ -145,7 +174,7 @@ jobs:
   linux:
     name: Package Linux
     needs: verify
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       VERSION: ${{ needs.verify.outputs.version }}
@@ -153,9 +182,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
-      - name: Start from nothing
-        run: rm -rf build/release-ci build/release-dist build/release-out
       - name: The toolkit submodule
         uses: ./.github/actions/toolkit
         with:
@@ -173,8 +199,7 @@ jobs:
           # The configure's own status decides the step, not tee's, which succeeds whatever came down the pipe.
           set -o pipefail
           mkdir -p build
-          cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
-            "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" \
+          cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release \
             "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" | tee build/configure.log
           grep -q "Reckless Amphitheater $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
       - name: Build
@@ -221,7 +246,7 @@ jobs:
   windows:
     name: Package Windows
     needs: verify
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: windows-2025
     timeout-minutes: 90
     env:
       VERSION: ${{ needs.verify.outputs.version }}
@@ -229,10 +254,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
-      - name: Start from nothing
-        shell: pwsh
-        run: Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/release-ci, build/release-dist, build/release-out
       - name: The toolkit submodule
         uses: ./.github/actions/toolkit
         with:
@@ -240,9 +261,9 @@ jobs:
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
-      # SSL.com's CodeSignTool, pinned by version and hash and kept in the tool cache, and the account signed in to and
-      # its certificate listed - no signing spent - before an hour of building rides on it. A release needs the
-      # secrets; a dry run without them packages unsigned.
+      # SSL.com's CodeSignTool, pinned by version and hash and fetched into the fresh machine's tool cache, and the
+      # account signed in to and its certificate listed - no signing spent - before an hour of building rides on it. A
+      # release needs the secrets; a dry run without them packages unsigned.
       - name: eSigner's signing tool, and the account checked
         id: esigner
         shell: pwsh
@@ -277,8 +298,8 @@ jobs:
       - name: Configure
         shell: pwsh
         run: |
-          $out = cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON `
-            "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" | Out-String
+          $out = cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release `
+            "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" | Out-String
           $out
           if ($LASTEXITCODE -ne 0) { throw "the configure failed" }
           if ($out -notmatch [regex]::Escape("Reckless Amphitheater $env:VERSION")) { throw "the configure does not report $env:VERSION" }
@@ -352,12 +373,12 @@ jobs:
           retention-days: 1
 
   # macOS, universal, for 13.3 on, in a tree built from nothing on the Apple silicon runner: every suite natively, both
-  # slices and the floor held, the engines, the app and the tool signed, the installer signed, notarised, stapled and
-  # held to the stage with every engine answering from its place in it.
+  # slices and the floor held (Rosetta runs the x86_64 slice), the engines, the app and the tool signed, the installer
+  # signed, notarised, stapled and held to the stage with every engine answering from its place in it.
   macos:
     name: Package macOS
     needs: verify
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: macos-15
     timeout-minutes: 240
     env:
       VERSION: ${{ needs.verify.outputs.version }}
@@ -365,9 +386,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
-      - name: Start from nothing
-        run: rm -rf build/release-ci build/release-dist build/release-out
       - name: The toolkit submodule
         uses: ./.github/actions/toolkit
         with:
@@ -381,8 +399,7 @@ jobs:
           set -o pipefail
           mkdir -p build
           cmake -S . -B build/release-ci -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
-            "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}" \
             | tee build/configure.log
           grep -q "Reckless Amphitheater $VERSION" build/configure.log || { echo "::error::the configure does not report $VERSION"; exit 1; }
       - name: Build
@@ -470,14 +487,14 @@ jobs:
         if: always()
         run: external/reckless-toolkit/tools/sign-mac.sh close
 
-  # The draft found by the id verify opened it with, its four files all there, then the tag on the built commit and the
-  # draft published with release-notes.md as its notes. Every step is safe to run again, so re-running this job alone
-  # finishes a release from wherever an attempt stopped.
+  # The draft found by the id verify opened it with, its four files all there, then the tag on the built commit, which
+  # finishes the release: it stays a draft, for promote.yml to copy to the public on Jonny's word. Every step is safe
+  # to run again, so re-running this job alone finishes a release from wherever an attempt stopped.
   release:
-    name: Publish release
+    name: Finish the draft release
     if: needs.verify.outputs.publish == 'true'
     needs: [verify, linux, windows, macos]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       VERSION: ${{ needs.verify.outputs.version }}
@@ -485,9 +502,7 @@ jobs:
       RELEASE_ID: ${{ needs.verify.outputs.release_id }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          clean: false
-      - name: Publish GitHub release
+      - name: The packages on the draft, and the tag pushed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -497,7 +512,7 @@ jobs:
             echo "::error::the draft verify opened (id $RELEASE_ID) is for $draft_tag, not $TAG"
             exit 1
           fi
-          assets=$(gh api "$release" --jq '.assets[].name')
+          assets=$(gh api "$release" --jq '.assets[] | select(.state == "uploaded") | .name')
           missing=""
           for file in "reckless-amphitheater-$VERSION-linux-x64.zip" "reckless-amphitheater-$VERSION-linux-amd64.deb" \
                       "reckless-amphitheater-$VERSION-win64-setup.exe" "reckless-amphitheater-$VERSION-macos.pkg"; do
@@ -510,20 +525,19 @@ jobs:
           # The release's own tag, vMAJOR.MINOR.BUILD, on the commit that was built, made with git and pushed (the
           # releases API refuses to make a tag from a commit with the workflow token). A tag an earlier attempt pushed
           # is taken as it stands when it names this commit, and refused when it names another. The tagger is named on
-          # the command alone: the runner keeps this clone, and an identity written into its config would sign
-          # whatever any later job there commits or tags.
-          git tag -d "$TAG" > /dev/null 2>&1 || true
+          # the command.
           if git fetch --quiet origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null; then
             existing=$(git rev-parse "$TAG^{commit}")
             if [ "$existing" != "$GITHUB_SHA" ]; then
               echo "::error::$TAG already names $existing, not the commit built ($GITHUB_SHA)"
               exit 1
             fi
-            echo "$TAG already names this commit (an earlier attempt pushed it); publishing onto it"
+            echo "$TAG already names this commit (an earlier attempt pushed it)"
           else
             git -c user.name="Jonny Reckless" -c user.email="jonny@recklesstechnology.com" \
               tag -a "$TAG" "$GITHUB_SHA" -m "Reckless Amphitheater v$VERSION"
             git push origin "$TAG"
           fi
-          gh api -X PATCH "$release" -F draft=false -f make_latest=true -F body=@release-notes.md --jq .html_url
+          # The release stays a draft, seen by the repository's collaborators alone: promote.yml makes it public.
+          echo "the draft $TAG is finished: $(gh api "$release" --jq .html_url)"
           gh api "$release" --jq '.assets[] | "  \(.name)  \(.size) bytes"'

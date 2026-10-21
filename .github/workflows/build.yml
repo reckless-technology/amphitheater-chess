@@ -6,18 +6,13 @@ name: build
 # UndefinedBehaviorSanitizer), Windows with MSVC, macOS universal - measures coverage, and makes each platform's
 # packages unsigned as release.yml makes them (the Linux zip and Debian package, the Windows installer installed and
 # taken away, the macOS package), each held to its stage with every bundled engine answering from its place in it; the
-# formatting is checked whatever changed. The last job, "CI", is the one check to require: green when every job the run needed passed or was
-# not needed, red when any failed or was cancelled.
+# formatting is checked whatever changed. The last job, "CI", is the one check to require: green when every job the run
+# needed passed or was not needed, red when any failed or was cancelled.
 #
-# Every job runs on the organisation's own machines, never on GitHub's hosted images (a hosted macOS minute bills as
-# ten, and the account's Actions spending limit was exhausted that way once): [self-hosted, Linux, X64],
-# [self-hosted, Windows, X64] (PowerShell 7 and Git's bash) and [self-hosted, macOS, ARM64] for the builds, and [light]
-# for the short jobs - What changed, clang-format and CI, seconds each - so a run's first and last checks never wait
-# behind another repository's long build for a Linux runner. Two runners carry light: reckless-ci-lin-0-alt, a second
-# runner on lin-0 with no default labels (not even self-hosted, so the jobs name light alone), on which nothing heavier
-# ever runs beside lin-0's own build, and lin-1's one runner beside its defaults. The alt runner's workspace and tool
-# cache are its own, so its checkouts start empty and clang-format is fetched into its cache once. .github/actions/cpp
-# provides the toolchain.
+# Every job runs on a GitHub-hosted runner (free for a public repository), its image pinned by version rather than
+# -latest: ubuntu-24.04, windows-2025 (Visual Studio's MSVC, PowerShell 7 and Git's bash) and macos-15 (Apple silicon,
+# Xcode's clang building both slices). Each job starts on a fresh machine and builds from nothing, every FetchContent
+# pin fetched afresh and held to its hash; .github/actions/cpp installs the toolchain.
 #
 # The version every binary reports is MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag
 # (cmake/AmphitheaterVersion.cmake), which a shallow clone cuts off: every checkout is fetch-depth 0.
@@ -35,8 +30,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-# The token reads the repository and nothing else: every job runs on the organisation's own machines, where an action
-# is code run with the runner's credentials on a kept workspace.
+# The token reads the repository and nothing else: a pull request's code runs with it.
 permissions:
   contents: read
 
@@ -52,7 +46,7 @@ env:
 jobs:
   changes:
     name: What changed
-    runs-on: [light]
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       cpp: ${{ steps.pick.outputs.cpp }}
@@ -60,7 +54,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
       # The toolkit at the commit this change pins, which must be on the toolkit's main: a bump points at a commit the
       # toolkit has merged, never at one only a branch of it holds, which could be rewritten under a commit here.
       - name: The toolkit submodule, at a commit on the toolkit's main
@@ -91,20 +84,17 @@ jobs:
           echo "code changed: $cpp"
 
   # ---- The host ---------------------------------------------------------------------------------------------------
-  # Each runner keeps its trees under build/ci-* between runs (clean: false), and FetchContent's downloads under its
-  # tool cache (.github/actions/cpp), so a run that changed little builds little.
 
   linux:
     name: Linux (gcc)
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
       # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
       - name: The toolkit submodule
         uses: ./.github/actions/toolkit
@@ -115,8 +105,8 @@ jobs:
         uses: ./.github/actions/cpp
       - name: Configure
         run: >
-          cmake -S . -B build/ci-linux -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
-          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
+          cmake -S . -B build/ci-linux -G Ninja -DCMAKE_BUILD_TYPE=Release
+          "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: cmake --build build/ci-linux -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
@@ -125,7 +115,7 @@ jobs:
       - name: Test the window on a display (xvfb-run)
         run: xvfb-run -a -s "-screen 0 1600x1200x24" ctest --test-dir build/ci-linux --output-on-failure -L '^window$'
       # The release's two Linux packages, unsigned, from this tree, as release.yml makes them: the stage (each bundled
-      # engine downloaded by its pin into the tool cache, held to its hash and answering its handshake), the portable
+      # engine downloaded by its pin, held to its hash and answering its handshake), the portable
       # zip and the Debian package, each held to the stage and every engine started from its place in it; then dropped.
       - name: Package (the stage, the zip and the Debian package)
         run: |
@@ -145,13 +135,12 @@ jobs:
     name: Linux sanitizers (address, undefined)
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
       # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
       - name: The toolkit submodule
         uses: ./.github/actions/toolkit
@@ -163,7 +152,6 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build/ci-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAMPHITHEATER_ASAN=ON
-          -DFETCHCONTENT_UPDATES_DISCONNECTED=ON "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
           "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: cmake --build build/ci-asan -j ${{ steps.cpp.outputs.jobs }}
@@ -180,13 +168,12 @@ jobs:
     name: Coverage (Linux)
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
       # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
       - name: The toolkit submodule
         uses: ./.github/actions/toolkit
@@ -202,18 +189,9 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build/ci-coverage -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAMPHITHEATER_COVERAGE=ON
-          -DFETCHCONTENT_UPDATES_DISCONNECTED=ON "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}"
           "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
-        run: |
-          find build/ci-coverage -name '*.gcda' -delete
-          cmake --build build/ci-coverage -j ${{ steps.cpp.outputs.jobs }}
-          # The kept tree keeps the notes of sources that have moved or gone, which gcov can no longer read: the
-          # objects no longer built are removed, and with them every note whose object is gone.
-          ninja -C build/ci-coverage -t cleandead
-          find build/ci-coverage -name '*.gcno' | while read -r note; do
-            [ -f "${note%.gcno}.o" ] || { echo "a stale note: $note"; rm -f "$note"; }
-          done
+        run: cmake --build build/ci-coverage -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
         run: ctest --test-dir build/ci-coverage --output-on-failure -j "$(nproc)" -LE '^window$'
       - name: Coverage, 90 % of lines or red
@@ -238,13 +216,12 @@ jobs:
     name: Windows (MSVC)
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: windows-2025
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
       # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
       - name: The toolkit submodule
         uses: ./.github/actions/toolkit
@@ -255,8 +232,8 @@ jobs:
         uses: ./.github/actions/cpp
       - name: Configure
         run: >
-          cmake -S . -B build/ci-windows -G Ninja -DCMAKE_BUILD_TYPE=Release -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
-          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
+          cmake -S . -B build/ci-windows -G Ninja -DCMAKE_BUILD_TYPE=Release
+          "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: cmake --build build/ci-windows -j ${{ steps.cpp.outputs.jobs }}
       - name: Test
@@ -282,13 +259,12 @@ jobs:
     name: macOS (universal)
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: macos-15
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          clean: false
       # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
       - name: The toolkit submodule
         uses: ./.github/actions/toolkit
@@ -300,8 +276,7 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build/ci-macos -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
-          -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
-          "-DFETCHCONTENT_BASE_DIR=${{ steps.cpp.outputs.deps }}" "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 "-DPython3_EXECUTABLE=${{ steps.cpp.outputs.python }}"
       - name: Build
         run: cmake --build build/ci-macos -j ${{ steps.cpp.outputs.jobs }}
       - name: Every binary holds arm64 and x86_64, for macOS 13.3 on
@@ -311,6 +286,8 @@ jobs:
             for arch in arm64 x86_64; do lipo "$binary" -verify_arch "$arch"; done
             [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}' | sort -u)" = 13.3 ] || { echo "::error::$binary is not for macOS 13.3"; exit 1; }
           done
+          # The x86_64 slice runs too, under Rosetta, as release.yml runs it.
+          arch -x86_64 build/ci-macos/src/cli/amphitheater-cli --version
       # The app's bundle as the system checks it: signed whole, a plist that names its icon - the icon it names in the
       # bundle, the host's own black queen (assets/icon/Icon.icns) byte for byte - and asks for nothing the host does
       # not use (no microphone).
@@ -346,23 +323,19 @@ jobs:
           rm -rf build/ci-macos-dist build/ci-macos-out
 
   # Every C++ file clang-format clean under the repository's .clang-format, with 22.1.8 from the PyPI wheel (the one
-  # version every Reckless repository formats with), kept in a venv under the tool cache.
+  # version every Reckless repository formats with), in a venv of the job's own.
   format:
     name: clang-format
     needs: changes
-    runs-on: [light]
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-        with:
-          clean: false
       - name: clang-format 22.1.8
         run: |
-          venv="$RUNNER_TOOL_CACHE/clang-format-22.1.8"
-          if [ ! -x "$venv/bin/clang-format" ]; then
-            python3 -m venv "$venv"
-            "$venv/bin/pip" install --quiet 'clang-format==22.1.8'
-          fi
+          venv="$RUNNER_TEMP/clang-format"
+          python3 -m venv "$venv"
+          "$venv/bin/pip" install --quiet 'clang-format==22.1.8'
           "$venv/bin/clang-format" --version
           files=$(git ls-files -- '*.h' '*.cpp' || true)
           echo "$(echo "$files" | grep -c . || true) files"
@@ -373,7 +346,7 @@ jobs:
     name: CI
     needs: [changes, linux, sanitizers, coverage, windows, macos, format]
     if: always()
-    runs-on: [light]
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every job this run needed passed
