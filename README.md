@@ -3,7 +3,7 @@
 A chess GUI and UCI engine host for Windows, macOS and Linux, in C++20. This repository holds its toolkit-free core -
 the rules of chess, UCI engines as child processes, games, matches and tournaments between them - `amphitheater-cli`, a
 command-line match and tournament runner on that core, and the window, `Amphitheater`, drawn with Skia on
-reckless-toolkit (a git submodule at `external/reckless-toolkit`), which drives the same libraries.
+reckless-toolkit (a git subtree at `external/reckless-toolkit`), which drives the same libraries.
 
 Free and open source under the GNU General Public License, version 3 or later: [LICENSE](LICENSE) is the licence, and
 it is what every release carries, as LICENSE.txt.
@@ -108,16 +108,16 @@ however the host goes; on Linux and macOS each runs in a process group of its ow
 ## Building
 
 Set up a machine with `tools/setup-dev.ps1` (Windows) or `tools/setup-dev.sh` (Linux, macOS) - the compiler, CMake,
-Ninja, clang-format 22.1.8 and gcovr, the toolkit submodule, a `.venv` with `tools/requirements.txt` (the icon's
+Ninja, clang-format 22.1.8 and gcovr, a `.venv` with `tools/requirements.txt` (the icon's
 renderer, below, and the suites' Python), the libraries the window links on Linux (X11, FreeType, fontconfig), the git
 hooks and the editor's extensions; `-Check` / `--check` only reports. In VS Code these are the "setup environment" and "check environment"
 tasks.
 
-The window is built on the toolkit, a private repository at `external/reckless-toolkit`, which only the organisation
-can read: clone with `git clone --recurse-submodules`, or `git submodule update --init` after a plain clone. Without
-it, as anyone outside the organisation is, `-DAMPHITHEATER_GUI=OFF` builds the core libraries, `amphitheater-cli` and
-their suites from a plain clone (`cmake --preset release -DAMPHITHEATER_GUI=OFF`); the window cannot be built without
-the submodule. The app lands at
+The window is built on the toolkit, free software under the GPL, whose files are a git subtree in this
+repository at `external/reckless-toolkit` - committed here, so a plain clone has them and anyone can build the
+window. `tools/toolkit-pull.sh` brings its head in; it is pulled, never edited here.
+`-DAMPHITHEATER_GUI=OFF` builds the core libraries, `amphitheater-cli` and their suites without it. The app lands
+at
 `build/<preset>/src/app/Amphitheater.exe` on Windows, `build/<preset>/src/app/Amphitheater.app` on macOS and
 `build/<preset>/src/app/amphitheater` on Linux.
 
@@ -128,7 +128,7 @@ work. To build one target, name it:
 
 | Target | What it builds |
 |---|---|
-| `Amphitheater` | the app, the window (needs the toolkit submodule): the default target |
+| `Amphitheater` | the app, the window (needs the toolkit, which is in this repository): the default target |
 | `amphitheater_everything` | every target below |
 | `amphitheater-cli` | the command line: matches, tournaments, perft, analysis, test suites, opening books |
 | `amphitheater_render_main` | the window drawn to a PNG with no display, for the review images in `docs/design/` |
@@ -523,8 +523,8 @@ UndefinedBehaviorSanitizer, Linux coverage (gcovr, red under 90 % of `src/`'s li
 Apple silicon, each binary held to arm64 and x86_64 and to macOS 13.3, the x86_64 slice run under Rosetta, the app's
 bundle to its signature, the icon its plist names - `assets/icon/Icon.icns` byte for byte - and a plist that asks for
 no microphone), each platform's packages unsigned (above), clang-format 22.1.8, and `CI`, the one job to require.
-Every job starts on a fresh machine. Each checks the toolkit submodule out with its read-only deploy key
-(`.github/actions/toolkit`; a fork's pull request is given no secrets, so its run stops there), and
+Every job starts on a fresh machine and fetches nothing of its own: the toolkit's files are a subtree here,
+so a fork's pull request builds like any other. `.github/actions/cpp` installs what the image lacks, and
 `.github/actions/cpp` installs what the image lacks - Ninja, the X11, FreeType and fontconfig headers and Xvfb from
 apt on Linux - and Python 3.13 with `tools/requirements.txt`, so the `icon` and `pieces_cburnett` checks run rather
 than skip. FetchContent fetches GoogleTest, Skia's prebuilt libraries and the toolkit's other dependencies afresh into
