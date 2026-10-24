@@ -23,14 +23,15 @@ engine may ship that needs more than the system: the stage refuses a Windows eng
 compiler's runtime) unless a pinned companion lies beside it (none is needed: every pinned release links its runtime
 statically), and starts every engine with only the system on its PATH.
 
-**The GUI is built on reckless-toolkit**, a git submodule at `external/reckless-toolkit` (private, though this
-repository is public; CI reads it with the deploy key in the secret `RECKLESS_TOOLKIT_DEPLOY_KEY`, through
-`.github/actions/toolkit`, and a fork's pull request, given no secrets, cannot), added with the
-toolkit's GUI on, its suites off and no audio device layer. Only `src/app/` uses it: the libraries under `src/chess`,
+**The GUI is built on reckless-toolkit**, a git subtree at `external/reckless-toolkit` (public and GPLv3 since
+2026-10-24; its files are committed here, so a clone has them, CI fetches nothing of its own and a fork's pull
+request builds like any other). `tools/toolkit-pull.sh` brings its head in, and it is pulled, never edited here -
+an edit in this copy would be invisible to the toolkit and to the three other products that share it. It is built
+with the toolkit's GUI on, its suites off and no audio device layer. Only `src/app/` uses it: the libraries under `src/chess`,
 `src/uci`, `src/match` and `src/cli` depend on nothing of the toolkit or of vst-plugins, so they stay testable on their
-own, and `-DAMPHITHEATER_GUI=OFF` builds them with no submodule. The toolkit's include namespace is flat (`"View.h"`), so
+own, and `-DAMPHITHEATER_GUI=OFF` builds them without the toolkit. The toolkit's include namespace is flat (`"View.h"`), so
 the host's headers are included by their directory (`"chess/Position.h"`) and never take a toolkit header's name. A
-bump of the submodule points at a commit on the toolkit's `main` (the changes job checks).
+change to the toolkit is made in the toolkit and brought in with `tools/toolkit-pull.sh`, never edited here.
 
 **The pieces** come in two sets, each `assets/pieces/<set>/{w,b}{K,Q,R,B,N,P}.svg`, chosen under View > Pieces:
 Colin M.L. Burnett's (`cburnett`, the default), written by `convert_pieces.py` beside them from the Wikimedia Commons

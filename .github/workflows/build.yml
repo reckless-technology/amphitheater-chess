@@ -17,11 +17,9 @@ name: build
 # The version every binary reports is MAJOR.MINOR.BUILD from the nearest vMAJOR.MINOR tag
 # (cmake/AmphitheaterVersion.cmake), which a shallow clone cuts off: every checkout is fetch-depth 0.
 #
-# The window is built on the toolkit, a git submodule (reckless-technology/reckless-toolkit at external/reckless-toolkit)
-# in a private repository the workflow's token cannot read. Every job that builds checks it out right after its own
-# checkout through .github/actions/toolkit, over SSH with the toolkit's read-only deploy key (the secret
-# RECKLESS_TOOLKIT_DEPLOY_KEY; on Windows through Git's bash and its ssh), at the commit this repository pins; the changes
-# job also holds that commit to the toolkit's main. The window's suites (CTest label window) need a display: Linux runs
+# The window is built on the toolkit (reckless-technology/reckless-toolkit, public and GPLv3), whose files are a git
+# subtree here at external/reckless-toolkit: a checkout has them, so no job fetches anything of its own and a fork's
+# pull request builds like any other. The window'''s suites (CTest label window) need a display: Linux runs
 # them under xvfb-run, macOS on the runner's window server, Windows on its runner's window station, which draws though
 # nothing shows; the sanitizer and coverage jobs leave them out.
 on:
@@ -56,11 +54,6 @@ jobs:
           fetch-depth: 0
       # The toolkit at the commit this change pins, which must be on the toolkit's main: a bump points at a commit the
       # toolkit has merged, never at one only a branch of it holds, which could be rewritten under a commit here.
-      - name: The toolkit submodule, at a commit on the toolkit's main
-        uses: ./.github/actions/toolkit
-        with:
-          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
-          require-on-main: "true"
       - name: Decide what this run needs
         id: pick
         shell: bash
@@ -95,11 +88,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
-      - name: The toolkit submodule
-        uses: ./.github/actions/toolkit
-        with:
-          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
@@ -141,11 +129,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
-      - name: The toolkit submodule
-        uses: ./.github/actions/toolkit
-        with:
-          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
@@ -174,11 +157,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
-      - name: The toolkit submodule
-        uses: ./.github/actions/toolkit
-        with:
-          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
@@ -222,11 +200,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
-      - name: The toolkit submodule
-        uses: ./.github/actions/toolkit
-        with:
-          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
@@ -265,11 +238,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # The toolkit, the submodule at external/reckless-toolkit, at its pinned commit (.github/actions/toolkit).
-      - name: The toolkit submodule
-        uses: ./.github/actions/toolkit
-        with:
-          deploy-key: ${{ secrets.RECKLESS_TOOLKIT_DEPLOY_KEY }}
       - name: Toolchain
         id: cpp
         uses: ./.github/actions/cpp
