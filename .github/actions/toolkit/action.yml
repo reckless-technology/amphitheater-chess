@@ -1,14 +1,13 @@
 name: The toolkit submodule
 description: >
-  The toolkit (reckless-technology/reckless-toolkit, a private repository) checked out at external/reckless-toolkit at
-  the commit this repository pins, through the toolkit's read-only deploy key: the workflow's token reads this
-  repository alone. A pull request from a fork gets no secrets, so its run stops here until the change is pushed to a
+  The toolkit (reckless-technology/reckless-toolkit, public and GPLv3 since 2026-10-24) checked out at external/reckless-toolkit at
+  the commit this repository pins, over https, which needs no key: the workflow's token reads this repository alone. A pull request from a fork gets no secrets, so its run stops here until the change is pushed to a
   branch of this repository. With require-on-main, the pinned commit must also be on the toolkit's main: a pointer to
   a commit only a branch holds would build here and vanish there.
 inputs:
   deploy-key:
-    description: The private half of the toolkit's read-only deploy key (secrets.RECKLESS_TOOLKIT_DEPLOY_KEY)
-    required: true
+    description: The private half of a read-only deploy key, for a checkout over ssh; the toolkit is public, so a run without one reads it over https
+    required: false
   require-on-main:
     description: "'true' to fail unless the pinned commit is on the toolkit's main"
     required: false
@@ -29,15 +28,17 @@ runs:
           echo "$path is no submodule at this commit; nothing to check out"
           exit 0
         fi
-        if [ -z "$DEPLOY_KEY" ]; then
-          echo "::error::RECKLESS_TOOLKIT_DEPLOY_KEY is not set: CI cannot read the toolkit submodule"; exit 1
+        # The toolkit is public (GPLv3) and comes over https, which needs nothing: a fork's pull request can
+        # build it, which it never could through a deploy key. A key is still honoured where one is given, for a
+        # checkout over ssh.
+        if [ -n "$DEPLOY_KEY" ]; then
+          temp="$RUNNER_TEMP"
+          if command -v cygpath > /dev/null; then temp=$(cygpath -m "$RUNNER_TEMP"); fi
+          key="$temp/reckless-toolkit-deploy-key"
+          trap 'rm -f "$key"' EXIT
+          (umask 077; printf '%s\n' "$DEPLOY_KEY" > "$key")
+          export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
         fi
-        temp="$RUNNER_TEMP"
-        if command -v cygpath > /dev/null; then temp=$(cygpath -m "$RUNNER_TEMP"); fi
-        key="$temp/reckless-toolkit-deploy-key"
-        trap 'rm -f "$key"' EXIT
-        (umask 077; printf '%s\n' "$DEPLOY_KEY" > "$key")
-        export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
         git submodule update --init --recursive
         pinned=$(git -C "$path" rev-parse HEAD)
         if [ "$REQUIRE_ON_MAIN" = "true" ]; then
