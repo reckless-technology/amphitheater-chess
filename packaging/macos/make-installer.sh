@@ -6,7 +6,7 @@
 #                           inside it (Contents/Resources/engines/<engine>/); not relocatable, so Installer never follows
 #                           a copy of the same identifier elsewhere
 #   amphitheater-cli            /usr/local/bin
-#   EULA.txt, THIRD-PARTY-NOTICES.txt   /Library/Documentation/Reckless Amphitheater
+#   LICENSE.txt, THIRD-PARTY-NOTICES.txt   /Library/Documentation/Reckless Amphitheater
 #
 # and the uninstaller beside the app. Signed with the Developer ID Installer identity RECKLESS_INSTALLER_IDENTITY names,
 # in RECKLESS_SIGNING_KEYCHAIN where that is set; else unsigned, for a pull request's run or a try by hand. Notarisation
@@ -20,7 +20,7 @@ dist=$(cd "$1" && pwd)
 version=$2
 out=$3
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "make-installer.sh: the version is MAJOR.MINOR.BUILD, not $version" >&2; exit 2; }
-for file in Amphitheater.app amphitheater-cli EULA.txt THIRD-PARTY-NOTICES.txt Amphitheater.app/Contents/Resources/engines/bundled.json; do
+for file in Amphitheater.app amphitheater-cli LICENSE.txt THIRD-PARTY-NOTICES.txt Amphitheater.app/Contents/Resources/engines/bundled.json; do
     [ -e "$dist/$file" ] || { echo "make-installer.sh: $dist has no $file: stage it with packaging/stage.py" >&2; exit 1; }
 done
 here=$(cd "$(dirname "$0")" && pwd)
@@ -40,7 +40,7 @@ pkgbuild --root "$work/app-root" --component-plist "$work/app.plist" --install-l
 # The command-line tool and the documents.
 mkdir -p "$work/cli-root/usr/local/bin" "$work/cli-root/Library/Documentation/Reckless Amphitheater"
 ditto "$dist/amphitheater-cli" "$work/cli-root/usr/local/bin/amphitheater-cli"
-cp "$dist/EULA.txt" "$dist/THIRD-PARTY-NOTICES.txt" "$work/cli-root/Library/Documentation/Reckless Amphitheater/"
+cp "$dist/LICENSE.txt" "$dist/THIRD-PARTY-NOTICES.txt" "$work/cli-root/Library/Documentation/Reckless Amphitheater/"
 pkgbuild --root "$work/cli-root" --install-location / --identifier "$id.cli" --version "$version" \
     "$work/cli.pkg" > /dev/null
 
@@ -84,7 +84,7 @@ pkgbuild --root "$work/uninstaller-root" --component-plist "$work/uninstaller.pl
 
 # The product: the licence, the floor, the three parts taken whole.
 mkdir -p "$work/resources"
-cp "$dist/EULA.txt" "$work/resources/EULA.txt"
+cp "$dist/LICENSE.txt" "$work/resources/LICENSE.txt"
 sed -e "s/@VERSION@/$version/g" "$here/distribution.xml.in" > "$work/distribution.xml"
 sign=()
 if [ -n "${RECKLESS_INSTALLER_IDENTITY:-}" ]; then

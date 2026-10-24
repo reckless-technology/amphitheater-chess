@@ -43,7 +43,7 @@ while IFS= read -r -d '' file; do
     staged_engines=$((staged_engines + 1))
 done < <(find "$dist/engines" -type f -print0)
 [ "$(find "$x/$engines" -type f | wc -l)" = "$staged_engines" ] || fail "the engines' folder holds files the stage does not"
-for doc in EULA.txt THIRD-PARTY-NOTICES.txt; do
+for doc in LICENSE.txt THIRD-PARTY-NOTICES.txt; do
     cmp -s "$dist/$doc" "$x/usr/share/doc/reckless-amphitheater/$doc" || fail "$doc is not the staged one"
 done
 [ -s "$x/usr/share/doc/reckless-amphitheater/copyright" ] || fail "no copyright file"

@@ -266,12 +266,13 @@ def build(build_dir):
         rows.append(f"  {n[key]:>2}. {title.split(',')[0]:<44} {used.split(',')[0]}")
     engine_names = ", ".join(f"{e['name']} {e['version']}" for e in engines)
     head = ("THIRD-PARTY NOTICES\n\n" + prose(
-        "Reckless Amphitheater and amphitheater-cli are copyright (C) 2026 Jonny Reckless and licensed under EULA.txt. The "
+        "Reckless Amphitheater and amphitheater-cli are copyright (C) 2026 Jonny Reckless, free software under the GNU "
+        "General Public License version 3 or later (LICENSE.txt). The "
         "window contains the third-party software below, each part used under its own licence, which this file "
-        "reproduces wherever the licence asks for it. Nothing in EULA.txt limits any right these licences give you.",
+        "reproduces wherever the licence asks for it.",
         f"The installers also carry five chess engines - {engine_names} - each a separate program, licensed under the "
         f"GNU General Public License version 3 (section {n['gpl']}). Reckless Amphitheater only starts them and "
-        "talks to them over the UCI protocol; it contains none of their code, and EULA.txt does not cover them. Each "
+        "talks to them over the UCI protocol and contains none of their code. Each "
         "engine's section says where its corresponding source is.") +
         "\n\nWhere each part is used\n\n" + "\n".join(rows) + "\n")
     parts = [head] + [section(n[key], *sections[key]) for key in keys]

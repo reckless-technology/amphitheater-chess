@@ -34,7 +34,7 @@ $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $dist = (Resolve-Path $DistDir).Path
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $out = (Resolve-Path $OutDir).Path
-foreach ($file in 'Amphitheater.exe', 'amphitheater-cli.exe', 'EULA.txt', 'THIRD-PARTY-NOTICES.txt', 'engines\bundled.json') {
+foreach ($file in 'Amphitheater.exe', 'amphitheater-cli.exe', 'LICENSE.txt', 'THIRD-PARTY-NOTICES.txt', 'engines\bundled.json') {
     if (-not (Test-Path (Join-Path $dist $file))) { throw "$dist has no ${file}: stage it with packaging/stage.py" }
 }
 

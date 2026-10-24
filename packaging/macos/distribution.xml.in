@@ -3,7 +3,7 @@
      and later on either kind of Mac, and the three parts every install takes. -->
 <installer-gui-script minSpecVersion="2">
     <title>Reckless Amphitheater @VERSION@</title>
-    <license file="EULA.txt"/>
+    <license file="LICENSE.txt"/>
     <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
     <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
     <volume-check>

@@ -15,7 +15,7 @@
 #       the app's icon, Jonny's sketch of the Colosseum, each size its own render (assets/icon/, tools/make_icon.py), N
 #       16 to 512; a drawing has no scalable form
 #   /usr/share/doc/reckless-amphitheater/
-#       EULA.txt, THIRD-PARTY-NOTICES.txt, copyright
+#       LICENSE.txt, THIRD-PARTY-NOTICES.txt, copyright
 #
 # every file the staged one byte for byte, owned by root, 0755 where it runs and 0644 elsewhere, its time
 # SOURCE_DATE_EPOCH's or the last commit's, so one stage makes one package. Its Depends is read off the binaries, the
@@ -32,7 +32,7 @@ dist=$(cd "$1" && pwd)
 version=$2
 out=$3
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "make-deb.sh: the version is MAJOR.MINOR.BUILD, not $version" >&2; exit 2; }
-for file in amphitheater amphitheater-cli EULA.txt THIRD-PARTY-NOTICES.txt engines/bundled.json; do
+for file in amphitheater amphitheater-cli LICENSE.txt THIRD-PARTY-NOTICES.txt engines/bundled.json; do
     [ -e "$dist/$file" ] || { echo "make-deb.sh: $dist has no $file: stage it with packaging/stage.py" >&2; exit 1; }
 done
 here=$(cd "$(dirname "$0")" && pwd)
@@ -62,7 +62,7 @@ for size in 16 24 32 48 64 128 256 512; do
     install -d -m 0755 "$pkg/usr/share/icons/hicolor/${size}x${size}/apps"
     install -m 0644 "$root/assets/icon/png/icon-$size.png" "$pkg/usr/share/icons/hicolor/${size}x${size}/apps/$id.png"
 done
-install -m 0644 "$dist/EULA.txt" "$dist/THIRD-PARTY-NOTICES.txt" "$pkg/usr/share/doc/reckless-amphitheater/"
+install -m 0644 "$dist/LICENSE.txt" "$dist/THIRD-PARTY-NOTICES.txt" "$pkg/usr/share/doc/reckless-amphitheater/"
 cat > "$pkg/usr/share/doc/reckless-amphitheater/copyright" <<COPYRIGHT
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Reckless Amphitheater
@@ -72,7 +72,7 @@ Source: https://recklesstechnology.com
 Files: *
 Copyright: 2026 Jonny Reckless
 License: proprietary
- Licensed to its users under /usr/share/doc/reckless-amphitheater/EULA.txt. The third-party parts it contains are used
+ Free software under the GNU General Public License version 3 or later, in /usr/share/doc/reckless-amphitheater/LICENSE.txt. The third-party parts it contains are used
  under the licences /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt reproduces.
 
 Files: usr/lib/reckless-amphitheater/engines/*

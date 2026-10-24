@@ -5,9 +5,8 @@ the rules of chess, UCI engines as child processes, games, matches and tournamen
 command-line match and tournament runner on that core, and the window, `Amphitheater`, drawn with Skia on
 reckless-toolkit (a git submodule at `external/reckless-toolkit`), which drives the same libraries.
 
-Source-available and free, not open source: anyone may read the code here, but [LICENSE](LICENSE) reserves every right
-and grants no licence to use, copy, modify or distribute it; the releases are licensed to their users under
-[EULA.txt](EULA.txt).
+Free and open source under the GNU General Public License, version 3 or later: [LICENSE](LICENSE) is the licence, and
+it is what every release carries, as LICENSE.txt.
 Everything in it is Jonny Reckless's own work, the piece set in `assets/pieces/staunton/` for the GUI among it (twelve
 SVGs, the generator that wrote them and a preview); the tests fetch GoogleTest, which no product ships. The window
 links the toolkit's third-party parts (Skia and the libraries it bundles, two typefaces), each under the licence
@@ -265,7 +264,7 @@ the clock on and off, and the status bar says UPDATE while a newer release is ou
 A launch's check (`--smoke`) makes none, and `RECKLESS_UPDATE_CHECK=off` - every CI job sets it - switches it off.
 
 Help > About (`AboutDialog`) shows the app's mark - its icon, from the 256-pixel render the binary carries - its name
-and version, the copyright, the terms (free, proprietary, under `EULA.txt`), the engines the install carries with their
+and version, the copyright, the terms (free software under the GPL, in `LICENSE.txt`), the engines the install carries with their
 versions and licences (read from `bundled.json`, every engine whose program is there; none in a build tree), where the
 third-party notices are, and recklesstechnology.com as a link to the person's browser. Close, Escape and Return close
 it. On a Mac the app menu's own About item opens the same window (`MenuBar::about_id`).
@@ -494,7 +493,7 @@ and removes it like any other, for good.
 ## Packages and releases
 
 `packaging/stage.py <build-dir> <dist-dir> windows|macos|linux` stages a release from a release tree: the window,
-`amphitheater-cli`, the engines, `EULA.txt` and `THIRD-PARTY-NOTICES.txt`. From the stage:
+`amphitheater-cli`, the engines, `LICENSE.txt` and `THIRD-PARTY-NOTICES.txt`. From the stage:
 
 | Platform | Package | Made and checked by |
 |---|---|---|

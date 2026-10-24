@@ -6,9 +6,9 @@ Reckless Amphitheater is a chess GUI and UCI engine host for Windows, macOS and 
 toolkit-free core and a command-line runner; the README is the long-form reference (the libraries, the threading
 model, the command line, the tests).
 
-**Licence:** source-available and free, not open source - the repository is public for anyone to read, but `LICENSE`
-(proprietary, all rights reserved) grants no licence to use, copy, modify or distribute it; `EULA.txt` is for the
-releases' users. The window links the proprietary toolkit; its third-party parts are in `THIRD-PARTY-NOTICES.txt`,
+**Licence:** free and open source under the GNU General Public License, version 3 or later (`LICENSE`, the FSF's own
+text; every release carries it as `LICENSE.txt`). The five engines it installs are separate programs under their own
+GPL licences, named in the About card. The window links the proprietary toolkit; its third-party parts are in `THIRD-PARTY-NOTICES.txt`,
 written by `tools/third_party_notices.py <build-dir>` (CTest `notices` checks it). The installers carry Jonny's five
 GPLv3 chess engines as separate programs - aggregation, never linking: the host only talks to them over UCI pipes and
 no engine code may come into this tree - and the notices give each one's version, copyright, the GPL's text once and
