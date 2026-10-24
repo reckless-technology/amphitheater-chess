@@ -23,7 +23,7 @@ fail() { echo "::error::test-installer.sh: $*" >&2; exit 1; }
 pkgutil --expand-full "$pkg" "$work/x" > /dev/null
 distribution="$work/x/Distribution"
 grep -q '<os-version min="13.3"/>' "$distribution" || fail "the distribution does not hold the floor 13.3"
-grep -q '<license file="EULA.txt"/>' "$distribution" || fail "the distribution shows no licence"
+grep -q '<license file="LICENSE.txt"/>' "$distribution" || fail "the distribution shows no licence"
 for part in app cli uninstaller; do
     info="$work/x/$part.pkg/PackageInfo"
     [ -f "$info" ] || fail "no $part.pkg in the product"
@@ -39,7 +39,7 @@ app="$work/x/app.pkg/Payload/Reckless Technology/Amphitheater.app"
 diff -r "$dist/Amphitheater.app" "$app" > /dev/null || fail "the app is not the staged app"
 cmp -s "$dist/amphitheater-cli" "$work/x/cli.pkg/Payload/usr/local/bin/amphitheater-cli" || fail "the tool is not the staged tool"
 [ -x "$work/x/cli.pkg/Payload/usr/local/bin/amphitheater-cli" ] || fail "the tool is not executable"
-for doc in EULA.txt THIRD-PARTY-NOTICES.txt; do
+for doc in LICENSE.txt THIRD-PARTY-NOTICES.txt; do
     cmp -s "$dist/$doc" "$work/x/cli.pkg/Payload/Library/Documentation/Reckless Amphitheater/$doc" || fail "$doc"
 done
 extra=$(cd "$work/x" && find app.pkg/Payload cli.pkg/Payload -type f | grep -v "Amphitheater.app/" |

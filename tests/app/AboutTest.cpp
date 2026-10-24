@@ -135,7 +135,7 @@ TEST(About, HelpAboutOpensOverTheWindowWithTheNameAndVersionAndClosesOnEscape)
                            [&part](const std::string &line) { return line.find(part) != std::string::npos; });
     };
     EXPECT_TRUE(has("Copyright 2026 Jonny Reckless. Reckless Technology."));
-    EXPECT_TRUE(has("EULA.txt"));
+    EXPECT_TRUE(has("LICENSE.txt"));
     EXPECT_TRUE(has("THIRD-PARTY-NOTICES.txt"));
     EXPECT_TRUE(has("recklesstechnology.com"));
     EXPECT_TRUE(about->EngineLines().empty()) << "a build tree's host carries no engines";

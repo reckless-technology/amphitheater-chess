@@ -53,7 +53,7 @@ AppPublisherURL=https://recklesstechnology.com
 AppCopyright=Copyright (C) 2026 Jonny Reckless
 DefaultGroupName=Reckless Technology
 DisableProgramGroupPage=yes
-LicenseFile={#StageDir}\EULA.txt
+LicenseFile={#StageDir}\LICENSE.txt
 OutputDir={#OutputDir}
 Compression=lzma2/max
 SolidCompression=yes
@@ -89,7 +89,7 @@ Type: filesandordirs; Name: "{app}\engines"
 [Files]
 Source: "{#StageDir}\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\amphitheater-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#StageDir}\EULA.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StageDir}\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\engines\*"; DestDir: "{app}\engines"; Flags: ignoreversion recursesubdirs createallsubdirs
 

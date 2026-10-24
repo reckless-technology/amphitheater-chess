@@ -1,15 +1,15 @@
 THIRD-PARTY NOTICES
 
-Reckless Amphitheater and amphitheater-cli are copyright (C) 2026 Jonny Reckless and licensed under
-EULA.txt. The window contains the third-party software below, each part used under its own licence,
-which this file reproduces wherever the licence asks for it. Nothing in EULA.txt limits any right
-these licences give you.
+Reckless Amphitheater and amphitheater-cli are copyright (C) 2026 Jonny Reckless, free software
+under the GNU General Public License version 3 or later (LICENSE.txt). The window contains the
+third-party software below, each part used under its own licence, which this file reproduces
+wherever the licence asks for it.
 
 The installers also carry five chess engines - Pawnstar 1.2.0, Zenith 2.1.0, Pawnstar-Go 1.2.0,
 Pawnstar-RS 1.2.0, Stoopid Chess 3.0.0 - each a separate program, licensed under the GNU General
 Public License version 3 (section 13). Reckless Amphitheater only starts them and talks to them over
-the UCI protocol; it contains none of their code, and EULA.txt does not cover them. Each engine's
-section says where its corresponding source is.
+the UCI protocol and contains none of their code. Each engine's section says where its corresponding
+source is.
 
 Where each part is used
 

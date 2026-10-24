@@ -32,9 +32,9 @@ constexpr int   kCardWidth    = 640;    ///< The card's width.
 constexpr int   kTitleBand    = 48;     ///< The card's title band (DialogFrame's).
 constexpr int   kFooterBand   = 58;     ///< The card's button band (DialogFrame's).
 
-constexpr const char *kName       = "Reckless Amphitheater";
-constexpr const char *kCopyright  = "Copyright 2026 Jonny Reckless. Reckless Technology.";
-constexpr const char *kTerms      = "Free, proprietary software, used under its end-user licence (EULA.txt).";
+constexpr const char *kName      = "Reckless Amphitheater";
+constexpr const char *kCopyright = "Copyright 2026 Jonny Reckless. Reckless Technology.";
+constexpr const char *kTerms = "Free software under the GNU General Public License, version 3 or later (LICENSE.txt).";
 constexpr const char *kEngineNote = "Each engine is a separate program the host runs over UCI, under its own licence.";
 constexpr const char *kNotices =
     "Third-party notices, the engines' among them, are in THIRD-PARTY-NOTICES.txt, installed beside the app.";

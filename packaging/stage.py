@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """What a release ships, staged from a release build tree into a folder of its own: the window and the command-line
 tool as the build made them, the bundled engines (tools/bundled_engines.py stage: each pinned release's binary, held to
-its hash, and the manifest the host seeds a person's engine list from), the end-user licence and the third-party
+its hash, and the manifest the host seeds a person's engine list from), the licence and the third-party
 notices. Everything after it - the archive, the installers, the signing - reads the stage, never the build tree.
 
     python3 -I packaging/stage.py <build-dir> <dist-dir> linux|macos|windows [--cache DIR] [--leave-out-unfit]
 
-    windows  Amphitheater.exe, amphitheater-cli.exe, engines/<engine>/..., EULA.txt, THIRD-PARTY-NOTICES.txt
-    linux    amphitheater, amphitheater-cli, engines/<engine>/..., EULA.txt, THIRD-PARTY-NOTICES.txt - the portable
+    windows  Amphitheater.exe, amphitheater-cli.exe, engines/<engine>/..., LICENSE.txt, THIRD-PARTY-NOTICES.txt
+    linux    amphitheater, amphitheater-cli, engines/<engine>/..., LICENSE.txt, THIRD-PARTY-NOTICES.txt - the portable
              archive as it is, and what the Debian package lays out (the engines under /usr/lib/reckless-amphitheater)
     macos    Amphitheater.app with the engines in Contents/Resources/engines/<engine>/ (the bundle copied with
              ditto and signed again ad hoc, since files added to it break the build's signature; a release signs it
-             with the Developer ID after, packaging/macos/sign.sh), amphitheater-cli, EULA.txt, THIRD-PARTY-NOTICES.txt
+             with the Developer ID after, packaging/macos/sign.sh), amphitheater-cli, LICENSE.txt, THIRD-PARTY-NOTICES.txt
 
 The folder is emptied first; a binary the build did not make stops it before anything is copied. Every engine the stage
 lays out answers its handshake on this machine before the stage ends (both of Zenith's x86-64 builds where the CPU
@@ -60,8 +60,8 @@ def main():
             subprocess.run(["ditto", str(source), str(dist / source.name)], check=True)
         else:
             shutil.copy2(source, dist / source.name)
-    for document in ("EULA.txt", "THIRD-PARTY-NOTICES.txt"):
-        shutil.copyfile(ROOT / document, dist / document)
+    for source, name in (("LICENSE", "LICENSE.txt"), ("THIRD-PARTY-NOTICES.txt", "THIRD-PARTY-NOTICES.txt")):
+        shutil.copyfile(ROOT / source, dist / name)
     try:
         bundled_engines.stage(bundled_engines.load_pins(), platform_name, engines_folder(dist, platform_name), cache,
                               do_handshake=True, leave_out_unfit="--leave-out-unfit" in sys.argv)
