@@ -11,6 +11,6 @@ in THIRD-PARTY-NOTICES.txt.
   64 MB hash; a new release moves them on and keeps your own settings, and one you remove stays removed.
 - Installers for Windows (signed), macOS (signed and notarised) and Linux (a Debian package and a portable zip).
 - On macOS the bundled engines are built for Apple silicon.
-- The host has an icon of its own, the black queen on a white square, in the app, its installers and the menus.
+- The host has an icon of its own, Jonny's sketch of the Colosseum, in the app, its installers and the menus.
 - View offers window sizes of 50% to 150% (Ctrl+0, Ctrl+= and Ctrl+-, Command on a Mac), and the next launch opens at
   the size chosen.
