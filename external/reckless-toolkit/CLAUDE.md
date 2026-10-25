@@ -15,29 +15,54 @@ directory is an include directory and a header is included by its bare name (`"V
 flat: a consumer names its own headers apart from the toolkit's.
 
 Repository `github.com/reckless-technology/reckless-toolkit`, **public**, default branch `main`, free software under
-the GNU General Public License version 3 or later - copyright Jonny Reckless (`LICENSE`); `NOTICE` lists what of it
-is another's and under what terms. The apps built on it are GPL too, and a GPL binary owes its user the whole of
-its corresponding source: that is why this repository is public. It was extracted with its full history from
-vst-plugins' `external/reckless-toolkit/` (`git filter-repo`, every older path followed), so `git log --follow` on a
-file reaches back through vst-plugins' `common/` and the plugins' own directories.
+the GNU General Public License version 3 or later - copyright Jonny Reckless. Three files carry that, and each holds
+one thing only: `COPYRIGHT` the copyright, the grant and what the licence does not cover, `LICENSE` the Free Software
+Foundation's text **byte for byte and nothing else** - a word of our own above it and GitHub stops recognising the
+licence, reporting `NOASSERTION` instead of `GPL-3.0`, which is what happened to `reckless-toolkit-old` and is why
+the recital lives in `COPYRIGHT` - and `NOTICE` what of this is another's and under what terms. The apps built on it are GPL too, and a GPL binary owes its user the whole of
+its corresponding source: that is why this repository is public.
+
+**The history here starts at this repository's first commit** (2026-10-24), a snapshot of the toolkit as it then
+stood, taken deliberately so that no private history was published. The development history up to that date - the
+toolkit's own 478 commits, reaching back through vst-plugins' `common/` and the plugins' own directories - is in
+`reckless-technology/reckless-toolkit-old`, private and archived. The two share no common ancestor, so they cannot be
+fetched into one another and `git log --follow` does not cross from one to the other: for anything before
+2026-10-24, read the archived repository.
+
+**The device layer is native.** Since 2026-10-25 every audio and MIDI API on every platform is a back end of the
+toolkit's own, behind the seam in `audio/DeviceBackends.h` - CoreAudio and CoreMIDI, Windows Audio, ASIO and WinMM,
+ALSA, its sequencer and JACK - and RtAudio and RtMidi, which the layer was first written on, are compiled into nothing.
+Before touching anything under `audio/`, read **[docs/audio/native-backends.md](docs/audio/native-backends.md)**: the
+decision and what it rests on, each back end and what it was measured against, how a back end is added, and the things
+settled by measurement so they are not re-argued. What is left is running the hardware a CI runner lacks.
 
 ## The consumers
 
 | Product | Repository | State |
 |---|---|---|
-| The plugin suite | `vst-plugins` | a submodule at `external/reckless-toolkit`, added with `add_subdirectory`; it sets `RECKLESS_TOOLKIT_BUILD_TESTS`, `RECKLESS_TOOLKIT_GUI` and `RECKLESS_TOOLKIT_FETCH_ASIO_SDK` from its own options, and reads the pins back for its third-party notices |
-| Reckless IR Capture | `ir-capture` | a submodule at `external/reckless-toolkit`, added with the GUI and the audio layer on and its suites off |
-| Reckless Amphitheater | `amphitheater-chess` | a submodule at `external/reckless-toolkit`, added with the GUI on and its suites and the audio layer off; its window is built on the app shell (`app/AppRun.h`, `docs/app/app-shell.md`) |
-| Knect 4 | `knect4` | a submodule at `external/reckless-toolkit`, added with the GUI and the audio layer on and its suites and ASIO off; its window is built on the app shell, its landings' clicks played through the audio layer's default output |
-| Reckless Sudoku | `sudoku` | a submodule at `external/reckless-toolkit`, added with the GUI on and its suites, the audio layer and ASIO off; its window is built on the app shell, under the series' header with the company mark |
+**Every consumer carries the toolkit as a git subtree** at `external/reckless-toolkit` - no submodule anywhere any
+more, the last of them converted on 2026-10-24. A pull is made by the consumer's own `tools/toolkit-pull.sh`, which
+flattens it into one linear commit, because these repositories require a linear history and are rebase-only. So a
+toolkit change reaches a product in two steps: merge it here, then run that script in each product.
 
-Each consumer's CI reads the submodule with a read-only deploy key on this repository (Settings, Deploy keys), its
-private half a secret in the consumer's repository; a key per consumer, named for it. The other way round, this
-repository's CI reads each consumer with a read-only deploy key on the consumer ("reckless-toolkit CI consumer guard
-(read-only)"), its private half this repository's Actions and Dependabot secret `CONSUMER_VST_PLUGINS_DEPLOY_KEY`,
-`CONSUMER_IR_CAPTURE_DEPLOY_KEY`, `CONSUMER_AMPHITHEATER_DEPLOY_KEY`, `CONSUMER_KNECT4_DEPLOY_KEY` or
-`CONSUMER_SUDOKU_DEPLOY_KEY`, for the
-`consumers` job below. A new consumer gets its line in `tools/check-consumers.sh`, its key and its secret (`ssh-keygen
+| Product | Repository | State |
+|---|---|---|
+| The plugin suite | `vst-plugins` (private) | **a subtree** since pull request #503; added with `add_subdirectory`; it sets `RECKLESS_TOOLKIT_BUILD_TESTS`, `RECKLESS_TOOLKIT_GUI` and `RECKLESS_TOOLKIT_FETCH_ASIO_SDK` from its own options, and reads the pins back for its third-party notices |
+| Reckless IR Capture | `vst-plugins/ir-capture/` | no longer a repository of its own: it moved into the suite and shares the suite's copy of the toolkit, with the GUI and the audio layer on and its suites off. The standalone `ir-capture` repository is archived |
+| Reckless Amphitheater | `amphitheater-chess` (public) | **a subtree**, added with the GUI on and its suites and the audio layer off; its window is built on the app shell (`app/AppRun.h`, `docs/app/app-shell.md`) |
+| Knect 4 | `knect4` (public) | **a subtree**, added with the GUI and the audio layer on and its suites and ASIO off; its window is built on the app shell, its landings' clicks played through the audio layer's default output |
+| Reckless Sudoku | `sudoku` (public) | **a subtree**, added with the GUI on and its suites, the audio layer and ASIO off; its window is built on the app shell, under the series' header with the company mark |
+
+**A consumer needs no key to read this repository any more**: it is public, so a consumer's CI clones it over https,
+and the per-consumer read-only deploy keys that used to sit here (Settings, Deploy keys) can go with the secrets that
+held their private halves in each consumer.
+
+The other way round, this repository's CI reads each consumer for the `consumers` job below, and there a key is still
+needed for a **private** consumer only: `vst-plugins`, through a read-only deploy key on it ("reckless-toolkit CI
+consumer guard (read-only)") whose private half is this repository's Actions and Dependabot secret
+`CONSUMER_VST_PLUGINS_DEPLOY_KEY`. `amphitheater-chess`, `knect4` and `sudoku` went public and GPL on 2026-10-24 and
+are cloned over https with no key, which is what a checkout with no key can do; `tools/check-consumers.sh` chooses per
+consumer. `CONSUMER_IR_CAPTURE_DEPLOY_KEY` is obsolete with the standalone `ir-capture` repository. A new consumer gets its line in `tools/check-consumers.sh`, its key and its secret (`ssh-keygen
 -t ed25519`, `gh repo deploy-key add` on the consumer, `gh secret set` here for both apps, the key files deleted after).
 
 ## Commands
@@ -111,18 +136,24 @@ working for every consumer: `sign`'s bundle kinds, the identity check and the ex
   `Co-Authored-By: Claude <model> <noreply@anthropic.com>` trailer.
 - **`main` takes pull requests only**, enforced by the ruleset "main takes pull requests": a pull request whose `CI`
   check is green on a branch up to date with `main`, merged by rebase alone (squash and merge commits are GitHub's own
-  commits, under its identity), no force push, no deletion, no bypass. `git switch -c <topic>`, push, `gh pr create
+  commits, under its identity), no force push, no deletion, no bypass. The repository allows rebase merges alone and
+  auto-merge. The ruleset was found missing on 2026-10-25 - lost when the repository was made anew in public - and
+  restored from sudoku's, which is the same: if a `gh pr merge --auto` ever merges at once, check
+  `gh api repos/reckless-technology/reckless-toolkit/rules/branches/main` first. `git switch -c <topic>`, push, `gh pr create
   --fill`, `gh pr merge --rebase --auto`; a green pull request is merged without asking (Jonny's standing permission).
   If `main` moves, rebase the branch and force-push it. The pre-push hook refuses a push to `main`.
 
 ## CI
 
-`.github/workflows/build.yml`, on the organisation's own runners only - `[self-hosted, Linux, X64]`, `[self-hosted,
-Windows, X64]` (MSVC through vswhere and `VsDevCmd.bat`), `[self-hosted, macOS, ARM64]` for the builds and `[light]` for
-the short jobs (`changes`, `format`, `doxygen`, `ci`: `reckless-ci-lin-0-alt`, a second runner on lin-0 with no default
-labels, and lin-1's runner) - never a hosted image. Jobs: `changes` (the commits' identity, `check-docs.py --tracked`,
+`.github/workflows/build.yml`, on GitHub's hosted images, each pinned - `ubuntu-24.04`, `windows-2025` (MSVC through
+vswhere and `VsDevCmd.bat`) and `macos-15`, a fresh machine for every job. This repository is public, and the
+organisation's self-hosted pool does not serve public repositories (a job queued for it would wait for ever); the
+workflow's opening comment says so. The hosted Linux kernel has no sound support, so `tools/audio-test-devices.sh`
+installs the ALSA and JACK headers - the back ends compile - and the device suites are left out there
+(`RECKLESS_AUDIO_DEVICES=none`): the Linux device suites run on a developer's machine and in vst-plugins' CI, on the
+organisation's own runners. Jobs: `changes` (the commits' identity, `check-docs.py --tracked`,
 and whether code changed), `linux` (gcc, every suite, the device suite with `RECKLESS_AUDIO_REQUIRE=ALSA,JACK` after
-`tools/audio-test-devices.sh`, the window suites under `xvfb-run` with `RECKLESS_REQUIRE_WINDOW`), `windows` (MSVC,
+`tools/audio-test-devices.sh` wherever the kernel has sound, the window suites under `xvfb-run` with `RECKLESS_REQUIRE_WINDOW`), `windows` (MSVC,
 `RECKLESS_AUDIO_REQUIRE=ASIO` on the SDK fetched by name and hash), `macos` (universal arm64 and x86_64, every binary
 read with `lipo` and `vtool` for both slices and the 13.3 floor, `RECKLESS_AUDIO_REQUIRE=CoreAudio`,
 `RECKLESS_REQUIRE_WINDOW`), `minimal` (no GUI, no audio device layer), `consumers` (Linux: `tools/check-consumers.sh`
@@ -133,8 +164,6 @@ builds a few of its targets - vst-plugins' `reckless_update_shared` and `reckles
 product's, a header a product's shadows, or a moved function fails here), `coverage` (gcc, gcovr on `core/`, `gfx/` but
 its Skia canvas, `look/`, `view/`, `net/`, `update/` and `licence/`, red under the floor `--fail-under-line` names),
 `format`, `doxygen` and `CI`, the aggregate the ruleset requires. Documentation alone builds nothing.
-`RECKLESS_UPDATE_CHECK=off` everywhere. Kept trees under `build/ci-toolkit*` (checkout `clean: false`) but coverage's,
-`build/ci-toolkit-cov`, deleted before every configure since another branch's notes and counters in a kept tree stop
-gcovr; FetchContent's downloads in the runner's tool cache under `reckless-toolkit-deps/<compiler>-ninja-gtest<pin>`;
-`workflow_dispatch` with `fresh` rebuilds from nothing. `.github/dependabot.yml` watches the actions' majors; its
+`RECKLESS_UPDATE_CHECK=off` everywhere. Nothing is kept between runs: each job builds from nothing and fetches what it
+needs. `.github/dependabot.yml` watches the actions' majors; its
 commits must be made again under Jonny's identity before they can merge.

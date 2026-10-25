@@ -1,7 +1,8 @@
-// The arithmetic of the suite's WASAPI back end (audio/WasapiFormats.h), held on every platform: the modes'
-// names, every encoding's round trip and its full scale, the callback's channels landing on the device channels they
-// name with the rest silent, the period each mode opens at, the 100 ns arithmetic, and the capture ring - written and
-// read, silent before its first packet, dry said once it has been written, and full dropping its oldest.
+// The arithmetic of the suite's WASAPI back end (audio/WasapiFormats.h, and the encodings it shares with ALSA's,
+// audio/SampleEncodings.h), held on every platform: the modes' names, every encoding's round trip and its full scale,
+// the callback's channels landing on the device channels they name with the rest silent and the device's landing on
+// the callback's that name them, the period each mode opens at, the 100 ns arithmetic, and the capture ring - written
+// and read, silent before its first packet, dry said once it has been written, and full dropping its oldest.
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -22,13 +23,14 @@ using wasapi::Encoding;
 
 TEST(WasapiFormats, EachModeHasTheNameASettingsFileKeeps)
 {
-    for (const wasapi::Mode mode : {wasapi::Mode::kShared, wasapi::Mode::kLowLatency, wasapi::Mode::kExclusive})
+    for (const wasapi::Mode mode : {wasapi::Mode::kShared, wasapi::Mode::kExclusive})
     {
         EXPECT_EQ(wasapi::ModeNamed(wasapi::NameOf(mode)), mode);
     }
     EXPECT_EQ(wasapi::NameOf(wasapi::Mode::kShared), "Windows Audio") << "the name the settings kept before";
-    EXPECT_EQ(wasapi::NameOf(wasapi::Mode::kLowLatency), "Windows Audio (Low Latency Mode)");
     EXPECT_EQ(wasapi::NameOf(wasapi::Mode::kExclusive), "Windows Audio (Exclusive Mode)");
+    EXPECT_EQ(wasapi::ModeNamed("Windows Audio (Low Latency Mode)"), wasapi::Mode::kShared)
+        << "a mode of its own until 2026-10-25, what Windows Audio does now";
     EXPECT_FALSE(wasapi::ModeNamed("ASIO").has_value());
     EXPECT_FALSE(wasapi::ModeNamed("Windows Audio (Exclusive)").has_value());
 }
@@ -117,6 +119,31 @@ TEST(WasapiFormats, TheCallbacksChannelsLandOnTheDeviceChannelsTheyNameTheRestSi
     wasapi::Encode(channels, 2, 3, 4, 3, Encoding::kFloat32, reinterpret_cast<std::uint8_t *>(device.data()));
     const std::array<float, 12> clipped = {0, 0, 0, 0.1f, 0, 0, 0, 0.2f, 0, 0, 0, 0.3f};
     EXPECT_EQ(device, clipped);
+}
+
+TEST(WasapiFormats, TheDevicesChannelsLandOnTheCallbackChannelsThatNameThem)
+{
+    // The way back (SampleEncodings.h's Decode, ALSA's capture): a device of four 16-bit channels, the callback's two
+    // reading its channels 2 and 3, and a third past the device's own reading silence.
+    const std::array<std::int16_t, 12> device = {1, 2, 16384, -16384, 3, 4, 8192, -8192, 5, 6, -32768, 32767};
+    std::array<float, 3>               a{}, b{}, c{};
+    c.fill(9.0f);
+    float *const channels[3] = {a.data(), b.data(), c.data()};
+    reckless::audio::Decode(reinterpret_cast<const std::uint8_t *>(device.data()), 4, 3, Encoding::kInt16, 2, 3,
+                            channels);
+    EXPECT_EQ(a, (std::array<float, 3>{0.5f, 0.25f, -1.0f}));
+    EXPECT_EQ(b, (std::array<float, 3>{-0.5f, -0.25f, 32767.0f / 32768.0f}));
+    EXPECT_EQ(c, (std::array<float, 3>{0.0f, 0.0f, 0.0f}));
+}
+
+TEST(WasapiFormats, ASharedStreamTakesTheDriversPeriodAtTheEndpointsOwnRate)
+{
+    // At the endpoint's own rate nothing is converted, and a small period can be had; at another the engine converts,
+    // which it does at its own period.
+    EXPECT_EQ(wasapi::SharedRouteOf(48000, 48000), wasapi::SharedRoute::kDriversPeriod);
+    EXPECT_EQ(wasapi::SharedRouteOf(44100, 48000), wasapi::SharedRoute::kEnginesPeriod);
+    EXPECT_EQ(wasapi::SharedRouteOf(96000, 48000), wasapi::SharedRoute::kEnginesPeriod);
+    EXPECT_EQ(wasapi::SharedRouteOf(0, 48000), wasapi::SharedRoute::kEnginesPeriod) << "no rate: none to match";
 }
 
 TEST(WasapiFormats, ALowLatencyPeriodIsTheDriversSmallestThatHoldsTheBlock)
