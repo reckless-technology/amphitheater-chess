@@ -71,9 +71,11 @@ Source: https://recklesstechnology.com
 
 Files: *
 Copyright: 2026 Jonny Reckless
-License: proprietary
- Free software under the GNU General Public License version 3 or later, in /usr/share/doc/reckless-amphitheater/LICENSE.txt. The third-party parts it contains are used
- under the licences /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt reproduces.
+License: GPL-3+
+ Free software under the GNU General Public License version 3 or later, in
+ /usr/share/doc/reckless-amphitheater/LICENSE.txt; on Debian systems the licence is also in
+ /usr/share/common-licenses/GPL-3. The third-party parts it contains are used under the licences
+ /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt reproduces.
 
 Files: usr/lib/reckless-amphitheater/engines/*
 Copyright: 2009-2026 Jonny Reckless
