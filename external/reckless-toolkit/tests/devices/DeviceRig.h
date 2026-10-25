@@ -27,7 +27,9 @@ enum class Loop
                  ///< client's outputs wired to its own inputs
     kCorrelated, ///< the output comes back through a mixer - WASAPI's loopback capture of the endpoint's mix - the
                  ///< same signal at some gain and some delay
-    kKnownInput  ///< the input carries what the device makes itself: the ASIO test driver's sine and sawtooth
+    kKnownInput, ///< the input carries what the device makes itself: the ASIO test driver's sine and sawtooth
+    kCable       ///< the output comes back on the device's own inputs through a cable a person patched: through the
+                 ///< converters, the same signal at some gain, as late as the latency the API reports and two blocks
 };
 
 /** How the test device is made to report an overrun or underrun to a running stream. */
@@ -48,6 +50,8 @@ struct TestDevice
     std::string engine_input;         ///< the input the engine's test opens; empty for none
     bool        engine_key{true};     ///< whether the engine's key bus may take the inputs past the main pair
     int         channels{2};          ///< the channels each way a stream opens
+    int         first_output{0};      ///< the output device's first channel a stream opens, counted from 0
+    int         first_input{0};       ///< the input device's first channel a stream opens, counted from 0
     int         sample_rate{48000};   ///< the rate a stream opens at, in hertz
     int         block_size{256};      ///< the block a stream opens at, in samples
     Loop        loop{Loop::kNone};    ///< what a stream can show of the samples it carried
@@ -124,12 +128,12 @@ std::unique_ptr<DeviceRig> MakeJackRig();
 std::unique_ptr<DeviceRig> MakeAsioRig();
 
 /** The rig of one of Windows Audio's modes, made in WasapiRig.cpp.
-    @param exclusive  true for the exclusive mode, output only; false for the shared and low-latency modes
+    @param exclusive  true for the exclusive mode, output only; false for the shared mode
     @return           the rig */
 std::unique_ptr<DeviceRig> MakeWasapiRig(bool exclusive);
 
-/** Windows with the ASIO test driver: the registry views the binary gave RtAudio's driver list as it was built, put
-    back; elsewhere nothing. Called first thing in main (AsioRig.cpp says why). */
+/** Windows with the ASIO test driver: the registry views the binary gave the ASIO back end's driver list as it was
+   built, put back; elsewhere nothing. Called first thing in main (AsioRig.cpp says why). */
 void FinishAsioRegistration();
 
 /** What the ASIO test driver's registration did, for the header the suite prints; empty where there is none.
@@ -167,6 +171,37 @@ class PrivateAggregate
 
   private:
     std::uint32_t device_{0}; ///< the aggregate's AudioObjectID; 0, kAudioObjectUnknown, for none
+    std::string   why_;
+};
+
+/** A CoreMIDI source of the test's own (MidiSourceMac.cpp): a virtual source on MIDI 1.0's protocol, under the name it
+    is made with, listed while the object lives, which sends Universal MIDI Packets to whoever is connected to it. */
+class PrivateMidiSource
+{
+  public:
+    explicit PrivateMidiSource(const std::string &name);
+    ~PrivateMidiSource();
+
+    PrivateMidiSource(const PrivateMidiSource &)            = delete;
+    PrivateMidiSource &operator=(const PrivateMidiSource &) = delete;
+
+    bool made() const noexcept
+    {
+        return source_ != 0;
+    }
+
+    /** Why none was made. */
+    const std::string &why() const noexcept
+    {
+        return why_;
+    }
+
+    /** One Universal MIDI Packet of `count` words sent at once. */
+    void Send(const std::uint32_t *words, int count);
+
+  private:
+    std::uint32_t client_{0}; ///< the MIDIClientRef the source is made on; 0 for none
+    std::uint32_t source_{0}; ///< the MIDIEndpointRef; 0 for none
     std::string   why_;
 };
 #endif

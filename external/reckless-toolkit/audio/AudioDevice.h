@@ -11,9 +11,9 @@ namespace reckless::audio
 /**
     The machine's audio and MIDI as a Standalone sees them, written against no library: an audio API's devices and the
     one stream it opens on them (AudioSystem), the stream's callback (AudioCallback), and the MIDI input ports
-    (MidiSystem) whose messages land in a sink (MidiSink). The suite's implementation is RtAudio's and RtMidi's
-    (RtAudioDevice.h); a suite's is a fake that runs the callback itself. The engine between them and a plugin's core
-    is StandaloneEngine.
+    (MidiSystem) whose messages land in a sink (MidiSink). The implementations are the toolkit's own back ends on each
+    platform's API (DeviceBackends.h); a suite's is a fake that runs the callback itself. The engine between them and a
+   plugin's core is StandaloneEngine.
 
     Threads: everything on AudioSystem and MidiSystem is the message thread's; AudioCallback::Process runs on the
     API's audio thread and MidiSink::Arrived on a MIDI port's thread, and StreamFailed on whichever thread the API
@@ -99,8 +99,13 @@ struct DeviceInfo
 
 /** The stream to open: the input device (empty for none) and the output device, the run of each one's channels to
     open - from `first_*`, `*_count` of them, a callback seeing them as its channels 0 on - the rate, the block (the
-    frames a callback carries; an API may give another, which the opened format says) and the name a server lists the
-    client under (JACK's). */
+    frames a callback carries; an API may give another, which the opened format says), the name a server lists the
+    client under (JACK's) and the periods the output buffers.
+
+    The periods are the product's to choose, where the API lets a stream choose them: the blocks the output device
+    holds ahead of the one being written, each a block's latency and a block's margin against a late callback. ALSA
+    takes them (at least two: one playing while the next is written); JACK's are its server's, and WASAPI, CoreAudio and
+    ASIO buffer as they do. 0 leaves them to the back end. */
 struct StreamRequest
 {
     std::string input_device;       ///< the input device's name, empty for none
@@ -112,10 +117,12 @@ struct StreamRequest
     int         sample_rate{48000}; ///< the rate to open at, in hertz
     int         block_size{512};    ///< the frames a callback carries; the API may give another
     std::string client_name;        ///< the name a server lists the client under, JACK's
+    int         periods{0};         ///< the blocks the output buffers, where the API lets a stream choose; 0: its own
 };
 
-/** What a stream opened as: its rate and block, the channels the callback sees each way, and the latency the API
-    reports beyond the block itself - input and output summed, in samples, 0 where it reports none. */
+/** What a stream opened as: its rate and block, the channels the callback sees each way, the latency the API reports
+    beyond the block itself - input and output summed, in samples, 0 where it reports none - and the periods its output
+    buffers where the API says. */
 struct StreamFormat
 {
     int sample_rate{0};      ///< the rate the stream runs at, in hertz
@@ -123,6 +130,7 @@ struct StreamFormat
     int input_channels{0};   ///< the input channels the callback sees, 0 with no input
     int output_channels{0};  ///< the output channels the callback sees
     int reported_latency{0}; ///< the latency the API reports beyond the block, in samples, input and output summed
+    int periods{0};          ///< the blocks the output buffers, where the API says; 0 where it does not
 };
 
 /** What runs a stream. */
@@ -270,5 +278,34 @@ inline int FindDevice(const std::vector<DeviceInfo> &devices, std::string_view n
         }
     }
     return -1;
+}
+
+/** `devices` named apart, as FindDevice needs them: a device whose name an earlier one with channels the same way
+    already carries takes that name with its ordinal after it - "Loopback (Loopback PCM) (2)", ALSA's loopback card's
+    second device - the lowest from 2 that is free; an input and an output of one name keep it. This is how RtAudio's
+    devices were named apart when the settings in the field were written, so every back end names its devices so.
+    @param devices  the devices, in the API's order, each under the name the API gives it; renamed in place */
+inline void NameApart(std::vector<DeviceInfo> &devices)
+{
+    for (std::size_t i = 0; i < devices.size(); ++i)
+    {
+        const auto taken = [&devices, i](const std::string &name) {
+            for (std::size_t j = 0; j < i; ++j)
+            {
+                const bool same_way = (devices[j].input_channels > 0 && devices[i].input_channels > 0) ||
+                                      (devices[j].output_channels > 0 && devices[i].output_channels > 0);
+                if (same_way && devices[j].name == name)
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+        const std::string given = devices[i].name;
+        for (int ordinal = 2; taken(devices[i].name); ++ordinal)
+        {
+            devices[i].name = given + " (" + std::to_string(ordinal) + ")";
+        }
+    }
 }
 } // namespace reckless::audio

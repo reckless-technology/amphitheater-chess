@@ -11,12 +11,14 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -25,14 +27,107 @@
 
 #include "AudioSettings.h"
 #include "CountAllocations.h"
+#include "DeviceBackends.h"
 #include "DeviceRig.h"
-#include "RtAudioDevice.h"
 #include "Text.h"
 
 #include <gtest/gtest.h>
 
 namespace reckless::audio::test::suite
 {
+
+/** A line every few seconds naming the case it is in and how long it has been there, for as long as it is alive.
+    The device suite opens real devices and runs real streams, so a case takes tens of seconds and ctest, which
+    shows a test's output only once it ends, would otherwise print nothing at all between one case and the next -
+    a working run and a hung one look the same. One of these in a fixture's SetUp makes the difference visible.
+    It writes to stderr, unbuffered and never interleaved with a partial line, and stops in its destructor. */
+class Heartbeat
+{
+  public:
+    /** @param what  the case's name, printed on every beat
+        @param every the gap between beats */
+    explicit Heartbeat(std::string what, std::chrono::seconds every = std::chrono::seconds(5))
+        : what_(std::move(what)), every_(every), thread_([this] {
+              const auto                   started = std::chrono::steady_clock::now();
+              std::unique_lock<std::mutex> lock(mutex_);
+              while (!stopping_)
+              {
+                  if (wake_.wait_for(lock, every_, [this] { return stopping_; }))
+                  {
+                      return;
+                  }
+                  const auto seconds =
+                      std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - started);
+                  std::fprintf(stderr, "[ RUNNING  ] %s, %llds so far\n", what_.c_str(),
+                               static_cast<long long>(seconds.count()));
+                  std::fflush(stderr);
+              }
+          })
+    {
+    }
+
+    /** Stops the beat and waits for its thread: sets #stopping_ under #mutex_, wakes the thread and joins it, so
+        nothing of it outlives the case it was timing. */
+    ~Heartbeat()
+    {
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            stopping_ = true;
+        }
+        wake_.notify_all();
+        thread_.join();
+    }
+
+    Heartbeat(const Heartbeat &)            = delete;
+    Heartbeat &operator=(const Heartbeat &) = delete;
+
+  private:
+    std::string             what_;            ///< the case's name
+    std::chrono::seconds    every_;           ///< the gap between beats
+    std::mutex              mutex_;           ///< guards stopping_
+    std::condition_variable wake_;            ///< ends the wait at once when the case does
+    bool                    stopping_{false}; ///< set in the destructor
+    std::thread             thread_;          ///< beats until stopping_
+};
+
+/** How long a phase of a case took, printed as it ends. The heartbeat says a case is still alive; this says
+    what it was doing and for how long, which is what a slow case needs: the suite's own measurements cover the
+    stream, and a case whose stream is a healthy second can still take a minute around it - opening a device,
+    closing one, or waiting for a sound server to let go. Written to stderr beside the heartbeat's lines, and only
+    where it took long enough to be worth a line (`kQuiet`), so a fast machine's log stays readable. */
+class Phase
+{
+  public:
+    /** The gap below which a phase says nothing: a phase of a few milliseconds is not what anyone is looking for. */
+    static constexpr std::chrono::milliseconds kQuiet{250};
+
+    /** @param what  what is being timed, named as it would be said */
+    explicit Phase(std::string what) : what_(std::move(what)), started_(std::chrono::steady_clock::now())
+    {
+    }
+
+    /** Ends the phase and prints how long it took, to stderr, but only where it took at least #kQuiet: a phase of a
+        few milliseconds is not what anyone reading these lines is looking for. */
+    ~Phase()
+    {
+        const auto took =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started_);
+        if (took >= kQuiet)
+        {
+            std::fprintf(stderr, "[ PHASE    ] %s took %.1f s\n", what_.c_str(),
+                         static_cast<double>(took.count()) / 1000.0);
+            std::fflush(stderr);
+        }
+    }
+
+    Phase(const Phase &)            = delete;
+    Phase &operator=(const Phase &) = delete;
+
+  private:
+    std::string                           what_;    ///< what is being timed
+    std::chrono::steady_clock::time_point started_; ///< when it began
+};
+
 using reckless::audio::AudioCallback;
 using reckless::audio::AudioSettings;
 using reckless::audio::AudioSystem;
@@ -81,22 +176,53 @@ inline std::string JoinList(const std::vector<std::string> &items)
     return text.empty() ? std::string("none") : text;
 }
 
-/** The APIs RECKLESS_AUDIO_REQUIRE names: each must have its test device, or its tests fail. */
-inline const std::vector<std::string> &RequiredApis()
+/** An environment variable's value, empty where it is not set. */
+inline std::string Environment(const char *name)
 {
-    static const std::vector<std::string> required = [] {
     // MSVC deprecates getenv for _dupenv_s, whose copy a test has no use for.
 #if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable : 4996)
 #endif
-        const char *text = std::getenv("RECKLESS_AUDIO_REQUIRE");
+    const char *text = std::getenv(name);
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
-        return text != nullptr ? SplitList(text) : std::vector<std::string>{};
-    }();
+    return text != nullptr ? std::string(text) : std::string();
+}
+
+/** The APIs RECKLESS_AUDIO_REQUIRE names: each must have its test device, or its tests fail. */
+inline const std::vector<std::string> &RequiredApis()
+{
+    static const std::vector<std::string> required = SplitList(Environment("RECKLESS_AUDIO_REQUIRE"));
     return required;
+}
+
+/** A whole number from an environment variable, 0 where it is not set or is not one. */
+inline int EnvironmentNumber(const char *name)
+{
+    const std::string text = Trim(Environment(name));
+    if (text.empty() || text.find_first_not_of("0123456789") != std::string::npos || text.size() > 9)
+    {
+        return 0;
+    }
+    return std::stoi(text);
+}
+
+/** The test device as a person running the suite by hand asks for it: RECKLESS_AUDIO_TEST_RATE and
+    RECKLESS_AUDIO_TEST_BLOCK, where set, over the rate and the block its rig chose - so a real interface is held at
+    each rate and block it offers, one run at a time. CI sets neither. */
+inline TestDevice WithRunOverrides(TestDevice device)
+{
+    if (const int rate = EnvironmentNumber("RECKLESS_AUDIO_TEST_RATE"); rate > 0)
+    {
+        device.sample_rate = rate;
+    }
+    if (const int block = EnvironmentNumber("RECKLESS_AUDIO_TEST_BLOCK"); block > 0)
+    {
+        device.block_size = block;
+    }
+    return device;
 }
 
 inline bool Required(const std::string &api)
@@ -293,11 +419,117 @@ inline float NoiseSample(std::int64_t frame, int channel)
     return static_cast<float>(0.0316 * (2.0 * u - 1.0));
 }
 
+/** The frames from one burst's start to the next's (Play::kBursts): 1.37 s at 48 kHz. */
+inline constexpr std::int64_t kBurstPeriod = 1 << 16;
+
+/** The frames a burst plays, the rest of its period silent: 0.34 s at 48 kHz. */
+inline constexpr std::int64_t kBurstFrames = 1 << 14;
+
+/** NoiseSample in bursts: the noise for the first kBurstFrames of every kBurstPeriod, silence for the rest - a capture
+    that plays, falls silent and plays again in one stream, as Reckless IR Capture's noise, gap and sweep do. */
+inline float BurstSample(std::int64_t frame, int channel)
+{
+    return frame % kBurstPeriod < kBurstFrames ? NoiseSample(frame, channel) : 0.0f;
+}
+
+/** How much of a recording a linear filter from what was played explains: the least-squares fit, over the frames from
+    `start`, of a short filter of `taps` taps centred on `lag` from a channel's played noise (NoiseSample) to what came
+    back, as the correlation coefficient of the fit - 1 for a recording that is the noise filtered, whatever the filter.
+    A cable through an interface's converters band-limits the noise and delays it by a fraction of a sample, which a
+    sample-for-sample correlation counts against the loop; a filter takes both in, and leaves a dropped block, a
+    glitch or a channel that is another's. The UMC1820's converters, cabled at 48 kHz, took 64 taps to fit to 0.9998
+    where 32 left 0.996 and 8 0.95: the converters' response is longer than a few samples.
+    @param recorded  the channel recorded
+    @param frames    the frames recorded
+    @param channel   the channel whose noise was played
+    @param lag       the delay found, in frames
+    @param start     the first frame of the fit
+    @param taps      the filter's taps
+    @return          the fit's correlation coefficient, 0 to 1 */
+inline double FilteredCorrelation(const std::vector<float> &recorded, std::size_t frames, int channel, std::size_t lag,
+                                  std::size_t start, int taps = 64)
+{
+    const auto          n    = static_cast<std::size_t>(taps);
+    const std::int64_t  half = taps / 2;
+    std::vector<double> normal(n * n, 0.0), right(n, 0.0), row(n, 0.0);
+    double              yy = 0.0;
+    for (std::size_t i = start; i + lag < frames; ++i)
+    {
+        for (std::size_t k = 0; k < n; ++k)
+        {
+            row[k] = NoiseSample(static_cast<std::int64_t>(i) + half - static_cast<std::int64_t>(k), channel);
+        }
+        const double y = recorded[i + lag];
+        yy += y * y;
+        for (std::size_t a = 0; a < n; ++a)
+        {
+            right[a] += row[a] * y;
+            for (std::size_t b = a; b < n; ++b)
+            {
+                normal[a * n + b] += row[a] * row[b];
+            }
+        }
+    }
+    for (std::size_t a = 0; a < n; ++a)
+    {
+        for (std::size_t b = 0; b < a; ++b)
+        {
+            normal[a * n + b] = normal[b * n + a];
+        }
+    }
+    // Gaussian elimination with partial pivoting: the normal equations are small and well conditioned (white noise).
+    std::vector<double> matrix = normal, solution = right;
+    for (std::size_t c = 0; c < n; ++c)
+    {
+        std::size_t pivot = c;
+        for (std::size_t r = c + 1; r < n; ++r)
+        {
+            if (std::abs(matrix[r * n + c]) > std::abs(matrix[pivot * n + c]))
+            {
+                pivot = r;
+            }
+        }
+        if (matrix[pivot * n + c] == 0.0)
+        {
+            return 0.0;
+        }
+        for (std::size_t k = 0; k < n; ++k)
+        {
+            std::swap(matrix[c * n + k], matrix[pivot * n + k]);
+        }
+        std::swap(solution[c], solution[pivot]);
+        for (std::size_t r = c + 1; r < n; ++r)
+        {
+            const double factor = matrix[r * n + c] / matrix[c * n + c];
+            for (std::size_t k = c; k < n; ++k)
+            {
+                matrix[r * n + k] -= factor * matrix[c * n + k];
+            }
+            solution[r] -= factor * solution[c];
+        }
+    }
+    for (std::size_t c = n; c-- > 0;)
+    {
+        for (std::size_t k = c + 1; k < n; ++k)
+        {
+            solution[c] -= matrix[c * n + k] * solution[k];
+        }
+        solution[c] /= matrix[c * n + c];
+    }
+    // The variance the fit explains: the fit's correlation with the recording, squared, is its share of yy.
+    double explained = 0.0;
+    for (std::size_t a = 0; a < n; ++a)
+    {
+        explained += solution[a] * right[a];
+    }
+    return yy > 0.0 ? std::sqrt(std::clamp(explained / yy, 0.0, 1.0)) : 0.0;
+}
+
 // ---- A stream's callback for the suite -----------------------------------------------------------------------------
 
 /**
     What a stream test opens a stream on: each callback stamped and counted, its block and its channel pointers checked
-    against the layout RtAudioDevice promises (every channel's frames after the channel before's), a signal played and
+    against the layout every back end promises (every channel's frames after the channel before's), a signal played and
     the first two inputs recorded - all into storage sized when it is built, so the audio thread allocates nothing.
     Read only once the stream has stopped, but for the count.
 */
@@ -309,7 +541,8 @@ class Recorder final : public AudioCallback
     {
         kSilence, ///< nothing
         kIndices, ///< each sample naming its frame and its channel (IndexSample), for an exact loop
-        kNoise    ///< a deterministic noise (NoiseSample), for a loop that is not exact
+        kNoise,   ///< a deterministic noise (NoiseSample), for a loop that is not exact
+        kBursts   ///< the same noise in bursts, silence between them (BurstSample), for a loop's delay through silence
     };
 
     static constexpr std::size_t kMaxCallbacks = 1 << 13; ///< the callbacks stamped
@@ -363,9 +596,10 @@ class Recorder final : public AudioCallback
             for (int i = 0; i < frames; ++i)
             {
                 const std::int64_t frame = played_ + i;
-                outputs[c][i]            = play_ == Play::kIndices ? IndexSample(frame, c)
-                                           : play_ == Play::kNoise ? NoiseSample(frame, c)
-                                                                   : 0.0f;
+                outputs[c][i]            = play_ == Play::kIndices  ? IndexSample(frame, c)
+                                           : play_ == Play::kNoise  ? NoiseSample(frame, c)
+                                           : play_ == Play::kBursts ? BurstSample(frame, c)
+                                                                    : 0.0f;
             }
         }
         played_ += frames;
@@ -447,7 +681,7 @@ class Recorder final : public AudioCallback
         return xruns_[i] != 0;
     }
 
-    /** @return the callbacks whose channels were not laid out as RtAudioDevice promises */
+    /** @return the callbacks whose channels were not laid out as every back end promises */
     std::int64_t layout_faults() const noexcept
     {
         return layout_faults_;
@@ -485,7 +719,7 @@ class Recorder final : public AudioCallback
     }
 
   private:
-    /** The block's channels as RtAudioDevice lays them out: the counts the stream opened, every pointer there, each
+    /** The block's channels as every back end lays them out: the counts the stream opened, every pointer there, each
         channel's frames after the channel before's in one buffer each way. The first fault is described (a fixed
         string, chosen not built).
         @param inputs           the block's input pointers
@@ -590,7 +824,7 @@ class StreamCloser
 /**
     An AudioSystem round the real one that runs the engine's callback between two counts of the allocations the audio
     thread makes (CountAllocations.h), so a total of zero is an engine and a core that allocated nothing on the API's
-    own thread - RtAudio's work round the callback is not counted, the engine's and the core's is.
+    own thread - the back end's work round the callback is not counted, the engine's and the core's is.
 */
 class CountingAudioSystem final : public AudioSystem, private AudioCallback
 {
@@ -608,27 +842,32 @@ class CountingAudioSystem final : public AudioSystem, private AudioCallback
 
     std::vector<DeviceInfo> Devices() override
     {
+        const Phase listing("listing the devices");
         return inner_->Devices();
     }
 
     bool Open(const StreamRequest &request, AudioCallback &callback) override
     {
+        const Phase opening("opening the stream");
         callback_ = &callback;
         return inner_->Open(request, *this);
     }
 
     bool Start() override
     {
+        const Phase starting("starting the stream");
         return inner_->Start();
     }
 
     void Stop() override
     {
+        const Phase stopping("stopping the stream");
         inner_->Stop();
     }
 
     void Close() override
     {
+        const Phase closing("closing the stream");
         inner_->Close();
     }
 
@@ -688,37 +927,114 @@ class CountingAudioSystem final : public AudioSystem, private AudioCallback
 // ---- The rigs that need no platform code ---------------------------------------------------------------------------
 
 /** CoreAudio's test device: the machine's default output, written with silence - the Mac runner's own speakers. An
-    input is never opened: on macOS it would ask the person at the machine for the microphone. */
+    input is never opened there: on macOS it would ask the person at the machine for the microphone.
+
+    A person at a Mac with an interface asks for more through the environment (docs/audio/device-tests.md, "On a Mac
+    with an interface"): RECKLESS_COREAUDIO_DEVICE names the output device, as CoreAudio lists it;
+    RECKLESS_COREAUDIO_LOOP, as "<output>:<input>", the first of two output channels patched by cable to two inputs,
+    counted from 1 - "3:1" for outputs 3 and 4 into inputs 1 and 2 - which makes the loop a cable's (Loop::kCable); and
+    RECKLESS_COREAUDIO_INPUT an input device of another name, which joins the two in the back end's private aggregate.
+    CI sets none of them. */
 class CoreAudioRig final : public DeviceRig
 {
   public:
     TestDevice Find(const std::vector<DeviceInfo> &devices) override
     {
-        TestDevice device;
+        TestDevice        device;
+        const std::string named       = Trim(Environment("RECKLESS_COREAUDIO_DEVICE"));
+        const std::string input_named = Trim(Environment("RECKLESS_COREAUDIO_INPUT"));
+        const std::string cable       = Trim(Environment("RECKLESS_COREAUDIO_LOOP"));
+        const DeviceInfo *output      = nullptr;
+        const DeviceInfo *input       = nullptr;
         for (const DeviceInfo &info : devices)
         {
-            if (info.is_default_output && info.output_channels > 0)
+            const bool wanted = named.empty() ? info.is_default_output : info.name == named;
+            if (output == nullptr && wanted && info.output_channels > 0)
             {
-                device.found       = true;
-                device.output      = info.name;
-                device.channels    = std::min(info.output_channels, 2);
-                device.sample_rate = info.DefaultSampleRate();
-                device.block_size  = 256;
-                device.loop        = Loop::kNone;
-                device.xrun_by     = reckless::audio::test::XrunBy::kStall;
-                device.about       = "the default output, written with silence (no input: one would ask the person at "
-                                     "the machine for the microphone)";
-                return device;
+                output = &info;
+            }
+            if (input == nullptr && !input_named.empty() && info.name == input_named && info.input_channels > 0)
+            {
+                input = &info;
             }
         }
-        device.missing = "CoreAudio lists no default output device";
+        if (output == nullptr)
+        {
+            device.missing = named.empty() ? std::string("CoreAudio lists no default output device")
+                                           : "RECKLESS_COREAUDIO_DEVICE names '" + named +
+                                                 "', which CoreAudio lists no output device by";
+            return device;
+        }
+        if (!input_named.empty() && input == nullptr)
+        {
+            device.missing =
+                "RECKLESS_COREAUDIO_INPUT names '" + input_named + "', which CoreAudio lists no input device by";
+            return device;
+        }
+        if (input == nullptr && !cable.empty())
+        {
+            input = output;
+        }
+        device.found       = true;
+        device.output      = output->name;
+        device.channels    = std::min(output->output_channels, 2);
+        device.sample_rate = output->DefaultSampleRate();
+        device.block_size  = 256;
+        device.loop        = Loop::kNone;
+        device.xrun_by     = reckless::audio::test::XrunBy::kStall;
+        // A hosted macOS runner's only output is a virtual machine's device, whose clock is a thread the hypervisor
+        // schedules: its late cycles are overloads the machine's load makes, not the layer's, as JACK's dummy driver's
+        // are (TestDevice::is_scheduler_timed). Real hardware is held to the strict count.
+        if (output->name.find("Apple Virtual Sound Device") != std::string::npos)
+        {
+            device.is_scheduler_timed = true;
+            device.rate_tolerance     = 0.10;
+        }
+        device.about = "the default output, written with silence (no input: one would ask the person at the machine "
+                       "for the microphone)";
+        if (!named.empty())
+        {
+            device.about = "the output RECKLESS_COREAUDIO_DEVICE names, written with silence";
+        }
+        if (input != nullptr)
+        {
+            device.input        = input->name;
+            device.engine_input = input->name;
+            device.engine_key   = false;
+            device.channels     = std::min({output->output_channels, input->input_channels, 2});
+            device.about        = input == output ? "duplex on one device"
+                                                  : "duplex across two devices, joined in "
+                                                    "the back end's private aggregate";
+        }
+        if (!cable.empty())
+        {
+            const auto colon        = cable.find(':');
+            const int  first_output = colon == std::string::npos ? 0 : std::atoi(cable.substr(0, colon).c_str());
+            const int  first_input  = colon == std::string::npos ? 0 : std::atoi(cable.substr(colon + 1).c_str());
+            if (first_output < 1 || first_input < 1 || first_output + 1 > output->output_channels ||
+                first_input + 1 > input->input_channels)
+            {
+                device.found   = false;
+                device.missing = "RECKLESS_COREAUDIO_LOOP is '" + cable +
+                                 "': it names two outputs and two inputs the devices have as \"<output>:<input>\", "
+                                 "counted from 1 - \"3:1\" for outputs 3 and 4 into inputs 1 and 2";
+                return device;
+            }
+            device.channels     = 2;
+            device.first_output = first_output - 1;
+            device.first_input  = first_input - 1;
+            device.loop         = Loop::kCable;
+            device.about = "outputs " + std::to_string(first_output) + " and " + std::to_string(first_output + 1) +
+                           " patched by cable to inputs " + std::to_string(first_input) + " and " +
+                           std::to_string(first_input + 1) + " (RECKLESS_COREAUDIO_LOOP), " + device.about;
+        }
         return device;
     }
 };
 
 /** ALSA's test device: the kernel's loopback card (snd-aloop), whose playback on device 0 comes back as capture on
     device 1, subdevice by subdevice, bit for bit - the CI job loads it and gives its user the card's nodes. Its two
-    devices carry one name in RtAudio's list, the second with its ordinal (RtAudioDevice.h). */
+    devices carry one name, and the second is listed with its ordinal (AudioDevice.h's NameApart). */
 class AlsaRig final : public DeviceRig
 {
   public:
@@ -750,7 +1066,7 @@ class AlsaRig final : public DeviceRig
         device.block_size     = 256;
         device.loop           = Loop::kExact;
         device.rate_tolerance = 0.03;
-        device.xrun_by        = reckless::audio::test::XrunBy::kStall; // RtAudio's ALSA back end, patched by the build
+        device.xrun_by        = reckless::audio::test::XrunBy::kStall; // the device stops, and is started again
         device.about = "snd-aloop: playback on hw:Loopback,0 comes back as capture on hw:Loopback,1, bit for bit";
         return device;
     }
@@ -790,7 +1106,7 @@ inline std::unique_ptr<DeviceRig> MakeRig(const std::string &api)
     }
 #endif
 #if defined(_WIN32)
-    if (api == "Windows Audio" || api == "Windows Audio (Low Latency Mode)")
+    if (api == "Windows Audio")
     {
         return reckless::audio::test::MakeWasapiRig(false);
     }
@@ -850,10 +1166,12 @@ inline StreamRequest RequestFor(const TestDevice &device, bool with_input)
 {
     StreamRequest request;
     request.output_device = device.output;
+    request.first_output  = device.first_output;
     request.output_count  = device.channels;
     if (with_input && !device.input.empty())
     {
         request.input_device = device.input;
+        request.first_input  = device.first_input;
         request.input_count  = device.channels;
     }
     request.sample_rate = device.sample_rate;
@@ -949,23 +1267,40 @@ class AudioDevices : public ::testing::TestWithParam<std::string>
             FAIL() << api_ << " is required (RECKLESS_AUDIO_REQUIRE) and this build does not carry it: the build "
                    << "carries " << JoinList(apis);
         }
-        rig_ = MakeRig(api_);
+        const ::testing::TestInfo *info = ::testing::UnitTest::GetInstance()->current_test_info();
+        beat_                           = std::make_unique<Heartbeat>(
+            info == nullptr ? api_ : std::string(info->test_suite_name()) + "." + info->name());
+        {
+            const Phase making("the test rig (" + api_ + ")");
+            rig_ = MakeRig(api_);
+        }
         ASSERT_NE(rig_, nullptr) << "no test rig for " << api_;
-        system_ = reckless::audio::MakeAudioSystem(api_);
+        {
+            const Phase making("the audio system (" + api_ + ")");
+            system_ = reckless::audio::MakeAudioSystem(api_);
+        }
         ASSERT_NE(system_, nullptr) << api_;
     }
 
     /** The system, then the rig. */
     void TearDown() override
     {
-        system_.reset();
-        rig_.reset();
+        {
+            const Phase letting_go("letting the audio system go (" + api_ + ")");
+            system_.reset();
+        }
+        {
+            const Phase letting_go("letting the test rig go (" + api_ + ")");
+            rig_.reset();
+        }
+        beat_.reset();
     }
 
     /** @return the test device, in the API's list probed afresh */
     TestDevice Find()
     {
-        return rig_->Find(system_->Devices());
+        const Phase probing("probing the devices (" + api_ + ")");
+        return WithRunOverrides(rig_->Find(system_->Devices()));
     }
 
     /** The settings an engine opens the test device with: its devices, rate, block and every channel.
@@ -979,15 +1314,16 @@ class AudioDevices : public ::testing::TestWithParam<std::string>
         settings.input_device  = device.engine_input;
         settings.sample_rate   = device.sample_rate;
         settings.block_size    = device.block_size;
-        std::vector<int> channels;
+        std::vector<int> outputs, inputs;
         for (int c = 0; c < device.channels; ++c)
         {
-            channels.push_back(c);
+            outputs.push_back(device.first_output + c);
+            inputs.push_back(device.first_input + c);
         }
-        settings.outputs = channels;
+        settings.outputs = outputs;
         if (!device.engine_input.empty())
         {
-            settings.inputs = channels;
+            settings.inputs = inputs;
             if (!device.engine_key)
             {
                 settings.key = std::vector<int>{};
@@ -999,6 +1335,7 @@ class AudioDevices : public ::testing::TestWithParam<std::string>
     std::string                  api_;    ///< the case's API
     std::unique_ptr<DeviceRig>   rig_;    ///< its test device's rig, made first
     std::unique_ptr<AudioSystem> system_; ///< its system
+    std::unique_ptr<Heartbeat>   beat_;   ///< says the case is alive while it runs; stopped before the rig goes
 };
 
 /** The test device, or the test skipped with the reason printed - or failed, naming what is missing, where the run
@@ -1047,8 +1384,8 @@ namespace reckless::audio::test::suite
     @return      the cases' exit code */
 inline int RunDeviceSuite(int argc, char **argv)
 {
-    // First, before anything else reads the registry: the views the ASIO test driver's registration gave RtAudio's
-    // driver list as the binary loaded, put back (AsioRig.cpp).
+    // First, before anything else reads the registry: the views the ASIO test driver's registration gave the ASIO back
+    // end's driver list as the binary loaded, put back (AsioRig.cpp).
     reckless::audio::test::FinishAsioRegistration();
     std::printf("Audio devices: %s; the build carries %s; the run requires %s\n",
                 reckless::audio::AudioLibraryVersions().c_str(), JoinList(reckless::audio::AudioApis()).c_str(),
