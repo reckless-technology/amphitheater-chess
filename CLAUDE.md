@@ -7,12 +7,13 @@ toolkit-free core and a command-line runner; the README is the long-form referen
 model, the command line, the tests).
 
 **Licence:** free and open source under the GNU General Public License, version 3 or later (`LICENSE`, the FSF's own
-text; every release carries it as `LICENSE.txt`). The five engines it installs are separate programs under their own
-GPL licences, named in the About card. The window links the proprietary toolkit; its third-party parts are in `THIRD-PARTY-NOTICES.txt`,
-written by `tools/third_party_notices.py <build-dir>` (CTest `notices` checks it). The installers carry Jonny's five
-GPLv3 chess engines as separate programs - aggregation, never linking: the host only talks to them over UCI pipes and
-no engine code may come into this tree - and the notices give each one's version, copyright, the GPL's text once and
-its corresponding source (the public repository at the tag, and the release's source archive where it has one).
+text; every release carries it as `LICENSE.txt`). The five engines it installs are separate programs under their own GPL
+licences, named in the About card. The window links the toolkit, free software under the GPL too; its third-party parts
+are in `THIRD-PARTY-NOTICES.txt`, written by `tools/third_party_notices.py <build-dir>` (CTest `notices` checks it). The
+installers carry Jonny's five GPLv3 chess engines as separate programs - aggregation, never linking: the host only talks
+to them over UCI pipes and no engine code may come into this tree - and the notices give each one's version, copyright,
+the GPL's text once and its corresponding source (the public repository at the tag, and the release's source archive
+where it has one).
 
 **The bundled engines** (README, "The bundled engines" and "Packages and releases"): pinned in
 `packaging/engines.json` (tag, asset, SHA-256 per platform; `tools/update-engines.sh`/`.ps1` moves them to the latest
