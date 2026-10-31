@@ -429,5 +429,54 @@ TEST(Cli, MakeBookWritesABookOfALibrarysOpeningsAndSaysWhatItMade)
     EXPECT_NE(RunWith({"--help"}).out.find("amphitheater-cli makebook"), std::string::npos);
 }
 
+TEST(Cli, ScreenBookMarksTheMovesTheEngineRatesFarBelowItsOwnChoice)
+{
+    // Two book moves, so two positions and six searches: per position the engine's own choice, that choice re-scored
+    // restricted, then the book move itself. The first position's book move comes back 500 below its reference and
+    // must be marked; the second's comes back level and must not be. Scripting the scores is what makes the verdict
+    // knowable rather than merely plausible - the fake engine answers every `go` with the next number.
+    const auto    book = TempFile("amphitheater_cli_screen.book");
+    const auto    out  = TempFile("amphitheater_cli_screen_out.book");
+    std::ofstream written{book, std::ios::binary};
+    written << "# a book\ne2e4 e7e5\n";
+    written.close();
+    std::filesystem::remove(out);
+
+    const std::vector<std::string> engine{"-engine", kFake, "arg=--scores", "arg=20,20,-480,30,30,30"};
+    std::vector<std::string>       arguments{"screenbook"};
+    arguments.insert(arguments.end(), engine.begin(), engine.end());
+    arguments.insert(arguments.end(), {"-book", book.string(), "-out", out.string(), "-depth", "4", "-margin", "100"});
+
+    const auto run = RunWith(arguments);
+    EXPECT_EQ(run.code, 0) << run.err;
+    EXPECT_NE(run.out.find("1 move marked in 1 opening"), std::string::npos) << run.out;
+    EXPECT_NE(run.out.find("6 searches"), std::string::npos) << run.out;
+
+    // The mark lands on the move the scores condemned, and on nothing else. Reading the written file rather than the
+    // summary is the point: the summary is what the screener believed, the file is what the engines will load.
+    //
+    // The third line is the refill guarantee showing itself. `e2e4` was the only move the start position had, so
+    // marking it left the engine with nothing it could play from the very first move - out of book immediately. The
+    // engine's own choice, `d2d3` here because that is what the fake engine returns, is added as a line of its own.
+    std::ifstream     back{out, std::ios::binary};
+    const std::string screened{std::istreambuf_iterator<char>(back), std::istreambuf_iterator<char>()};
+    EXPECT_EQ(screened, "# a book\ne2e4? e7e5\nd2d3\n") << screened;
+    EXPECT_NE(run.out.find("1 position given the engine's own move"), std::string::npos) << run.out;
+
+    // -out is optional, and defaults to screening the book in place, which is how the engines' own books are kept.
+    const auto in_place = ParseScreenBookArguments({"-engine", kFake, "-book", book.string()});
+    ASSERT_TRUE(in_place) << in_place.ErrorMessage();
+    EXPECT_EQ(in_place->settings.out, book.string());
+    EXPECT_EQ(in_place->settings.depth, 12) << "depth 12 by default";
+    EXPECT_EQ(in_place->settings.margin, 100) << "100 centipawns by default";
+
+    EXPECT_EQ(RunWith({"screenbook", "-book", book.string()}).code, 2) << "no engine";
+    EXPECT_EQ(RunWith({"screenbook", "-engine", kFake}).code, 2) << "no book";
+    EXPECT_EQ(RunWith({"screenbook", "-engine", kFake, "-book", book.string(), "-depth", "0"}).code, 2);
+    EXPECT_EQ(RunWith({"screenbook", "-engine", kFake, "-book", book.string(), "-margin", "0"}).code, 2);
+    EXPECT_EQ(RunWith({"screenbook", "-engine", kFake, "-book", "no-such.book"}).code, 1);
+    EXPECT_NE(RunWith({"--help"}).out.find("amphitheater-cli screenbook"), std::string::npos);
+}
+
 } // namespace
 } // namespace amphitheater::cli

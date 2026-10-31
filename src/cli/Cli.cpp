@@ -12,6 +12,7 @@
 #include <charconv>
 #include <chrono>
 #include <cstdio>
+#include <fstream>
 #include <map>
 #include <mutex>
 #include <ostream>
@@ -749,6 +750,10 @@ Usage:
   amphitheater-cli makebook   -games <file.pgn|folder|archive.zip> -out <book.bin> [-moves <n>] [-least <n>]
                           a Polyglot book of the games' first n moves of each side (7 by default), each move
                           weighted by the games that play it; moves played in fewer than -least games left out
+  amphitheater-cli screenbook -engine <keys> -book <book> [-out <book>] [-depth <n>] [-margin <cp>] [-marks <file>]
+                          mark every book move the engine scores -margin or more below its own choice there with a
+                          trailing `?`: replayed by the loaders but never played. A position left with no move it
+                          may play is given the engine's own choice. Writes over -book unless -out says otherwise
   amphitheater-cli --version | --help
 
 Engine keys (-engine for one engine, -each for every engine, the engine's own winning):
@@ -1335,8 +1340,179 @@ Result<match::BookMakerSettings> ParseMakeBookArguments(const std::vector<std::s
     return settings;
 }
 
+Result<ScreenBookOptions> ParseScreenBookArguments(const std::vector<std::string> &arguments)
+{
+    ScreenBookOptions options;
+    bool              has_engine = false;
+    ArgumentReader    reader(arguments);
+    while (!reader.AtEnd())
+    {
+        const std::string &argument = reader.Next();
+        if (!IsOptionName(argument))
+        {
+            return Error{"unexpected '" + argument + "'"};
+        }
+        const std::string name = OptionName(argument);
+        if (name == "engine")
+        {
+            const auto pairs = reader.Pairs(name);
+            if (!pairs)
+            {
+                return Error{pairs.ErrorMessage()};
+            }
+            const auto spec = BuildEngine(*pairs, {});
+            if (!spec)
+            {
+                return Error{spec.ErrorMessage()};
+            }
+            options.settings.engine = spec->config;
+            has_engine              = true;
+        }
+        else if (name == "book" || name == "out" || name == "marks")
+        {
+            const auto value = reader.Value(name);
+            if (!value)
+            {
+                return Error{value.ErrorMessage()};
+            }
+            if (name == "book")
+            {
+                options.settings.book = *value;
+            }
+            else if (name == "out")
+            {
+                options.settings.out = *value;
+            }
+            else
+            {
+                options.marks = *value;
+            }
+        }
+        else if (name == "depth" || name == "margin")
+        {
+            const auto value = reader.Value(name);
+            if (!value)
+            {
+                return Error{value.ErrorMessage()};
+            }
+            const auto parsed = ParseNumber(*value, "-" + name, 1);
+            if (!parsed)
+            {
+                return Error{parsed.ErrorMessage()};
+            }
+            (name == "depth" ? options.settings.depth : options.settings.margin) = static_cast<int>(*parsed);
+        }
+        else
+        {
+            return Error{"unknown option '" + argument + "'"};
+        }
+    }
+    if (!has_engine)
+    {
+        return Error{"screenbook needs -engine cmd=<program>"};
+    }
+    if (options.settings.book.empty())
+    {
+        return Error{"screenbook needs -book <book>"};
+    }
+    // Writing over the book that was read is the normal case - the engines keep one book per repository and a
+    // screening run is how it is maintained - so -out defaults to it rather than being required.
+    if (options.settings.out.empty())
+    {
+        options.settings.out = options.settings.book;
+    }
+    return options;
+}
+
 namespace
 {
+
+/**
+ * Write every mark a run decided, one to a line, so a run can be reviewed rather than believed.
+ * @param path Where to write.
+ * @param summary The run.
+ * @return Nothing, or why it could not be written.
+ */
+Status WriteMarks(const std::string &path, const match::BookScreenerSummary &summary)
+{
+    std::ofstream file{path, std::ios::binary};
+    if (!file)
+    {
+        return Error{"could not write " + path};
+    }
+    file << "# move  loss  best  scored  fen\n";
+    for (const match::ScreenedMove &mark : summary.marks)
+    {
+        file << mark.move << "  " << mark.loss << "  " << mark.best << "  " << mark.scored << "  " << mark.fen << "\n";
+    }
+    if (!file)
+    {
+        return Error{"could not write " + path};
+    }
+    return Ok{};
+}
+
+/**
+ * Run "screenbook": a book screened against an engine's own judgement, marked rather than pruned.
+ * @param arguments The arguments after the subcommand.
+ * @param out Where the progress and the summary go.
+ * @param err Where errors and warnings go.
+ * @param stop When set, the screening stops and nothing is written; may be null.
+ * @return 0 when the book was written, 1 when it was not, 2 for wrong arguments.
+ */
+int RunScreenBook(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err,
+                  const std::atomic<bool> *stop)
+{
+    const auto options = ParseScreenBookArguments(arguments);
+    if (!options)
+    {
+        err << "amphitheater-cli: " << options.ErrorMessage() << '\n';
+        return 2;
+    }
+    // A screening run is thousands of fixed-depth searches and takes minutes, so it says where it has got to. The
+    // count is positions rather than moves because that is what the engine is asked about once per position.
+    std::size_t shown    = 0;
+    const auto  screened = match::ScreenBook(
+        options->settings,
+        [&](const match::BookScreenerProgress &progress) {
+            if (progress.positions_total == 0 || progress.positions_done < shown + 100)
+            {
+                return;
+            }
+            shown = progress.positions_done;
+            out << '[' << progress.positions_done << '/' << progress.positions_total << "] " << progress.marked
+                << " marked\n";
+        },
+        [&] { return stop != nullptr && stop->load(); });
+    if (!screened)
+    {
+        err << "amphitheater-cli: " << screened.ErrorMessage() << '\n';
+        return 1;
+    }
+    for (const std::string &problem : screened->problems)
+    {
+        err << "amphitheater-cli: " << problem << '\n';
+    }
+    if (!options->marks.empty())
+    {
+        if (const auto written = WriteMarks(options->marks, *screened); !written)
+        {
+            err << "amphitheater-cli: " << written.ErrorMessage() << '\n';
+            return 1;
+        }
+    }
+    const auto plural = [](std::size_t count, const char *singular, const char *many) {
+        return count == 1 ? singular : many;
+    };
+    out << "Wrote " << options->settings.out << ": " << screened->marked
+        << plural(screened->marked, " move marked in ", " moves marked in ") << screened->openings
+        << plural(screened->openings, " opening, ", " openings, ") << screened->refilled
+        << plural(screened->refilled, " position given the engine's own move, ",
+                  " positions given the engine's own move, ")
+        << screened->lines_written << plural(screened->lines_written, " line, ", " lines, ") << screened->searches
+        << " searches\n";
+    return 0;
+}
 
 /**
  * Run "makebook": a book made from a library of games, its progress a line a file, and what it made at the end.
@@ -1419,6 +1595,10 @@ int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::os
     if (command == "makebook")
     {
         return RunMakeBook(rest, out, err, stop);
+    }
+    if (command == "screenbook")
+    {
+        return RunScreenBook(rest, out, err, stop);
     }
     err << "amphitheater-cli: unknown command '" << command << "'\n\n" << UsageText();
     return 2;

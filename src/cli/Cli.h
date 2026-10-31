@@ -9,11 +9,13 @@
 ///   amphitheater-cli tournament -engine cmd=A -engine cmd=B -engine cmd=C -each st=0.1 -rounds 2 -double
 ///   amphitheater-cli perft      <fen|startpos> <depth> [-divide]
 ///   amphitheater-cli analyse    -engine cmd=A -fen <fen|startpos> [-moves e2e4 ...] -time 5 [-depth N] [-multipv N]
+///   amphitheater-cli screenbook -engine cmd=A -book <book> [-out <book>] [-depth 12] [-margin 100] [-marks <file>]
 ///
 /// UsageText has the whole syntax.
 
 #include "chess/Result.h"
 #include "match/BookMaker.h"
+#include "match/BookScreener.h"
 #include "match/Tournament.h"
 #include "uci/EngineConfig.h"
 #include "version/Version.h"
@@ -88,6 +90,20 @@ Result<EpdOptions> ParseEpdArguments(const std::vector<std::string> &arguments);
  * @return The settings, or what is wrong with them.
  */
 Result<match::BookMakerSettings> ParseMakeBookArguments(const std::vector<std::string> &arguments);
+
+/** What "screenbook" was asked for: a book screened against an engine's judgement. */
+struct ScreenBookOptions
+{
+    match::BookScreenerSettings settings; ///< What to screen, with what engine, at what depth and margin.
+    std::string                 marks;    ///< Where to write a line per mark, or empty for no such file.
+};
+
+/**
+ * Read the arguments of "screenbook".
+ * @param arguments The arguments after the subcommand.
+ * @return The options, or what is wrong with them.
+ */
+Result<ScreenBookOptions> ParseScreenBookArguments(const std::vector<std::string> &arguments);
 
 /**
  * Run the command line.
