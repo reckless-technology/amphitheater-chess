@@ -178,4 +178,48 @@ TEST(BookScreener, RefusesSettingsThatCannotBeHonoured)
     EXPECT_FALSE(ScreenBook(settings)) << "a book that cannot be read is an error, not an empty book";
 }
 
+TEST(BookScreener, LeavesAPositionATranspositionStillCoversAlone)
+{
+    // Emptiness is a property of the POSITION, not of the line that reached it. Both lines reach the same position
+    // after three moves - 1.e4 e6 2.d4 and 1.d4 e6 2.e4 are one position - and each stores a different move there:
+    // `d7d5` from the first line and `c7c5` from the second. Marking `d7d5` must NOT empty that position, because
+    // `c7c5` is still playable there, so nothing may be refilled.
+    //
+    // The predecessor keyed on the line's prefix rather than the position, so it refilled positions another move
+    // order already covered. Screening the engines' own book reproduced all 3,244 of its lines and every one of its
+    // 1,170 marks byte for byte, and came out two lines shorter - those two offering a move the book already offered
+    // at the same position by another order.
+    //
+    // Twenty searches, in book order. Per position the engine's own choice and that choice re-scored (once, cached by
+    // position), then one per book move:
+    //
+    //   startpos        chosen 20, re-scored 20, `e2e4` 20            kept
+    //   after 1.e4      chosen 30, re-scored 30, `e7e6` 30            kept
+    //   after 1...e6    chosen 40, re-scored 40, `d2d4` 40            kept
+    //   the position    chosen 50, re-scored 50, `d7d5` -460          loss 510 -> MARKED
+    //   startpos        `d2d4` 20                                     reference cached; kept
+    //   after 1.d4      chosen 30, re-scored 30, `e7e6` 30            kept
+    //   after 1...e6    chosen 40, re-scored 40, `e2e4` 40            kept
+    //   the position    `c7c5` 50                                     reference cached; loss 0, kept
+    const std::string book = WriteBook("screen_transposition", "e2e4 e7e6 d2d4 d7d5\nd2d4 e7e6 e2e4 c7c5\n");
+    const std::string out  = book + ".out";
+    const auto        summary =
+        ScreenBook(FakeSettings(book, out, "20,20,20,30,30,30,40,40,40,50,50,-460,20,30,30,30,40,40,40,50"));
+
+    ASSERT_TRUE(summary) << summary.ErrorMessage();
+    EXPECT_EQ(summary->marked, 1u) << "the one move scored far below its reference";
+    EXPECT_EQ(summary->refilled, 0u) << "a position another move order still covers must not be refilled";
+    EXPECT_EQ(summary->lines_written, 2u) << "no line added";
+
+    // Whatever was marked, every position the written book continues from still has a move it may play. That is the
+    // invariant the engines depend on, and here the transposition supplies it rather than a refill.
+    const chess::TextBook      written = chess::ReadTextBook(ReadFile(out));
+    const chess::TextBookIndex index   = chess::ReplayTextBook(written);
+    EXPECT_TRUE(index.errors.empty()) << index.errors.size() << " lines did not replay";
+    for (const auto &[key, entry] : index.positions)
+    {
+        EXPECT_FALSE(entry.selectable.empty()) << "a position the book continues from has nothing to play";
+    }
+}
+
 } // namespace amphitheater::match
