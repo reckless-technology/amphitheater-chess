@@ -3,6 +3,7 @@
 add_library(amphitheater_match STATIC
     Adjudicator.cpp
     BookMaker.cpp
+    BookScreener.cpp
     EnginePlayer.cpp
     GameAnalysis.cpp
     GameRunner.cpp
