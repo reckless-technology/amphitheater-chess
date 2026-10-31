@@ -3,10 +3,35 @@
 **Status: approved 2026-10-31 and being built.** Written after a day spent repairing
 `pawnstar/tools/filter_book.cpp` and finding that the repair was unnecessary in the first place.
 
-**This gates the next Amphitheater release.** Jonny, 2026-10-31: *"Let's not do another amphitheater release
-until we have completed the refactoring of the opening book code from pawnstar and zenith."* So the two draft
-releases that exist (`v1.0.0` and `v1.0.11`) stay drafts, and nothing here is a tidy-up to be fitted in around
-other work - it is the thing the release is waiting on.
+**This gates the next Amphitheater release, and clears it.** Jonny, 2026-10-31: *"Let's not do another
+amphitheater release until we have completed the refactoring of the opening book code from pawnstar and
+zenith."* Then, the same day: *"After all the book refactoring lands in amphitheater, and all tests pass, you
+can publish v1.1."*
+
+So **v1.1 is authorised in advance, on two conditions**, and the authorisation is worth nothing unless both are
+actually checked rather than assumed:
+
+1. **The book refactoring has landed in this repository** - merged on `main`, not merely working on a branch.
+   Phases 1 to 4 below, which means `screenbook` exists in `amphitheater-cli`, the acceptance test passes
+   (today's book reproduced byte for byte at `--depth 12 --margin 100`), and `pawnstar/tools/filter_book.cpp`
+   has been retired against it.
+2. **All tests pass** - CI green on `main` across Linux, Windows and macOS, not a local `ctest` run on one of
+   them. A local pass says the code works on this machine; the release builds and signs on all three.
+
+The release path, from this repository's README (sections on packaging and releasing), so the next reader does
+not have to find it again: the version is `MAJOR.MINOR.BUILD` from git alone, `MAJOR.MINOR` being the nearest
+annotated `vMAJOR.MINOR` tag, so **v1.1 means pushing an annotated `v1.1` tag** and `release.yml` builds the four
+installers from nothing, signs and notarises them, and leaves a **draft** with its tag pushed. A draft is as far
+as that goes: the repository is public, so a published release here is public at once. **`promote.yml`
+(`gh workflow run promote.yml --ref main -f tag=v1.1.0`) is the one way a release reaches the public** - it
+copies the draft's four files to `reckless-technology/amphitheater-releases` with `SHA256SUMS` and the notes, and
+wakes the website, which writes `updates/amphitheater.json`.
+
+Note that `v1.0.0` and `v1.0.11` in this repository are **not** pending publications: both are already public
+downstream (1.0.11 promoted 2026-10-25, and the live manifest serves it). They are what `release.yml` leaves
+behind after `promote.yml` has copied a release out. Nothing is being withheld by them.
+
+Load the `reckless-releases` and `reckless-app` skills before running any of it.
 
 ## The problem
 
