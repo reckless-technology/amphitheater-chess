@@ -10,6 +10,7 @@ add_library(amphitheater_chess STATIC
     PolyglotBook.cpp
     PolyglotRandom.cpp
     Position.cpp
+    TextBook.cpp
     TimeControl.cpp)
 target_include_directories(amphitheater_chess PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(amphitheater_chess PRIVATE amphitheater_warnings)

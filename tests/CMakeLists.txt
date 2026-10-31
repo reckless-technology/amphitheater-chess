@@ -12,7 +12,7 @@ endfunction()
 
 amphitheater_suite(amphitheater_chess_test
     SOURCES chess/PerftTest.cpp chess/FenTest.cpp chess/NotationTest.cpp chess/GameTest.cpp chess/PgnTest.cpp
-            chess/TimeControlTest.cpp chess/PolyglotTest.cpp chess/PgnBookTest.cpp chess/BoardSetupTest.cpp chess/GameTreeTest.cpp
+            chess/TimeControlTest.cpp chess/PolyglotTest.cpp chess/PgnBookTest.cpp chess/BoardSetupTest.cpp chess/GameTreeTest.cpp chess/TextBookTest.cpp
     LIBRARIES amphitheater_chess)
 add_test(NAME chess COMMAND amphitheater_chess_test)
 
@@ -29,7 +29,7 @@ add_test(NAME uci COMMAND amphitheater_uci_test)
 
 amphitheater_suite(amphitheater_match_test
     SOURCES match/GameRunnerTest.cpp match/TournamentTest.cpp match/PonderAndBookTest.cpp match/GameAnalysisTest.cpp match/TestSuiteTest.cpp
-            match/BookMakerTest.cpp
+            match/BookMakerTest.cpp match/BookScreenerTest.cpp
     LIBRARIES amphitheater_match)
 target_compile_definitions(amphitheater_match_test PRIVATE AMPHITHEATER_FAKE_ENGINE="$<TARGET_FILE:amphitheater_fake_engine>")
 add_dependencies(amphitheater_match_test amphitheater_fake_engine)
