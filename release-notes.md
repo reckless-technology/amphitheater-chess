@@ -7,8 +7,17 @@ in THIRD-PARTY-NOTICES.txt.
 
 ## What's changed
 
-- Free and open source: Reckless Amphitheater is now under the GNU General Public License, version 3 or later, in
-  place of 1.0.0's end-user licence. Every installer shows the GPL and carries it as LICENSE.txt, the About card says
-  so, and the source is at github.com/reckless-technology/amphitheater-chess.
-- Built on the company's toolkit as it now stands, itself free software under the GPL; how the host plays, analyses
-  and runs matches is unchanged.
+- Every bundled engine moves to a new release, and their opening books with them: Pawnstar, Pawnstar-Go and
+  Pawnstar-RS go from 1.2.0 to 2.1.0, and Zenith from 2.1.0 to 3.0.0. Stoopid Chess stays at 3.0.0. The three
+  Pawnstars now carry an opening book built from the Lichess open database under its CC0 public-domain dedication,
+  in place of the one earlier releases carried; each download's THIRD-PARTY-NOTICES.txt names every engine's
+  version, copyright and where to get its source.
+- amphitheater-cli gains **screenbook**, which screens an opening book against an engine's own judgement: a move the
+  engine rates far below its best at that position is marked with a `?`, so the book stops offering moves that
+  engine would decline. A marked move is still replayed, so the book keeps its prepared reply to a move the engine
+  would not play itself, and a position left with nothing it would play is given the engine's own choice instead.
+
+      amphitheater-cli screenbook -engine cmd=<engine> -book <book> [-depth 12] [-margin 100] [-marks <file>]
+
+- The host reads and writes the engines' text book format, so a book can be read, checked and written back
+  unchanged, byte for byte.
