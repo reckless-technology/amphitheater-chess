@@ -16,6 +16,13 @@
 /// book silently and exactly where an opponent had surprised it. Those positions are given the engine's own choice,
 /// unmarked - at zero loss by construction, being the move the margin is measured from.
 ///
+/// **A position is a position, not a line.** Emptiness is judged on the Polyglot key, so a position a transposition
+/// still leaves playable is not refilled. The predecessor keyed on the line's prefix instead, and so refilled
+/// positions another move order already covered: screening the engines' own book reproduced every one of its 1,170
+/// marks and all 3,244 of its lines byte for byte, and came out two lines shorter, those two offering a move the book
+/// already offered at the same position by another order. `1.e4 c5 2.d4 e6` and `1.e4 e6 2.d4 c5` are the same
+/// position, and `d4d5` was already stored there.
+///
 /// ## Why it drives the engine over UCI
 ///
 /// The screener needs no engine source, links none, and knows nothing about any engine's evaluation. It asks an

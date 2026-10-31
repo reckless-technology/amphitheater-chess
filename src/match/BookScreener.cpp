@@ -325,6 +325,11 @@ Result<BookScreenerSummary> ScreenBook(const BookScreenerSettings               
             const auto route = reached_by.find(key);
             if (route == reached_by.end())
             {
+                // Unreachable as the book stands - every emptied position was reached by some line, which is how it
+                // came to be in the index at all - but a silent `continue` here would drop a position that needs a
+                // move and leave the book looking well-formed. That is exactly how the predecessor stayed broken.
+                summary.problems.push_back("no way to reach the emptied position " + std::to_string(key) +
+                                           ", so it was left with nothing to play");
                 continue;
             }
             chess::TextBookLine added;
