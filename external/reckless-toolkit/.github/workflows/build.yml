@@ -146,8 +146,9 @@ jobs:
       - name: Build
         run: cmake --build build/ci-toolkit -j ${{ steps.cpp.outputs.jobs }}
       # Everything but the window suites and the device suite. Where the machine has test devices the APIs are
-      # required, so a missing one fails rather than skips; where the kernel has no sound at all (a hosted runner:
-      # the step above says so and sets RECKLESS_AUDIO_DEVICES) the device suites are left out and the rest runs,
+      # required, so a missing one fails rather than skips; where the kernel has no sound at all, or a hosted
+      # runner's kernel was built without snd-aloop (the step above says so and sets RECKLESS_AUDIO_DEVICES), the
+      # device suites are left out and the rest runs,
       # which is every other suite this job has - Skia, the views, the look, the net and update code.
       - name: Test
         run: |
@@ -317,8 +318,8 @@ jobs:
       - name: Test
         run: ctest --test-dir build/ci-toolkit-minimal --output-on-failure -j "$(nproc)"
 
-  # Every product built on the toolkit - vst-plugins, Reckless IR Capture, Reckless Amphitheater, Knect 4 and Reckless
-  # Sudoku - at the head of its default branch with this pull request's toolkit in place of the commit it pins,
+  # Every product built on the toolkit - vst-plugins, Reckless IR Capture, Reckless Amphitheater, Knect 4, Reckless
+  # Sudoku and Sentinel - at the head of its default branch with this pull request's toolkit in place of the commit it pins,
   # configured as the product configures itself and a few of its targets built (tools/check-consumers.sh): a target, a
   # CTest or an option of the same name as one of a product's, a header a product's own shadows, or a function a product
   # calls that moved fails the toolkit's pull request, not the product's next bump. Linux alone, the cheapest of the three platforms;
@@ -361,13 +362,15 @@ jobs:
       - name: Every consumer, on this toolkit
         env:
           CONSUMER_VST_PLUGINS_DEPLOY_KEY: ${{ secrets.CONSUMER_VST_PLUGINS_DEPLOY_KEY }}
+          CONSUMER_SENTINEL_DEPLOY_KEY: ${{ secrets.CONSUMER_SENTINEL_DEPLOY_KEY }}
           JOBS: ${{ steps.cpp.outputs.jobs }}
         run: >
           tools/check-consumers.sh build/ci-toolkit-consumers "${{ steps.cpp.outputs.deps }}/consumers"
           "${{ steps.python.outputs.python }}"
 
-  # Line coverage of the parts the toolkit's own suites test - core/, gfx/ (not its Skia canvas), look/, view/, net/,
-  # update/ and licence/ - from an instrumented, unoptimised gcc build with nothing windowed, every suite run but the
+  # Line coverage of the parts the toolkit's own suites test - core/, gfx/ (not its Skia canvas), input/ (not the
+  # translation units that meet a platform's controllers, which only a controller exercises: the suites hold every
+  # decision of the back ends in the headers instead), look/, view/, net/, update/ and licence/ - from an instrumented, unoptimised gcc build with nothing windowed, every suite run but the
   # device suite (whose test devices are the linux job's), and gcovr reading the counters, red under the floor. CMake's
   # instrumented compiler-identification stubs (CMakeFiles/<version>/CompilerId*), which have no source and stop gcov,
   # and the fetched dependencies' objects are left out of gcovr's search. The floor, 89 %, is a little under
@@ -414,8 +417,9 @@ jobs:
         run: ctest --test-dir build/ci-toolkit-cov --output-on-failure -j "$(nproc)" -E '^audio_devices$'
       - name: Coverage, 89 % of lines or red
         run: >
-          gcovr --root . --object-directory build/ci-toolkit-cov --filter '(core|gfx|look|view|net|update|licence)/'
-          --exclude 'gfx/skia/' --exclude '.*/tests/' --gcov-ignore-parse-errors=suspicious_hits.warn
+          gcovr --root . --object-directory build/ci-toolkit-cov --filter '(core|gfx|input|look|view|net|update|licence)/'
+          --exclude 'gfx/skia/' --exclude 'input/linux/EvdevSystemPort[.]cpp' --exclude 'input/(win|mac)/.*[.]cpp'
+          --exclude '.*/tests/' --gcov-ignore-parse-errors=suspicious_hits.warn
           --gcov-exclude-directories '.*/CMakeFiles/[0-9][^/]*/.*' --gcov-exclude-directories '.*/_deps/.*'
           --txt --print-summary --fail-under-line 89 build/ci-toolkit-cov
 

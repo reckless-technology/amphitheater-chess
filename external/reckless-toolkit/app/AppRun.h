@@ -51,10 +51,26 @@ struct AppRunHooks
     /** Called once the window is open, with it, before the loop runs - the place to hand a product the window it set
         a menu or a dialog's owner by; may be empty. */
     std::function<void(AppWindow &window)> on_open;
+    /** Called once the child window the views are drawn in is made, with it, before the window is open to the person
+        and before `on_open` - the place to ask it for what only it can give, the raw keys
+        (window::ChildWindow::SetRawKeyCallback, window/RawKey.h); may be empty. */
+    std::function<void(window::ChildWindow &child)> on_child;
     /** The window carries the app's menu bar (AppPlatform::SetMenuBar): opened with WindowOptions::menu_bar, so it
         shows the bar where the platform puts one on a window (Windows), and its child window handing on the keys its
         views do not take (ChildWindow::HandOnKeysTo), so the bar's shortcuts work whichever has the keyboard. */
     bool has_menu_bar{false};
+    /** The window may go full screen (WindowOptions::may_go_full_screen): the app offers it - FullScreenMenuEntry in
+        its View menu (app/AppFullScreen.h), a key of its own - and on macOS the green button takes the window to a
+        full-screen space. Off, as every app was before, the window never goes full screen. */
+    bool may_go_full_screen{false};
+    /** The window goes full screen as the loop starts, where it may: an app that kept full screen at its last end
+        (AppWindow::IsFullScreen in `on_end`) and chooses to open that way again. Its place and size are still the
+        window's (`position`, the root's size), which it comes back to. Never in a smoke run, which ends before a Mac's
+        animation would. */
+    bool opens_full_screen{false};
+    /** Called when the window goes full screen (true) or comes back (false), whoever asked: the place to set a menu's
+        tick again (FullScreenMenuEntry) and to keep the choice (WindowOptions::full_screen_changed); may be empty. */
+    std::function<void(bool is_full_screen)> on_full_screen;
 };
 
 /** An app on `platform`: its window, titled "<name>  v<version>", opened round `root` at the root's size (held to what

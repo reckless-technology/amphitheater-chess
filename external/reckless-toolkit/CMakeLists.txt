@@ -14,10 +14,11 @@ endif()
 # The Reckless Technology toolkit: what the company's products share, written against no one product - JSON, text
 # and the user's files (core/), the drawing layer (gfx/) and the series' look on it (look/), the
 # views a panel is made of (view/) and the series' panel on them (panel/), the child window a panel is shown in on Skia
-# (window/, skia/), an app's platform layer (app/), the audio device layer (audio/), the network (net/), the update
-# check (update/) and the licence (licence/), with the artwork they draw (assets/), the suites that hold them (tests/)
-# and the CMake helpers a product builds its binaries with (cmake/). Every directory is an include directory of its own
-# and a header is included by its bare name ("View.h").
+# (window/, skia/), an app's platform layer (app/), the audio device layer (audio/), the controllers a program reads
+# beside the keyboard (input/), the network (net/), the update check (update/) and the licence (licence/), with the
+# artwork they draw (assets/), the suites that hold them (tests/) and the CMake helpers a product builds its binaries
+# with (cmake/). Every directory is an include directory of its own and a header is included by its bare name
+# ("View.h").
 #
 # Added by a product with add_subdirectory(<this directory>), or configured on its own, when it builds its own suites:
 #
@@ -61,6 +62,11 @@ option(RECKLESS_TOOLKIT_BUILD_TESTS "Build the toolkit's suites" ON)
 option(RECKLESS_TOOLKIT_GUI "Build the windowed parts: Skia, its canvas, the child window and the app platform" ON)
 # The audio device layer (audio/), a back end of the toolkit's own for every API, with its suites.
 option(RECKLESS_BUILD_AUDIO "Build the audio device layer and its suites" ON)
+# The controller layer's back ends (input/): gamepads, joysticks and arcade encoders, read as digital controls on each
+# platform's own API - evdev, XInput and HID, IOKit's HID manager - with their suite. On where the toolkit is built on
+# its own, so its CI builds them; off in a product that has not asked for them, so a product that reads no controller
+# compiles none of it. The layer's headers (reckless_common_input) and their suite are there either way.
+option(RECKLESS_BUILD_INPUT "Build the controller back ends (input/) and their suite" ${PROJECT_IS_TOP_LEVEL})
 # Windows only: the audio device layer offers ASIO devices, through the toolkit's ASIO back end on Steinberg's ASIO SDK. The
 # SDK is dual-licensed, Steinberg's proprietary ASIO licence or GPLv3, and a closed product takes the proprietary one,
 # whose terms the build keeps: the SDK is fetched from Steinberg's own server at a pinned version with a hash, below,
@@ -542,6 +548,42 @@ if(RECKLESS_BUILD_AUDIO)
     endif()
 endif()
 
+# ---------------------------------------------------------------------------------------------------------------
+# The controller layer: header only but for the back ends, namespace reckless::input, included by bare name - the
+# interface a program reads controllers through (Gamepads.h), what turns a platform's readings into its edges
+# (GamepadState.h), the HID arithmetic two back ends share (HidUsages.h), and each back end's own arithmetic, none of
+# which needs the platform's headers (linux/EvdevLayout.h and EvdevGamepads.h, win/XInputPads.h and HidPaths.h). The
+# back ends themselves are reckless_input_devices, on each platform's API (docs/input/gamepads.md).
+# ---------------------------------------------------------------------------------------------------------------
+add_library(reckless_common_input INTERFACE)
+target_include_directories(reckless_common_input INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/input")
+
+if(RECKLESS_BUILD_INPUT)
+    # Gamepads.cpp is the only place that knows which back end this build carries, and the one a program calls
+    # through (MakeGamepads), choosing it under the definitions below - by hand, as the audio layer's are, since a
+    # self-registering back end nothing references is stripped from a static library by the linker.
+    add_library(reckless_input_devices STATIC input/Gamepads.cpp)
+    target_link_libraries(reckless_input_devices PUBLIC reckless_common_input PRIVATE reckless_warnings)
+    set_target_properties(reckless_input_devices PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
+                                                            VISIBILITY_INLINES_HIDDEN ON)
+    if(APPLE)
+        # The HID manager, on CoreFoundation's run loop (input/mac/IoKitGamepads.cpp).
+        target_sources(reckless_input_devices PRIVATE input/mac/IoKitGamepads.cpp)
+        target_link_libraries(reckless_input_devices PRIVATE "-framework IOKit" "-framework CoreFoundation")
+        target_compile_definitions(reckless_input_devices PRIVATE RECKLESS_INPUT_IOKIT)
+    elseif(WIN32)
+        # XInput, loaded at run time, and HID: SetupDi to find the devices, hid.dll to read them, the configuration
+        # manager to be told when they come and go (input/win/WindowsGamepads.cpp).
+        target_sources(reckless_input_devices PRIVATE input/win/WindowsGamepads.cpp)
+        target_link_libraries(reckless_input_devices PRIVATE setupapi hid cfgmgr32)
+        target_compile_definitions(reckless_input_devices PRIVATE RECKLESS_INPUT_WINDOWS)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # The kernel's event interface, /dev/input watched with inotify: no library at all (input/linux/).
+        target_sources(reckless_input_devices PRIVATE input/linux/EvdevSystemPort.cpp)
+        target_compile_definitions(reckless_input_devices PRIVATE RECKLESS_INPUT_EVDEV)
+    endif()
+endif()
+
 # The windowed parts: Skia, the canvas on it, the child window a panel is shown in, and an app's platform layer.
 if(RECKLESS_TOOLKIT_GUI)
     add_subdirectory(skia)
@@ -596,10 +638,14 @@ if(RECKLESS_TOOLKIT_BUILD_TESTS)
     add_test(NAME look COMMAND reckless_look_test)
 
     # The views, the series' panel, a picture kept between paints and the window's shell (window/ShellView.h, header
-    # only, on the views alone) with the licence's card on a store of the suite's own, its licences the shared vectors'.
+    # only, on the views alone) with the licence's card on a store of the suite's own, its licences the shared vectors';
+    # and the raw keys a window delivers (window/RawKey.h) and how it paces its frame callback
+    # (window/FramePacing.h), whose policies need no window, display, keyboard or display clock and so are held on
+    # every platform and in the builds with no GUI.
     add_executable(reckless_view_test tests/test_view.cpp tests/test_panel.cpp tests/test_cached_picture.cpp
                                       tests/test_shell_view.cpp tests/test_list_view.cpp
-                                      tests/test_text_view.cpp)
+                                      tests/test_text_view.cpp tests/test_raw_keys.cpp
+                                      tests/test_frame_pacing.cpp)
     target_compile_definitions(reckless_view_test PRIVATE
         RECKLESS_LICENCE_VECTORS="${CMAKE_CURRENT_SOURCE_DIR}/licence/tests/vectors.json")
     target_link_libraries(reckless_view_test PRIVATE reckless_window_headers reckless_core_preset_files
@@ -661,6 +707,14 @@ inline constexpr EmbeddedFile kEmbeddedFiles[] = {
                                                       reckless_warnings GTest::gtest_main)
     add_test(NAME audio COMMAND reckless_audio_test)
 
+    # The controller layer with no controller: names, the controls a device has said are down, an axis's halves and
+    # its hysteresis, hats, the roster, the HID, XInput and evdev arithmetic, and the evdev back end whole on a port of
+    # the suite's own - every platform, whether or not the build carries a back end.
+    add_executable(reckless_input_test tests/test_gamepads.cpp tests/test_gamepad_formats.cpp
+                                       tests/test_evdev_gamepads.cpp)
+    target_link_libraries(reckless_input_test PRIVATE reckless_common_input reckless_warnings GTest::gtest_main)
+    add_test(NAME input COMMAND reckless_input_test)
+
     # The network's parts on their own, and each platform's transport against a server of the suite's own on the
     # loopback interface - nothing reaches the internet unless RECKLESS_NET_LIVE is set.
     add_executable(reckless_net_test tests/test_net.cpp tests/test_net_transport.cpp)
@@ -688,13 +742,25 @@ inline constexpr EmbeddedFile kEmbeddedFiles[] = {
     # The app's platform seam with nothing on a screen: the queue other threads post calls to the main thread through
     # (core/PostQueue.h), the menu bar written once (app/MenuBar.h) and drawn (app/MenuBarView.h), the app's shell, and
     # the suites' own platform (tests/FakeAppPlatform.h), which a product's app suite drives - a key to the view with
-    # the keyboard first. Named for the shell, since a product that builds the toolkit's suites beside its own may have
+    # the keyboard first - and a window's content in design pixels held to a work area in the display's pixels
+    # (app/WindowPlace.h). Named for the shell, since a product that builds the toolkit's suites beside its own may have
     # an app suite of its own: vst-plugins' reckless_app_test, its Standalone's.
     add_executable(reckless_app_shell_test tests/test_post_queue.cpp tests/test_fake_app_platform.cpp
-                                           tests/test_app_shell.cpp tests/test_menu_bar.cpp tests/test_window_sizes.cpp)
+                                           tests/test_app_shell.cpp tests/test_menu_bar.cpp tests/test_window_sizes.cpp
+                                           tests/test_window_place.cpp tests/test_full_screen.cpp)
     target_link_libraries(reckless_app_shell_test PRIVATE reckless_app_shell reckless_toolkit_test_support
                                                           reckless_warnings GTest::gtest_main)
     add_test(NAME app COMMAND reckless_app_shell_test)
+
+    # The hand-run harness for the frame pacing figures in docs/window/frame-pacing.md: it measures the mechanisms a
+    # window paces its frame callback on - the platform's own timer, and on Windows the display clock the window waits
+    # on - and asserts nothing, a timing distribution being neither a pass nor a fail. No CTest for that reason, and
+    # nothing of Skia or the views, so it builds in seconds; it is built with the suites so that it cannot rot.
+    add_executable(reckless_frame_pacing_harness tools/frame-pacing-harness.cpp)
+    target_link_libraries(reckless_frame_pacing_harness PRIVATE reckless_window_headers reckless_warnings)
+    if(WIN32)
+        target_link_libraries(reckless_frame_pacing_harness PRIVATE dwmapi winmm)
+    endif()
 
     # This build's platform itself (app/AppPlatform.h's Create): posts from other threads through its loop. On Linux
     # it needs a display, so it runs with the window suites (under xvfb-run in CI); on macOS Run takes the focus.
@@ -737,6 +803,17 @@ inline constexpr EmbeddedFile kEmbeddedFiles[] = {
         add_test(NAME app_menu COMMAND reckless_app_menu_test)
         set_tests_properties(app_menu PROPERTIES LABELS window RESOURCE_LOCK display)
     endif()
+endif()
+
+# The controller back end this build carries, on this machine: made, polled and let go of, whatever controllers there
+# are or are not; and on Linux, where /dev/uinput is writable, a virtual controller the suite makes itself, read from
+# its plugging in to its pulling out (tests/test_input_devices.cpp). Where /dev/uinput is not writable - a desk whose
+# user udev has not given it to, a CI runner - those cases skip with the reason.
+if(RECKLESS_TOOLKIT_BUILD_TESTS AND TARGET reckless_input_devices)
+    add_executable(reckless_input_devices_test tests/test_input_devices.cpp)
+    target_link_libraries(reckless_input_devices_test PRIVATE reckless_input_devices reckless_warnings
+                                                              GTest::gtest_main)
+    add_test(NAME input_devices COMMAND reckless_input_devices_test)
 endif()
 
 # The audio layer on the real APIs: reckless_audio_device_test (CTest `audio_devices`) opens every API the build carries

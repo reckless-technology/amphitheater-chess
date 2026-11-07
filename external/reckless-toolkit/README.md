@@ -2,8 +2,8 @@
 
 What the company's products share, written against no one product: JSON, text and the user's files,
 the drawing layer and the series' look on it, the views a panel is made of and the series' panel on them, the child
-window a panel is shown in on Skia, an app's platform layer, the audio device layer, the network, the update check and
-the licence - with the artwork they draw, the suites that hold them and the CMake helpers a product builds its binaries
+window a panel is shown in on Skia, an app's platform layer, the audio device layer, the controllers a program reads
+beside the keyboard, the network, the update check and the licence - with the artwork they draw, the suites that hold them and the CMake helpers a product builds its binaries
 with. C++20, every directory an include directory of its own and every header included by
 its bare name (`#include "View.h"`). Free software under the GNU General Public License, version 3 or later,
 copyright Jonny Reckless, published as Reckless Technology: the copyright and what the licence does not cover in
@@ -24,6 +24,7 @@ vst-plugins, at its `common/dsp/`.
 | Reckless Amphitheater | `reckless-technology/amphitheater-chess` | a git subtree at `external/reckless-toolkit`, added with the GUI on and its suites off |
 | Knect 4 | `reckless-technology/knect4` | a git subtree at `external/reckless-toolkit`, added with the GUI and the audio layer on, its suites and ASIO off |
 | Reckless Sudoku | `reckless-technology/sudoku` | a git subtree at `external/reckless-toolkit`, added with the GUI on, its suites, the audio layer and ASIO off |
+| Sentinel | `reckless-technology/sentinel` | a git subtree at `external/reckless-toolkit`, added with the GUI and the audio layer on, its suites and ASIO off |
 
 A product holds the toolkit as a git subtree at `external/reckless-toolkit`, pulled by its own
 `tools/toolkit-pull.sh` (which flattens each pull into one commit, keeping the linear history those repositories
@@ -32,7 +33,8 @@ after setting, as normal variables, whichever options follow the product's (CMP0
 an option):
 
 ```
-git submodule add git@github.com:reckless-technology/reckless-toolkit.git external/reckless-toolkit
+git subtree add --prefix external/reckless-toolkit https://github.com/reckless-technology/reckless-toolkit.git main --squash
+tools/toolkit-pull.sh   # every pull after it, flattened into the one commit a linear history takes
 ```
 
 ```cmake
@@ -42,9 +44,11 @@ add_subdirectory(external/reckless-toolkit)
 target_link_libraries(my_product PRIVATE reckless_common_core reckless_common_view reckless_window)
 ```
 
-The repository is private, so a product's CI fetches the submodule with a read-only deploy key on this repository, its
-private half a secret of the product's repository; a person's clone fetches it with their own credentials
-(`git clone --recurse-submodules`, or `git submodule update --init` after a plain clone).
+Nothing is fetched to get the toolkit: its files are committed in the product, so a clone needs nothing after it and
+`git submodule update` has nothing to do. This repository is public, so neither a person nor a product's CI needs a
+credential of ours to read it. The other way round, this repository's CI reads each product for its `consumers` job,
+and there a private product is read through a read-only deploy key on it whose private half is a secret here, while a
+public one is cloned over https with no key at all (`tools/check-consumers.sh` chooses per product).
 
 ## The rules
 
@@ -53,9 +57,9 @@ private half a secret of the product's repository; a person's clone fetches it w
 - **Tuning numbers come from the products.** A number a shared class needs comes in from the product that uses it - a
   template argument, a small design struct of `static constexpr` members the product defines, or a function argument -
   never as a default here.
-- **Every consumer's suites run before a consumer's pointer moves.** A change here is merged when this repository's CI
-  is green; a product moves its submodule to it only through its own pull request, whose CI builds the product and runs
-  its suites on the new toolkit.
+- **Every consumer's suites run before a consumer takes the change.** A change here is merged when this repository's CI
+  is green; a product pulls it in with its own `tools/toolkit-pull.sh`, in a pull request of its own, whose CI builds
+  the product and runs its suites on the new toolkit.
 - **The toolkit stands alone.** Every path is from `CMAKE_CURRENT_SOURCE_DIR` or `CMAKE_CURRENT_LIST_DIR`; machine-wide
   settings (C++20, the static MSVC runtime, the macOS floor) are set only when it is the top-level project; a shared
   helper target (`reckless_warnings`) is defined only when the product has not.
@@ -84,7 +88,8 @@ Ninja, clang-format 22.1.8 and gcovr - and set the git hooks (`core.hooksPath .g
 environment" task runs them. `tools/coverage-windows.ps1` measures coverage natively on Windows, as CI's coverage job
 does on Linux. Configured on its own it sets C++20, the static MSVC runtime and the macOS floor (13.3).
 
-CI (`.github/workflows/build.yml`, on the organisation's own runners) builds and tests it top-level on Linux, Windows and
+CI (`.github/workflows/build.yml`, on GitHub's hosted images, each pinned - this repository is public, and the
+organisation's self-hosted pool does not serve a public repository) builds and tests it top-level on Linux, Windows and
 macOS (universal, every binary held to both slices and to the floor), again with nothing windowed and no audio device
 layer, measures coverage of the parts the toolkit's own suites test, and checks the formatting, the documents and the
 source documentation (`doxygen Doxyfile`, every class, function and member documented, no warning). Its last job, `CI`,
@@ -97,6 +102,7 @@ is the check `main` requires.
 | `RECKLESS_TOOLKIT_BUILD_TESTS` | ON | The toolkit's suites, and GoogleTest, which a product's suites use too. |
 | `RECKLESS_TOOLKIT_GUI` | ON | The windowed parts: Skia (fetched), `reckless_gfx_skia`, the child window and the app platform. Off, nothing of Skia is fetched. |
 | `RECKLESS_BUILD_AUDIO` | ON | The audio device layer - the toolkit's own back ends on each platform's API - and its suites. |
+| `RECKLESS_BUILD_INPUT` | ON on its own, OFF in a product | The controller layer's back ends - evdev, XInput and HID, IOKit's HID manager - and their suite; its headers and their suite are built either way ([docs/input/gamepads.md](docs/input/gamepads.md)). |
 | `RECKLESS_ASIO`, `RECKLESS_ASIO_SDK_DIR` | ON, empty | Windows: ASIO devices on Steinberg's ASIO SDK, fetched by version and hash, or the unzipped SDK the directory names. |
 | `RECKLESS_TOOLKIT_FETCH_ASIO_SDK` | OFF | Fetch the ASIO SDK on every platform, for a product's notices, compiling none of it. |
 | `RECKLESS_DEMO_MODE` | OFF | The build's demo switch (`licence/DemoMode.h`), a compile definition on `reckless_demo_mode`. |
@@ -111,7 +117,8 @@ independent with their symbols hidden, as a plug-in module's code is.
 - `reckless_common_net`, `reckless_update` - the update check, a product's description and factory, and its Updates menu ([docs/update/update-check.md](docs/update/update-check.md)).
 - `reckless_demo_mode`, `reckless_monocypher`, `reckless_common_licence`.
 - `reckless_window_headers` - the window's headers with no Skia (the shell, the licence's card); `reckless_app_headers` - the app platform's seam (`app/AppPlatform.h`) on them, with no platform compiled, for a suite's platform of its own.
-- `reckless_app_shell` - a desktop app's shell on that seam, with no platform and no renderer: its window and loop (`app/AppRun.h`), its root (`app/AppRoot.h`), the window's sizes from a View menu (`app/AppWindowSizes.h`), its theme and fonts (`app/AppTheme.h`), its widgets (`app/AppWidgets.h`) and its update check (`app/AppUpdates.h`) - [docs/app/app-shell.md](docs/app/app-shell.md).
+- `reckless_app_shell` - a desktop app's shell on that seam, with no platform and no renderer: its window and loop (`app/AppRun.h`), its root (`app/AppRoot.h`), the window's sizes from a View menu (`app/AppWindowSizes.h`), its full screen, opt-in, and the menu item for it (`app/AppFullScreen.h`), its theme and fonts (`app/AppTheme.h`), its widgets (`app/AppWidgets.h`) and its update check (`app/AppUpdates.h`) - [docs/app/app-shell.md](docs/app/app-shell.md).
+- `reckless_common_input` - the controller layer's headers: the interface (`input/Gamepads.h`) and what turns a platform's readings into its edges, none of it on a platform's headers; with `RECKLESS_BUILD_INPUT`, `reckless_input_devices` - the back end this platform has and `MakeGamepads` ([docs/input/gamepads.md](docs/input/gamepads.md)).
 - `reckless_common_audio`; with the audio layer, `reckless_audio_devices`, on Windows with the ASIO SDK `reckless_asio_host`, and on Linux with JACK's headers `reckless_jack_loader`.
 - With the GUI: `reckless_skia`, `reckless_gfx_skia`, `reckless_window_api` (the window's header, for an adapter), `reckless_window` (the window compiled once), `reckless_app_platform` and `reckless_app_resources` (what an app's views draw with on Skia, `app/AppResources.h`).
 - With the suites: `reckless_toolkit_test_support`, `reckless_test_host_window` (with the GUI), `GTest::gtest` and `GTest::gtest_main`, and `reckless_warnings` unless the product defined it first.
@@ -135,7 +142,10 @@ product finds the fetched stb tree with `FetchContent_GetProperties(stb)`.
 
 `core`, `gfx`, `look`, `view`, `embedded_a`, `embedded_b`, `audio`, `audio_devices` (the real APIs, run alone, needing
 each API's test device - [docs/audio/device-tests.md](docs/audio/device-tests.md); on Linux `tools/audio-test-devices.sh`
-provisions ALSA's loopback card and JACK), `net`, `update`, `licence`, `app` (the queue other threads post to the main
+provisions ALSA's loopback card and JACK), `input` (the controller layer with no controller: names, held controls,
+an axis's hysteresis, hats, each platform's arithmetic and the Linux back end on a port of the suite's own),
+`input_devices` (this build's controller back end on the machine's own controllers, and on Linux a virtual controller
+made with uinput where `/dev/uinput` is writable), `net`, `update`, `licence`, `app` (the queue other threads post to the main
 thread through, the menu bar and its shortcuts, the suites' own platform, and an app's shell on it), and with the GUI
 `skia`, `list_text_views` (the list and text views drawn on Skia, their review images written where
 `RECKLESS_SCREENSHOT_DIR` names), and `child_window`, `clipboard`, `app_menu` and `app_platform` (label `window`: this
@@ -144,6 +154,7 @@ system's clipboard only in CI or where `RECKLESS_TEST_CLIPBOARD=1` asks). The en
 `RECKLESS_AUDIO_REQUIRE` (a comma-separated list of APIs whose missing test device fails rather than skips),
 `RECKLESS_REQUIRE_WINDOW` (a window suite that finds no window fails rather than skips), `RECKLESS_NET_LIVE` (the
 network's suite reaches the internet) and `RECKLESS_RUN_MEASUREMENTS` (a long measurement runs under a sanitizer too).
+
 ## Release signing
 
 Every product's release signs with the same three files, run from where the product holds the toolkit
@@ -167,10 +178,11 @@ these scripts through the environment of its release job; the scripts never prin
 | `look/` | The series' look on a canvas: metrics, palettes, the chicken-head knob, plates, the header, lamps, tubes, meters' scales, the oscilloscope and the tone stack's schematic. |
 | `view/` | The views: the view tree, its painting and mouse, knobs, plates, buttons, menus, dialogs, text fields, a scrolled list of many rows (`ListView.h`), many lines of text to read or edit (`TextView.h`), the zoom, scroll bars, tooltips and the panel. |
 | `panel/` | The series' panel on the views (`SeriesPanel.h`) and its screens and meters, and the series' look for the views that show many lines (`ListStyles.h`). |
-| `window/` | The child window a panel is shown in (an NSView, an HWND, an X11 window) and the shell round a panel (`ShellView.h`), with the licence's card. |
+| `window/` | The child window a panel is shown in (an NSView, an HWND, an X11 window) and the shell round a panel (`ShellView.h`), with the licence's card; the raw keys an owner may ask the window for beside the views' own key path - a key let go, auto-repeat told apart from a tap, the physical key (`RawKey.h`, `ChildWindow::SetRawKeyCallback`) - [docs/window/raw-keys.md](docs/window/raw-keys.md); and how the frame callback is paced, on the platform's own timer or, where a product asks for it, on an integer subdivision of the display's actual refresh rate (`FramePacing.h`, `ChildWindow::SetFramePacing`) - [docs/window/frame-pacing.md](docs/window/frame-pacing.md). |
 | `skia/` | Skia, prebuilt from a pinned skia-pack release, and the targets on it. |
-| `app/` | An app's platform layer: the application, where a window goes, the audio settings' widgets, a post to the main thread from any other, the clipboard, and the menu bar with its shortcuts (`MenuBar.h`, drawn on Linux by `MenuBarView.h`) - [docs/app/platform.md](docs/app/platform.md); and a desktop app's shell on it - its window and loop, its root, theme, widgets, resources and update check ([docs/app/app-shell.md](docs/app/app-shell.md)). |
+| `app/` | An app's platform layer: the application, where a window goes, the audio settings' widgets, a post to the main thread from any other, the clipboard, the menu bar with its shortcuts (`MenuBar.h`, drawn on Linux by `MenuBarView.h`), and a window's full screen for an app that opts in - [docs/app/platform.md](docs/app/platform.md); and a desktop app's shell on it - its window and loop, its root, theme, widgets, resources and update check ([docs/app/app-shell.md](docs/app/app-shell.md)). |
 | `audio/` | The audio device layer: the toolkit's own back ends on CoreAudio and CoreMIDI, Windows Audio (WASAPI), ASIO and WinMM, ALSA, the ALSA sequencer and JACK, the settings an app keeps and an offline device. |
+| `input/` | The controllers a program reads beside the keyboard - gamepads, joysticks and the arcade encoders that present themselves as USB joysticks - every control a digital one and every change of one an edge: the interface (`Gamepads.h`), what turns a platform's readings into edges with hysteresis and holds every edge to alternation (`GamepadState.h`), the HID arithmetic two back ends share (`HidUsages.h`), and a back end on evdev (`linux/`), XInput and HID (`win/`) and IOKit's HID manager (`mac/`) - [docs/input/gamepads.md](docs/input/gamepads.md). |
 | `net/` | HTTP on the platform's own stack, URLs, SHA-256 and a loopback listener for a sign-in's redirect. |
 | `update/` | The update check against the company's website: the check (`UpdateCheck.h`), a product's description and the one factory its checker comes from (`UpdateProduct.h`), and the Updates menu every product offers (`UpdatesMenu.h`) - [docs/update/update-check.md](docs/update/update-check.md). |
 | `licence/` | A licence's Ed25519 signature checked offline, the machine's store, and the build's demo switch (`DemoMode.h`). |

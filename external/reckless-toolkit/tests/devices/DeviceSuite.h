@@ -144,12 +144,7 @@ inline constexpr const char *kClient = "Reckless Device Test";
 
 // ---- What the run requires -----------------------------------------------------------------------------------------
 
-inline std::string Trim(const std::string &text)
-{
-    const auto first = text.find_first_not_of(" \t");
-    const auto last  = text.find_last_not_of(" \t");
-    return first == std::string::npos ? std::string() : text.substr(first, last - first + 1);
-}
+// Trim and Environment are DeviceRig.h's, shared with the rigs that are not in this header.
 
 inline std::vector<std::string> SplitList(const std::string &text)
 {
@@ -176,21 +171,6 @@ inline std::string JoinList(const std::vector<std::string> &items)
     return text.empty() ? std::string("none") : text;
 }
 
-/** An environment variable's value, empty where it is not set. */
-inline std::string Environment(const char *name)
-{
-    // MSVC deprecates getenv for _dupenv_s, whose copy a test has no use for.
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4996)
-#endif
-    const char *text = std::getenv(name);
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-    return text != nullptr ? std::string(text) : std::string();
-}
-
 /** The APIs RECKLESS_AUDIO_REQUIRE names: each must have its test device, or its tests fail. */
 inline const std::vector<std::string> &RequiredApis()
 {
@@ -201,7 +181,7 @@ inline const std::vector<std::string> &RequiredApis()
 /** A whole number from an environment variable, 0 where it is not set or is not one. */
 inline int EnvironmentNumber(const char *name)
 {
-    const std::string text = Trim(Environment(name));
+    const std::string text = Environment(name);
     if (text.empty() || text.find_first_not_of("0123456789") != std::string::npos || text.size() > 9)
     {
         return 0;
@@ -941,9 +921,9 @@ class CoreAudioRig final : public DeviceRig
     TestDevice Find(const std::vector<DeviceInfo> &devices) override
     {
         TestDevice        device;
-        const std::string named       = Trim(Environment("RECKLESS_COREAUDIO_DEVICE"));
-        const std::string input_named = Trim(Environment("RECKLESS_COREAUDIO_INPUT"));
-        const std::string cable       = Trim(Environment("RECKLESS_COREAUDIO_LOOP"));
+        const std::string named       = Environment("RECKLESS_COREAUDIO_DEVICE");
+        const std::string input_named = Environment("RECKLESS_COREAUDIO_INPUT");
+        const std::string cable       = Environment("RECKLESS_COREAUDIO_LOOP");
         const DeviceInfo *output      = nullptr;
         const DeviceInfo *input       = nullptr;
         for (const DeviceInfo &info : devices)
@@ -1006,27 +986,10 @@ class CoreAudioRig final : public DeviceRig
                                                   : "duplex across two devices, joined in "
                                                     "the back end's private aggregate";
         }
-        if (!cable.empty())
+        if (!cable.empty() &&
+            !ApplyCable(device, cable, output->output_channels, input->input_channels, "RECKLESS_COREAUDIO_LOOP"))
         {
-            const auto colon        = cable.find(':');
-            const int  first_output = colon == std::string::npos ? 0 : std::atoi(cable.substr(0, colon).c_str());
-            const int  first_input  = colon == std::string::npos ? 0 : std::atoi(cable.substr(colon + 1).c_str());
-            if (first_output < 1 || first_input < 1 || first_output + 1 > output->output_channels ||
-                first_input + 1 > input->input_channels)
-            {
-                device.found   = false;
-                device.missing = "RECKLESS_COREAUDIO_LOOP is '" + cable +
-                                 "': it names two outputs and two inputs the devices have as \"<output>:<input>\", "
-                                 "counted from 1 - \"3:1\" for outputs 3 and 4 into inputs 1 and 2";
-                return device;
-            }
-            device.channels     = 2;
-            device.first_output = first_output - 1;
-            device.first_input  = first_input - 1;
-            device.loop         = Loop::kCable;
-            device.about = "outputs " + std::to_string(first_output) + " and " + std::to_string(first_output + 1) +
-                           " patched by cable to inputs " + std::to_string(first_input) + " and " +
-                           std::to_string(first_input + 1) + " (RECKLESS_COREAUDIO_LOOP), " + device.about;
+            return device;
         }
         return device;
     }
@@ -1034,7 +997,13 @@ class CoreAudioRig final : public DeviceRig
 
 /** ALSA's test device: the kernel's loopback card (snd-aloop), whose playback on device 0 comes back as capture on
     device 1, subdevice by subdevice, bit for bit - the CI job loads it and gives its user the card's nodes. Its two
-    devices carry one name, and the second is listed with its ordinal (AudioDevice.h's NameApart). */
+    devices carry one name, and the second is listed with its ordinal (AudioDevice.h's NameApart).
+
+    A person at a Linux machine with an interface asks for it instead, with the same shape of variables the other
+    rigs take (docs/audio/device-tests.md, "On Linux with an interface"): RECKLESS_ALSA_DEVICE names the output device,
+    as ALSA lists it; RECKLESS_ALSA_LOOP, as "<output>:<input>", the cable patched from two of its outputs to two of
+    its inputs, which makes the loop a cable's (Loop::kCable); and RECKLESS_ALSA_INPUT an input device of another
+    name for the cable to come back on. CI sets none of them. */
 class AlsaRig final : public DeviceRig
 {
   public:
@@ -1043,6 +1012,10 @@ class AlsaRig final : public DeviceRig
 
     TestDevice Find(const std::vector<DeviceInfo> &devices) override
     {
+        if (const std::string named = Environment("RECKLESS_ALSA_DEVICE"); !named.empty())
+        {
+            return FindInterface(devices, named);
+        }
         TestDevice device;
         const int  out = reckless::audio::FindDevice(devices, kPlayback, reckless::audio::Direction::kOutput);
         const int  in  = reckless::audio::FindDevice(devices, kCapture, reckless::audio::Direction::kInput);
@@ -1072,6 +1045,64 @@ class AlsaRig final : public DeviceRig
     }
 
   private:
+    /** The interface RECKLESS_ALSA_DEVICE names, and the input and cable RECKLESS_ALSA_INPUT and RECKLESS_ALSA_LOOP
+        name with it, as the class's comment says.
+        @param devices  ALSA's devices
+        @param named    RECKLESS_ALSA_DEVICE's value
+        @return         the test device, or one with `found` false saying why it is not there */
+    static TestDevice FindInterface(const std::vector<DeviceInfo> &devices, const std::string &named)
+    {
+        TestDevice        device;
+        const std::string input_named = Environment("RECKLESS_ALSA_INPUT");
+        const std::string cable       = Environment("RECKLESS_ALSA_LOOP");
+        const int         out = reckless::audio::FindDevice(devices, named, reckless::audio::Direction::kOutput);
+        if (out < 0)
+        {
+            device.missing = "RECKLESS_ALSA_DEVICE names '" + named +
+                             "', which ALSA lists no output device by: another program may hold it (PipeWire, "
+                             "where the card's profile is not off)";
+            return device;
+        }
+        const DeviceInfo &output = devices[static_cast<std::size_t>(out)];
+        const DeviceInfo *input  = nullptr;
+        if (!input_named.empty() || !cable.empty())
+        {
+            const std::string input_name = input_named.empty() ? named : input_named;
+            const int         in = reckless::audio::FindDevice(devices, input_name, reckless::audio::Direction::kInput);
+            if (in < 0)
+            {
+                device.missing = (input_named.empty() ? "RECKLESS_ALSA_DEVICE" : "RECKLESS_ALSA_INPUT") +
+                                 std::string(" names '") + input_name + "', which ALSA lists no input device by";
+                return device;
+            }
+            input = &devices[static_cast<std::size_t>(in)];
+        }
+        device.found          = true;
+        device.output         = output.name;
+        device.channels       = std::min(output.output_channels, 2);
+        device.sample_rate    = output.DefaultSampleRate();
+        device.block_size     = 256;
+        device.loop           = Loop::kNone;
+        device.rate_tolerance = 0.03;
+        device.xrun_by        = reckless::audio::test::XrunBy::kStall;
+        device.settle_seconds = 1.0; // TestDevice::settle_seconds: the interface's clock is started with the stream
+        device.about          = "the output RECKLESS_ALSA_DEVICE names, written with silence";
+        if (input != nullptr)
+        {
+            device.input        = input->name;
+            device.engine_input = input->name;
+            device.engine_key   = false;
+            device.channels     = std::min({output.output_channels, input->input_channels, 2});
+            device.about        = input->name == output.name ? "duplex on one device" : "duplex across two devices";
+        }
+        if (!cable.empty() &&
+            !ApplyCable(device, cable, output.output_channels, input->input_channels, "RECKLESS_ALSA_LOOP"))
+        {
+            return device;
+        }
+        return device;
+    }
+
     /** @return whether the kernel has a loopback card, whoever may open it (/proc/asound/cards is everyone's to
                 read) */
     static bool CardLoaded()

@@ -21,9 +21,8 @@ descriptor goes when CoreAudio moves, the last name it serves.
 ## Where it stands
 
 **Done, 2026-10-25: every API on every platform is the toolkit's own**, and RtAudio and RtMidi are compiled into no
-binary, nor fetched: the products' notices name neither. macOS has been run on real hardware on Apple silicon, below.
-What is left is the hardware a CI runner lacks elsewhere: Windows Audio and ASIO on a real interface, and MIDI from a
-real keyboard on Windows and Linux.
+binary, nor fetched: the products' notices name neither. macOS and Windows have both been run on real hardware, below.
+Linux has been run on real hardware too, below, and with it nothing is left to run by hand that a CI runner lacks.
 
 | API | back end | since |
 |---|---|---|
@@ -72,16 +71,19 @@ Nektar Impact LX88+ on USB ([device-tests.md](device-tests.md), "On a Mac with a
   here, in Mac OS Roman by RtAudio.
 - **Duplex on one device, through the cable**, at every rate the UMC1820 offers (44.1, 48, 88.2 and 96 kHz) and every
   block from 32 to 1024 frames: the rate and block asked, no xruns, each channel back as it was played (a 64-tap fit
-  of 0.9997 or better), one stream playing bursts with silence between them bringing every burst back within a
+  of 0.9996 or better), one stream playing bursts with silence between them bringing every burst back within a
   hundredth of a frame of the first.
 - **The round trip, measured against what the HAL reports.** Two blocks and the latency reported, and then the
   driver's error: the UMC1820's driver reports its latency and safety offsets as a fixed time (about 1.5 ms each in,
   0.28 ms each out: 74 and 14 frames at 48 kHz, 146 and 26 at 96), where its converters' delay is fixed in samples -
-  so the measured round trip is 21 to 37 frames more than reported at 44.1 and 48 kHz and 41 to 70 frames less at
-  88.2 and 96, within 0.8 ms either way. RtAudio counted the device latency alone, without the safety offsets, which
-  is about 110 frames short at every rate. Between one stream and the next the round trip moves by one USB
-  high-speed microframe (125 µs: 6 frames at 48 kHz, 12 at 96) - how the driver lines its input and output packets
-  up at a start - and within a stream it never moves.
+  so the measured round trip is 21 to 39 frames more than reported at 44.1 and 48 kHz and 41 to 70 frames less at
+  88.2 and 96, within 0.9 ms either way. RtAudio counted the device latency alone, without the safety offsets, which
+  is about 110 frames short at every rate. Within a stream the round trip never moves. Between one stream and the
+  next it moves by up to one USB high-speed microframe (125 µs: 6 frames at 48 kHz, 12 at 96) - how the driver lines
+  its input and output packets up at a start - but for one case: the first stream at 48 kHz after the device has run
+  at 96 comes back 24 to 30 frames sooner than any other (1197 frames at 512, against 1221 to 1228), every time, and
+  the next one is ordinary again. A bare HAL stream, one click on an output and no toolkit code, does exactly the
+  same, so it is the driver's; Reckless IR Capture, which trims each response at its own onset, does not see it.
 - **Duplex across two devices**, the UMC1820's outputs and a miniDSP UMIK-2's inputs joined in the back end's private
   aggregate, at 44.1, 48 and 96 kHz: the rate and block asked, no xruns, the input the UMIK-2's (its -55 dBFS room,
   not the UMC1820's -100 dBFS idle inputs), and the aggregate gone with the stream.
@@ -107,6 +109,66 @@ Three faults the hardware found, each fixed in the back end and held by the suit
   every stream, a bare IOProc that only clears its buffers included, and none after it. It is the HAL's I/O thread
   starting, and the back end leaves it unreported, as ALSA's leaves an xrun before its first callback.
 
+Windows Audio and ASIO, measured on the same BEHRINGER UMC1820 - its Thesycon driver and its own ASIO driver - with
+outputs 3 and 4 patched by cable to inputs 1 and 2, on Windows 11 ([device-tests.md](device-tests.md), "On Windows with
+an interface"):
+
+- **ASIO opens every block the driver offers, at every rate.** Twenty-four runs, 44.1, 48, 88.2 and 96 kHz against 32,
+  64, 128, 256, 512 and 1024 frames: the block opened exactly as asked in all twenty-four, the rate by the clock within
+  0.06 %, no xruns, and each channel's 64-tap fit 0.9995 or better. Windows Audio's exclusive mode opens the block
+  asked for too; **its shared mode cannot** - this driver reports `GetSharedModeEnginePeriod` smallest, default, step
+  and largest all 480 frames, so a block of 256 opens at 480, as the suite's own note already said of it.
+- **The round trip, against what each API reports.** ASIO and the exclusive mode report it honestly; the shared mode
+  does not, and cannot.
+
+  | API | block asked / opened | reports beyond the block | the cable measures | measured less reported |
+  |---|---|---|---|---|
+  | ASIO | 256 / 256 | 224 | 797 frames, 16.60 ms | +61 (1.27 ms) |
+  | Windows Audio (Exclusive Mode) | 256 / 256 | 768 | 1309 frames, 27.27 ms | +29 (0.60 ms) |
+  | Windows Audio | 256 / 480 | 480 | 2573 frames, 53.60 ms | **+1133 (23.60 ms)** |
+
+  **The shared mode leaves the audio engine's mixing out of what it reports.** `IAudioClient::GetStreamLatency` gives
+  each client its own path and nothing of the mixing between the render client and the capture one, so a cable measures
+  23.6 ms more than the mode reports. There is nothing to add it to: no call discloses it. The suite therefore holds
+  the shared mode only to a round trip no sooner than it reports
+  (`TestDevice::does_report_whole_round_trip`), and prints the shortfall rather than judging it. The exclusive mode,
+  which has no mixer, reported the same cable to 29 frames.
+- **What ASIO leaves unaccounted shrinks as the rate rises**, and does not move with the block: 58 to 70 frames at
+  44.1 kHz and 61 to 67 at 48 (about 1.5 and 1.4 ms), 17 to 28 at 88.2 and 5 to 6 at 96 (0.19 and 0.06 ms). Within one
+  rate it is the same at 32 frames as at 1024, which is what says it is the converters' own delay and not anything the
+  stream does.
+
+One fault the hardware found, in the back end, and two in the suite that hid it:
+
+- **ASIO reported the blocks twice.** `ASIOGetLatencies` is measured from the buffer switch, so its two figures already
+  contain the block each way - the SDK's `asio.h` has the input's as "usually the size of one block in sample frames,
+  plus device specific latencies" - where `StreamFormat::reported_latency` is the latency *beyond* the block. The back
+  end assigned the sum straight across, so a stream's reported round trip ran two blocks long: 60 frames out at 64,
+  445 at 256 and 1987 at 1024, the error growing with the block until the loop test failed on it. One block now comes
+  off each direction that is open, and what is left over is the constant above.
+- **The suite's ASIO rig hid every driver but its own.** It copies the machine's drivers into the registry view it
+  registers its test driver through, and copied them with `RegCopyTreeW`, which an application hive refuses
+  (`ERROR_ACCESS_DENIED`) - a result nothing checked. The keys were created, and counted, and arrived empty, so the
+  SDK read no class from them and dropped the lot: the header said "3 of the machine's own drivers listed beside it"
+  while the device list held the test driver alone. On no machine with a real ASIO driver had that driver ever listed.
+- **Neither Windows rig could be pointed at an interface.** Only CoreAudio's took a device and a cable from the
+  environment; Windows Audio's was the default render endpoint and ASIO's the sample driver, with no way to ask for
+  anything else. Both now take the same shape of variables, and the cable parser is one function all three rigs call
+  (`DeviceRig.h`'s `ApplyCable`) rather than a second and third copy of it.
+
+**MIDI on Windows, from a real keyboard** (WinMM, `audio/win/WinMidi.cpp`), measured on a Nektar Impact LX88+ on USB:
+its two ports listed as Windows names them ("Impact LX88+" and "MIDIIN2 (Impact LX88+)"), beside the UMC1820's own
+"UMC1820 MIDI In"; the keyboard opened by the name a settings file keeps, and over 1.72 s of playing, **20 notes held
+and let go - every one paired with its release** - and 24 controller messages, the mod wheel's CC 1 climbing one step
+at a time about 3 ms apart. A note off sent as a note on of velocity 0 arrives as sent (`90 42 00`), as it does on
+CoreMIDI. Every message whole, on the index the input was opened under, stamped in order, with system exclusive,
+timing clock and active sensing left out.
+
+**A real ASIO driver cannot be asked for an xrun**, so `CountsAnXrunAndPlaysOnAfterIt` skips where
+`RECKLESS_ASIO_DEVICE` names one. On ASIO an xrun reaches the callback only as the driver's own resync request, and
+nothing in the API obliges a driver to send one: the UMC1820 carried on without a word through a callback stalled well
+past its block. The SDK's sample driver, which asks to order, is what holds that test.
+
 **CoreAudio has no exclusive mode here, on purpose.** Its exclusive access is hog mode
 (`kAudioDevicePropertyHogMode`), and it buys nothing a stream of this layer wants: the nominal rate is the hardware's
 own and any client may set it, the IOProc's buffer is per process and may be any size in the device's range (15 to
@@ -116,6 +178,48 @@ adds is silencing every other program and formats that cannot be mixed (integer,
 taking the device from everything else, and leaving it taken should the program die holding it. The back end refuses a
 stream whose buffers are not 32-bit float - the format of every mixable stream - rather than misread one another
 program has hogged.
+
+**ALSA and the ALSA sequencer, on real hardware**, measured on a Dell Precision (Ubuntu 24.04, kernel 7.0) against the
+same BEHRINGER UMC1820 - class compliant, on the kernel's `snd-usb-audio` - outputs 3 and 4 patched by cable to inputs 1
+and 2, and the same Nektar Impact LX88+ on USB ([device-tests.md](device-tests.md), "On Linux with an interface"):
+
+- **Duplex on one device, through the cable**, at 44.1, 48, 88.2 and 96 kHz against every block from 32 to 1024
+  frames, with the stream thread at real-time priority: the rate and block asked, each channel back as it was played (a
+  64-tap fit of 0.9996 or better at 44.1 and 48 kHz, 0.9998 at 88.2 and 96), every burst through silence at the first one's
+  delay to a hundredth of a frame, and the stalled callback reported as one xrun and played on from - but for the fault
+  at 96 kHz below.
+- **The round trip, against what the back end reports**: 77 to 117 frames more than reported, at every rate and block
+  - the converters' and the USB transfer's, which ALSA does not count - about 2.2 ms at 48 kHz and 1 ms at 96. It moves
+  by a microframe or two between one stream and the next, as on a Mac, and does not move with the block.
+- **A real keyboard on the sequencer**: notes held and let go (a note off sent as a note on of velocity 0 arriving as
+  sent), the mod wheel's CC 1 a step about every 3 ms, and pitch bend to its full 14 bits (`E0 7F 7F`), every message
+  whole, on the index it was opened under and in order.
+
+One fault the hardware found in the back end:
+
+- **ALSA reported the output's block twice.** The back end reported the output's buffer less one block, which is how
+  late a block written plays - but `StreamFormat::reported_latency` is the latency beyond the block each way, and a
+  round trip counts two blocks beside it. So every stream reported a block more than it had: through the cable the
+  round trip came back a block sooner than reported at every rate and block, and at 1024 frames outside the suite's
+  64th of a second. It reports the buffer less two blocks now - none at two periods - and the loopback card, whose loop
+  is exactly the buffer, holds it: 512 frames back at two periods of 256 and nothing reported beyond them.
+
+And two things the machine taught, not the back end:
+
+- **Without real-time priority, small blocks at high rates xrun.** A user in no group the system grants `rtprio` -
+  this machine's, until it was put in `audio` and the jackd package's `/etc/security/limits.d/audio.conf` enabled -
+  runs the stream thread at the ordinary priority, since the back end's `SCHED_RR` request is refused without a word.
+  The cable then took xruns at 88.2 kHz and 32 frames and at 96 kHz from 32 to 128, which at real-time priority it
+  never did. A Linux product's user is told to be in `audio`, as JACK's users are.
+- **At 96 kHz, a small buffer slips under `snd-usb-audio` with nothing reported.** At 96 kHz and 64 frames on three
+  periods, about one stream in two gains 24 to 49 frames - two to four USB microframes - at a moment somewhere in its
+  first few seconds, and runs that much later from then on; no xrun reaches ALSA, so none reaches the callback. A bare
+  ALSA duplex stream, alsa-lib's `snd_pcm_readi` and `snd_pcm_writei` on `hw:UMC1820` with no toolkit code, does the
+  same - 5 runs in 10 - so it is below the back end: the kernel's USB audio path, the controller, or the interface.
+  The same bare stream never slipped at 96 kHz on eight periods of 64 or three of 256, nor at 48 kHz on three of 64 or
+  of 32 (8 runs each). It is accepted, not worked round: the suite's loop test fails when it happens, as it should, and
+  a person who wants 96 kHz at that block on this interface runs with more periods or at 48 kHz. Do not relax the test
+  for it.
 
 **Linux carries neither library now**: with the ALSA sequencer serving MIDI, RtAudio and RtMidi are not fetched or
 compiled there. The sequencer lists every input under the name RtMidi gave it - checked side by side against RtMidi

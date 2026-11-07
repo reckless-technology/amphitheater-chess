@@ -5,10 +5,11 @@ functions and suites; this file is how work here is done.
 
 ## What this is
 
-The Reckless Technology toolkit: the C++20 library the company's products share - JSON, text and the user's files
-namespace `reckless`), JSON, text and the user's files (`core/`), the drawing layer (`gfx/`) and the series' look
+The Reckless Technology toolkit: the C++20 library the company's products share (all of it in the
+namespace `reckless`): JSON, text and the user's files (`core/`), the drawing layer (`gfx/`) and the series' look
 (`look/`), the views (`view/`) and the series' panel (`panel/`), the child window on Skia (`window/`, `skia/`), an app's
-platform layer (`app/`), the audio device layer (`audio/`), the network (`net/`), the update check every product runs
+platform layer (`app/`), the audio device layer (`audio/`), the controllers a program reads beside the keyboard
+(`input/`), the network (`net/`), the update check every product runs
 (`update/`: the check, a product's description and the one factory its checker comes from, and the Updates menu) and
 the licence (`licence/`), with the artwork (`assets/`), the suites (`tests/`) and the CMake helpers (`cmake/`). Every
 directory is an include directory and a header is included by its bare name (`"View.h"`), so the include namespace is
@@ -38,8 +39,6 @@ settled by measurement so they are not re-argued. What is left is running the ha
 
 ## The consumers
 
-| Product | Repository | State |
-|---|---|---|
 **Every consumer carries the toolkit as a git subtree** at `external/reckless-toolkit` - no submodule anywhere any
 more, the last of them converted on 2026-10-24. A pull is made by the consumer's own `tools/toolkit-pull.sh`, which
 flattens it into one linear commit, because these repositories require a linear history and are rebase-only. So a
@@ -52,15 +51,18 @@ toolkit change reaches a product in two steps: merge it here, then run that scri
 | Reckless Amphitheater | `amphitheater-chess` (public) | **a subtree**, added with the GUI on and its suites and the audio layer off; its window is built on the app shell (`app/AppRun.h`, `docs/app/app-shell.md`) |
 | Knect 4 | `knect4` (public) | **a subtree**, added with the GUI and the audio layer on and its suites and ASIO off; its window is built on the app shell, its landings' clicks played through the audio layer's default output |
 | Reckless Sudoku | `sudoku` (public) | **a subtree**, added with the GUI on and its suites, the audio layer and ASIO off; its window is built on the app shell, under the series' header with the company mark |
+| Sentinel | `sentinel` (private until it ships) | **a subtree**, added with the GUI and the audio layer on and its suites and ASIO off; its window is built on the app shell, reads the raw keys, and plays through the audio layer's default output |
 
 **A consumer needs no key to read this repository any more**: it is public, so a consumer's CI clones it over https,
 and the per-consumer read-only deploy keys that used to sit here (Settings, Deploy keys) can go with the secrets that
 held their private halves in each consumer.
 
 The other way round, this repository's CI reads each consumer for the `consumers` job below, and there a key is still
-needed for a **private** consumer only: `vst-plugins`, through a read-only deploy key on it ("reckless-toolkit CI
-consumer guard (read-only)") whose private half is this repository's Actions and Dependabot secret
-`CONSUMER_VST_PLUGINS_DEPLOY_KEY`. `amphitheater-chess`, `knect4` and `sudoku` went public and GPL on 2026-10-24 and
+needed for a **private** consumer only: `vst-plugins` and `sentinel`, each through a read-only deploy key on it
+("reckless-toolkit (public) CI consumer guard (read-only)") whose private half is this repository's secret
+`CONSUMER_VST_PLUGINS_DEPLOY_KEY` or `CONSUMER_SENTINEL_DEPLOY_KEY`, each held for Actions and for Dependabot (a
+Dependabot pull request is given only Dependabot's secrets, and a private consumer with no key is skipped). When
+Sentinel goes public at ship its line turns `public` and its key and secrets go. `amphitheater-chess`, `knect4` and `sudoku` went public and GPL on 2026-10-24 and
 are cloned over https with no key, which is what a checkout with no key can do; `tools/check-consumers.sh` chooses per
 consumer. `CONSUMER_IR_CAPTURE_DEPLOY_KEY` is obsolete with the standalone `ir-capture` repository. A new consumer gets its line in `tools/check-consumers.sh`, its key and its secret (`ssh-keygen
 -t ed25519`, `gh repo deploy-key add` on the consumer, `gh secret set` here for both apps, the key files deleted after).
@@ -108,15 +110,18 @@ working for every consumer: `sign`'s bundle kinds, the identity check and the ex
   parameter, a template argument or a class instead.
 - **Tuning numbers come from the products**: a template argument, a design struct of `static constexpr` members the
   product defines, or a function argument - never a default here.
-- **Every consumer's suites are run before a consumer's submodule pointer moves.** A change here lands through a pull
+- **Every consumer's suites are run before a consumer takes the change.** A change here lands through a pull
   request when this CI is green - its `consumers` job has configured every product on it and built a few of each one's
-  targets, so a clash of names or a moved header shows here first - and each product then moves its pointer in a pull
-  request of its own, whose CI builds and tests it whole on the new toolkit.
+  targets, so a clash of names or a moved header shows here first - and each product then pulls it in with its own
+  `tools/toolkit-pull.sh`, in a pull request of its own, whose CI builds and tests it whole on the new toolkit.
 - **Nothing here knows a product.** No include, link or path of a product; CMake paths from
   `CMAKE_CURRENT_SOURCE_DIR` / `CMAKE_CURRENT_LIST_DIR`; machine-wide settings only under `PROJECT_IS_TOP_LEVEL`;
   `reckless_warnings` only if the product has not defined it. Keep the existing target names and the bare-name include
   style: a rename breaks every consumer.
-- **No libm transcendental per sample on the audio thread**: `FastTrig.h` and `FastExpLog.h`, or a recurrence.
+- **Nothing here is signal processing.** The toolkit is the GUI, the app and the audio **device** layer; the suite's
+  DSP went back to vst-plugins' `common/dsp/`, which is where `FastTrig.h` and `FastExpLog.h` now are, and
+  `dsp-embedded` is bare-metal firmware code, a different thing again. A building block that processes samples
+  belongs in one of those, not here.
 - Double past the host boundary; `#pragma once`; full, descriptive names; every target links `reckless_warnings`, and
   the code stays warning-free on gcc, clang and MSVC (read CI's logs).
 - **Documented where declared**: every class, function, member, parameter (`@param`), return (`@return`) and template
@@ -148,21 +153,22 @@ working for every consumer: `sign`'s bundle kinds, the identity check and the ex
 `.github/workflows/build.yml`, on GitHub's hosted images, each pinned - `ubuntu-24.04`, `windows-2025` (MSVC through
 vswhere and `VsDevCmd.bat`) and `macos-15`, a fresh machine for every job. This repository is public, and the
 organisation's self-hosted pool does not serve public repositories (a job queued for it would wait for ever); the
-workflow's opening comment says so. The hosted Linux kernel has no sound support, so `tools/audio-test-devices.sh`
-installs the ALSA and JACK headers - the back ends compile - and the device suites are left out there
-(`RECKLESS_AUDIO_DEVICES=none`): the Linux device suites run on a developer's machine and in vst-plugins' CI, on the
+workflow's opening comment says so. The hosted Linux kernel has no sound support - or, on some images, sound but no
+snd-aloop in its build configuration - so `tools/audio-test-devices.sh` installs the ALSA and JACK headers - the back
+ends compile - and the device suites are left out there (`RECKLESS_AUDIO_DEVICES=none`; a self-hosted machine whose
+kernel lacks snd-aloop fails instead, docs/audio/device-tests.md): the Linux device suites run on a developer's machine and in vst-plugins' CI, on the
 organisation's own runners. Jobs: `changes` (the commits' identity, `check-docs.py --tracked`,
 and whether code changed), `linux` (gcc, every suite, the device suite with `RECKLESS_AUDIO_REQUIRE=ALSA,JACK` after
 `tools/audio-test-devices.sh` wherever the kernel has sound, the window suites under `xvfb-run` with `RECKLESS_REQUIRE_WINDOW`), `windows` (MSVC,
 `RECKLESS_AUDIO_REQUIRE=ASIO` on the SDK fetched by name and hash), `macos` (universal arm64 and x86_64, every binary
 read with `lipo` and `vtool` for both slices and the 13.3 floor, `RECKLESS_AUDIO_REQUIRE=CoreAudio`,
 `RECKLESS_REQUIRE_WINDOW`), `minimal` (no GUI, no audio device layer), `consumers` (Linux: `tools/check-consumers.sh`
-clones vst-plugins, IR Capture, Amphitheater, Knect 4 and Sudoku at their default branches' heads through the consumer guard's
+clones vst-plugins, IR Capture, Amphitheater, Knect 4, Sudoku and Sentinel at their default branches' heads through the consumer guard's
 deploy keys, links this checkout in at each one's `external/reckless-toolkit`, configures each as its own CI does and
 builds a few of its targets - vst-plugins' `reckless_update_shared` and `reckless_plugin_view_test`, IR Capture's
-`ir_capture_ui`, Amphitheater's `amphitheater_gui`, Knect 4's `knect4_gui`, Sudoku's `sudoku_gui` - so a target, CTest or option named as a
+`ir_capture_ui`, Amphitheater's `amphitheater_gui`, Knect 4's `knect4_gui`, Sudoku's `sudoku_gui`, Sentinel's `Sentinel` - so a target, CTest or option named as a
 product's, a header a product's shadows, or a moved function fails here), `coverage` (gcc, gcovr on `core/`, `gfx/` but
-its Skia canvas, `look/`, `view/`, `net/`, `update/` and `licence/`, red under the floor `--fail-under-line` names),
+its Skia canvas, `input/` but its platforms' translation units, `look/`, `view/`, `net/`, `update/` and `licence/`, red under the floor `--fail-under-line` names),
 `format`, `doxygen` and `CI`, the aggregate the ruleset requires. Documentation alone builds nothing.
 `RECKLESS_UPDATE_CHECK=off` everywhere. Nothing is kept between runs: each job builds from nothing and fetches what it
 needs. `.github/dependabot.yml` watches the actions' majors; its
