@@ -19,6 +19,9 @@ struct AnalysisLine
     std::string pv;       ///< "13.Ne2 Ne8 14.f4 a5".
     /** A shallower depth's line under the newest, an engine giving one line at a time: shown dimmed. */
     bool is_earlier = false;
+
+    /** @return Whether the two draw alike. */
+    bool operator==(const AnalysisLine &) const = default;
 };
 
 /** One engine's block. */
@@ -31,6 +34,9 @@ struct EngineBlock
     /** Its lines: the best first and the next best under it for an engine giving several (MultiPV), else its newest
         line first and the lines it gave at the depths before under it. */
     std::vector<AnalysisLine> lines;
+
+    /** @return Whether the two draw alike. */
+    bool operator==(const EngineBlock &) const = default;
 };
 
 /** The engines' blocks, one under another. */
@@ -43,7 +49,8 @@ class AnalysisPanel final : public reckless::view::View
 
     AnalysisPanel();
 
-    /** @param blocks The blocks, in order; repaints. */
+    /** @param blocks The blocks, in order; repaints only where they differ from those shown, since the controller
+        sets them every frame. */
     void SetBlocks(std::vector<EngineBlock> blocks);
 
     /**

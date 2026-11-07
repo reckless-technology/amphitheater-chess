@@ -91,8 +91,11 @@ void BoardView::SetInteractive(bool is_interactive)
 
 void BoardView::SetArrows(std::vector<BoardArrow> arrows)
 {
-    arrows_ = std::move(arrows);
-    Repaint();
+    if (arrows != arrows_)
+    {
+        arrows_ = std::move(arrows);
+        Repaint();
+    }
 }
 
 float BoardView::SquareSize() const
