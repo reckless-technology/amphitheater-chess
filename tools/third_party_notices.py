@@ -22,8 +22,8 @@ packaging/GPL-3.0.txt, the Free Software Foundation's own, once for all five.
     python3 tools/third_party_notices.py <build-dir> --check   exits 1 if the committed file is not what it writes
                                                                (CTest notices)
 
-Any build tree with the window on can write the notices or check them. Run it when the submodule moves or a pin of the
-engines does (tools/update-engines.sh), and read the diff.
+Any build tree with the window on can write the notices or check them. Run it when the toolkit is pulled or a pin of
+the engines moves (tools/update-engines.sh), and read the diff.
 """
 import json
 import re

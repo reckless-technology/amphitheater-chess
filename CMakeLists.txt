@@ -46,7 +46,7 @@ if(MSVC)
 endif()
 
 option(AMPHITHEATER_BUILD_TESTS "Build the test suites" ON)
-option(AMPHITHEATER_GUI "Build the window, Reckless Amphitheater, on the toolkit submodule (external/reckless-toolkit)"
+option(AMPHITHEATER_GUI "Build the window, Reckless Amphitheater, on the toolkit, a subtree at external/reckless-toolkit"
        ON)
 option(AMPHITHEATER_COVERAGE "Instrument the host's own code for coverage (gcc, clang or clang-cl)" OFF)
 option(AMPHITHEATER_ASAN "Build everything with AddressSanitizer (and UndefinedBehaviorSanitizer on gcc and clang)" OFF)
@@ -140,15 +140,15 @@ if(NOT Python3_EXECUTABLE)
     endforeach()
 endif()
 
-# The window, Reckless Amphitheater, is drawn on the toolkit (reckless-technology/reckless-toolkit), a git submodule at
+# The window, Reckless Amphitheater, is drawn on the toolkit (reckless-technology/reckless-toolkit), a git subtree at
 # external/reckless-toolkit: its views, its look, its child window on Skia and its app platform. The core and the
 # command line need none of it, and build with the GUI off.
 if(AMPHITHEATER_GUI)
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/reckless-toolkit/CMakeLists.txt")
-        message(FATAL_ERROR "The window is built on the toolkit, a git submodule at external/reckless-toolkit, which this "
-                            "checkout does not hold. Fetch it with 'git submodule update --init' (tools/setup-dev.ps1 "
-                            "and tools/setup-dev.sh do), or build the core and the command line alone with "
-                            "-DAMPHITHEATER_GUI=OFF.")
+        message(FATAL_ERROR "The window is built on the toolkit, a git subtree committed at external/reckless-toolkit, "
+                            "which is missing: the checkout is broken or partial, since every commit carries the "
+                            "toolkit's files and a clone needs nothing after it. Clone or check out again, or build "
+                            "the core and the command line alone with -DAMPHITHEATER_GUI=OFF.")
     endif()
 
     # The toolkit's options, as normal variables before it is added: its windowed parts on, its own suites off (the

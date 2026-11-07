@@ -70,7 +70,7 @@ if ($TestRoot) {
 $signing = @()
 if ($SignWithESigner) {
     $signer = Join-Path $repo 'external\reckless-toolkit\tools\esigner-sign.ps1'
-    if (-not (Test-Path $signer)) { throw "no ${signer}: the toolkit's submodule is not checked out" }
+    if (-not (Test-Path $signer)) { throw "no ${signer}: this checkout is missing the toolkit's subtree" }
     $signing = @("/Sesigner=pwsh -NoProfile -File `$q$signer`$q `$q`$f`$q", '/DSignToolName=esigner')
     $env:RECKLESS_SIGN_LOG = Join-Path ([IO.Path]::GetTempPath()) "reckless-amphitheater-sign-$Version.log"
     Remove-Item -Force -ErrorAction SilentlyContinue $env:RECKLESS_SIGN_LOG
