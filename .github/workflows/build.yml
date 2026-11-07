@@ -19,7 +19,7 @@ name: build
 #
 # The window is built on the toolkit (reckless-technology/reckless-toolkit, public and GPLv3), whose files are a git
 # subtree here at external/reckless-toolkit: a checkout has them, so no job fetches anything of its own and a fork's
-# pull request builds like any other. The window'''s suites (CTest label window) need a display: Linux runs
+# pull request builds like any other. The window's suites (CTest label window) need a display: Linux runs
 # them under xvfb-run, macOS on the runner's window server, Windows on its runner's window station, which draws though
 # nothing shows; the sanitizer and coverage jobs leave them out.
 on:
