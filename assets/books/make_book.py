@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""The window's built-in book, amphitheater-book.bin, written beside this script from Zenith's own book beside it.
+"""The window's built-in book, amphitheater-book.bin, written beside this script from Trebuchet's own book beside it.
 
     python3 assets/books/make_book.py [--check]
 
-Zenith's book (zenith-book-r4.bin, kept byte for byte) opens 1.e4 (weight 115) and 1.c4 (54) and holds no 1.d4 from
-the starting position: Zenith scored it outside its builder's keep margin. It does hold full lines after 1.d4 - about
-2,100 positions, built as replies for the side facing it - so one entry opens them: 1.d4 from the starting position,
-its weight 42 giving it 42 / (115 + 54 + 42) = 19.9 % of the first moves. Every other entry is Zenith's, in its order;
-the file stays sorted by key, as the format asks.
+Trebuchet's book (trebuchet-book-r4.bin, kept byte for byte) opens 1.e4 (weight 115) and 1.c4 (54) and holds no 1.d4
+from the starting position: Trebuchet scored it outside its builder's keep margin. It does hold full lines after 1.d4
+- about 2,100 positions, built as replies for the side facing it - so one entry opens them: 1.d4 from the starting
+position, its weight 42 giving it 42 / (115 + 54 + 42) = 19.9 % of the first moves. Every other entry is Trebuchet's,
+in its order; the file stays sorted by key, as the format asks.
 
 --check writes nothing and exits 1 when the committed book differs from what the script writes.
 """
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SOURCE = HERE / "zenith-book-r4.bin"
+SOURCE = HERE / "trebuchet-book-r4.bin"
 TARGET = HERE / "amphitheater-book.bin"
 
 START_KEY = 0x463B96181691FC9C  # the starting position's Polyglot key, the format's own test value
@@ -35,13 +35,13 @@ ADDED = [(START_KEY, move_code("d2d4"), 42)]  # 1.d4, about a fifth of the first
 
 
 def build():
-    """The built-in book's bytes: Zenith's entries with ADDED among them, sorted by key, each added move after
-    Zenith's own for its position."""
+    """The built-in book's bytes: Trebuchet's entries with ADDED among them, sorted by key, each added move after
+    Trebuchet's own for its position."""
     data = SOURCE.read_bytes()
     entries = [ENTRY.unpack_from(data, offset) for offset in range(0, len(data), ENTRY.size)]
     for key, move, weight in ADDED:
         if any(entry[0] == key and entry[1] == move for entry in entries):
-            sys.exit(f"make_book.py: Zenith's book already holds move {move:#06x} at {key:#018x}")
+            sys.exit(f"make_book.py: Trebuchet's book already holds move {move:#06x} at {key:#018x}")
         last = max((index for index, entry in enumerate(entries) if entry[0] <= key), default=-1)
         entries.insert(last + 1, (key, move, weight, 0))
     if any(entries[index][0] > entries[index + 1][0] for index in range(len(entries) - 1)):

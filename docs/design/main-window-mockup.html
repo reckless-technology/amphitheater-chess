@@ -124,10 +124,10 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
 </style>
 
 <div class="frame">
-  <p class="note"><strong>Mockup of the planned main window.</strong> Static, built from the real assets: Jonny's Staunton pieces, Monaspace Xenon for engine output, Noto Serif and the colours of the toolkit's new list views. The position is 12...b4 in the Sicilian, Najdorf, English Attack, with Pawnstar to move against Zenith. Flip turns the board.</p>
+  <p class="note"><strong>Mockup of the planned main window.</strong> Static, built from the real assets: Jonny's Staunton pieces, Monaspace Xenon for engine output, Noto Serif and the colours of the toolkit's new list views. The position is 12...b4 in the Sicilian, Najdorf, English Attack, with Pawnstar to move against Trebuchet. Flip turns the board.</p>
 
   <div class="window" role="img" aria-label="Mockup of the Reckless Amphitheater main window">
-    <div class="titlebar"><div class="dots"><span></span><span></span><span></span></div><div class="name">Reckless Amphitheater - Pawnstar 2.1 vs Zenith 0.9</div><div style="width:45px"></div></div>
+    <div class="titlebar"><div class="dots"><span></span><span></span><span></span></div><div class="name">Reckless Amphitheater - Pawnstar 2.1 vs Trebuchet 0.9</div><div style="width:45px"></div></div>
     <div class="menubar"><span>File</span><span>Edit</span><span>Game</span><span>Engines</span><span>Match</span><span>Tournament</span><span>View</span><span>Help</span></div>
 
     <div class="body">
@@ -167,7 +167,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
             <dt>Opening</dt><dd>B90 Sicilian, Najdorf, English Attack</dd>
             <dt>Time control</dt><dd>5 min + 3 s</dd>
             <dt>Book</dt><dd>openings-6ply.epd, left after move 3</dd>
-            <dt>Match score</dt><dd>Pawnstar 3½ - 2½ Zenith (Elo +35 ± 140)</dd>
+            <dt>Match score</dt><dd>Pawnstar 3½ - 2½ Trebuchet (Elo +35 ± 140)</dd>
             <dt>FEN</dt><dd style="font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere;" id="fen"></dd>
           </dl>
         </div>
@@ -185,7 +185,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
             </table>
           </section>
           <section class="engine">
-            <header><b>Zenith 0.9</b><span class="state pondering">pondering 13.Ne2</span><span class="stats">depth 21/33 &middot; 6.4 Mn &middot; 1.48 Mn/s &middot; hash 21 %</span></header>
+            <header><b>Trebuchet 0.9</b><span class="state pondering">pondering 13.Ne2</span><span class="stats">depth 21/33 &middot; 6.4 Mn &middot; 1.48 Mn/s &middot; hash 21 %</span></header>
             <table>
               <tr class="best"><td class="d">21/33</td><td class="s minus">-0.27</td><td class="pv">13...Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1 bxc2+</td></tr>
             </table>
@@ -205,7 +205,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
         <div>&lt; Pawnstar  info depth 24 seldepth 38 multipv 1 score cp 42 nodes 11180522 nps 2311000 hashfull 341 time 4838 pv c3e2 f6e8 f3f4 a6a5 f4f5 a5a4 b3d4 e5d4 e2d4 b4b3 c1b1</div>
       </div>
     </div>
-    <div class="statusbar"><span>White to move</span><span>Pawnstar searching</span><span>Zenith pondering 13.Ne2</span><span>Concurrency 1 &middot; game 7 of 20</span></div>
+    <div class="statusbar"><span>White to move</span><span>Pawnstar searching</span><span>Trebuchet pondering 13.Ne2</span><span>Concurrency 1 &middot; game 7 of 20</span></div>
   </div>
 </div>
 
@@ -268,7 +268,7 @@ function drawBoard() {
      </svg>`);
   document.getElementById("ranks").innerHTML = ranks.map((r) => `<span>${r}</span>`).join("");
   document.getElementById("files").innerHTML = [...files].map((f) => `<span>${f}</span>`).join("");
-  const black = `<span class="side" style="background:#141210"></span><div class="who"><b>Zenith 0.9</b><small>Black &middot; engine &middot; Threads 1, Hash 64 MB, ponder</small></div><span class="clock">3:58.9</span>`;
+  const black = `<span class="side" style="background:#141210"></span><div class="who"><b>Trebuchet 0.9</b><small>Black &middot; engine &middot; Threads 1, Hash 64 MB, ponder</small></div><span class="clock">3:58.9</span>`;
   const white = `<span class="side" style="background:#f3ead6"></span><div class="who"><b>Pawnstar 2.1</b><small>White &middot; engine &middot; Threads 1, Hash 64 MB, book</small></div><span class="clock running">4:11.6</span>`;
   document.getElementById("top-player").innerHTML = flipped ? white : black;
   document.getElementById("bottom-player").innerHTML = flipped ? black : white;

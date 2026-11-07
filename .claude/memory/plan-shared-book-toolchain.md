@@ -5,7 +5,7 @@
 
 **This gates the next Amphitheater release, and clears it.** Jonny, 2026-10-31: *"Let's not do another
 amphitheater release until we have completed the refactoring of the opening book code from pawnstar and
-zenith."* Then, the same day: *"After all the book refactoring lands in amphitheater, and all tests pass, you
+[trebuchet]."* Then, the same day: *"After all the book refactoring lands in amphitheater, and all tests pass, you
 can publish v1.1."*
 
 So **v1.1 is authorised in advance, on two conditions**, and the authorisation is worth nothing unless both are
@@ -42,7 +42,7 @@ count what gets played, screen the moves by an engine's evaluation, write a book
 |---|---|---|---|
 | `pawnstar` | `tools/make_book.cpp` -> the suite's text book | Lichess PGN dump | - |
 | `pawnstar` | `tools/filter_book.cpp` -> marks `?` on weak moves | its own text book | Pawnstar's NNUE, **linked in** |
-| `zenith` | `tools/build_book.py` -> Polyglot `.bin` | Zenith self-play | Zenith, over its own subcommands |
+| `trebuchet` | `tools/build_book.py` -> Polyglot `.bin` | Trebuchet self-play | Trebuchet, over its own subcommands |
 | `amphitheater-chess` | `src/match/BookMaker` -> Polyglot `.bin` | PGN libraries, folders, zips | nothing |
 
 Only `filter_book` links an engine, and that is the one that broke. Its `Game` member carries the
@@ -89,9 +89,9 @@ nothing is hidden by living there.
 
 ## What does NOT move
 
-- **Zenith's self-play playouts and DAG score backup.** Settling near-ties by playing them out, and
-  backing scores up over the positions reached, is Zenith's method, not a generic book operation.
-  `zenith/tools/build_book.py` keeps it.
+- **Trebuchet's self-play playouts and DAG score backup.** Settling near-ties by playing them out, and
+  backing scores up over the positions reached, is Trebuchet's method, not a generic book operation.
+  `trebuchet/tools/build_book.py` keeps it.
 - **An engine's judgement.** The screener supplies the method; which moves are weak is whatever the
   `--engine` says. Same split as `nnue-training`: shared method, engine-specific judgement.
 - **The books themselves.** Each engine keeps and ships its own.

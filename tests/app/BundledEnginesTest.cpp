@@ -1,11 +1,13 @@
 // The engines the install carries and the person's engine list: a fresh list seeded with every one, an upgrade moving
-// them to the new install's paths and versions with the person's edits kept, a removed one staying removed, an engine
-// the install no longer carries left alone, the person's own engines untouched, each machine given the build its
-// processor runs, the manifest found beside the app, and the controller seeding and saving the list as it starts.
+// them to the new install's paths and versions with the person's edits kept, a list saved under an engine's old name
+// brought up to its new one, a removed one staying removed, an engine the install no longer carries left alone, the
+// person's own engines untouched, each machine given the build its processor runs, the manifest found beside the app,
+// and the controller seeding and saving the list as it starts.
 
 #include "app/BundledEngines.h"
 #include "app/EngineManagerDialog.h"
 #include "app/Faces.h"
+#include "app/LayoutSettings.h"
 #include "app/MainController.h"
 #include "app/MainView.h"
 #include "app/PieceSet.h"
@@ -48,6 +50,12 @@ std::string Text(const std::filesystem::path &path)
     return std::string(text.begin(), text.end());
 }
 
+/** A path from the UTF-8 text the engine list keeps a program in. */
+std::filesystem::path PathOf(const std::string &text)
+{
+    return std::filesystem::path(std::u8string(text.begin(), text.end()));
+}
+
 /**
  * A manifest as tools/bundled_engines.py writes it, for engines at a version, every build's file written.
  * @param folder The engines' folder.
@@ -67,9 +75,9 @@ void WriteManifest(const std::filesystem::path &folder, const std::string &versi
 
     const std::vector<Spec> specs = {
         {"pawnstar", "Pawnstar", {"pawnstar/pawnstar"}, {"x86-64-v3"}},
-        {"zenith",
-         "Zenith",
-         {"zenith/x86-64-v3-pext/zenith", "zenith/x86-64-v2/zenith"},
+        {"trebuchet",
+         "Trebuchet",
+         {"trebuchet/x86-64-v3-pext/trebuchet", "trebuchet/x86-64-v2/trebuchet"},
          {"x86-64-v3-fast-pext", "x86-64-v2"}},
         {"stoopid-chess", "Stoopid Chess", {"stoopid-chess/stoopid-chess"}, {""}},
     };
@@ -186,7 +194,7 @@ TEST(BundledEngines, AFreshListIsSeededWithEveryEngineMarkedBundledAtItsDefaults
     const auto back = EngineCatalogue::FromJson(catalogue.ToJson());
     ASSERT_TRUE(back.has_value());
     EXPECT_EQ(back->ToJson(), catalogue.ToJson());
-    EXPECT_EQ(back->engines[1].bundled_id, "zenith");
+    EXPECT_EQ(back->engines[1].bundled_id, "trebuchet");
     EXPECT_TRUE(catalogue.ToJson()["engines"].AsArray()->at(0).BoolOr("bundled", false));
 }
 
@@ -225,7 +233,10 @@ TEST(BundledEngines, AnUpgradeMovesTheBundledEnginesAndKeepsThePersonsEditsAndEn
     EXPECT_EQ(moved.book_path, "/books/a.bin");
     EXPECT_EQ(moved.depth, 12);
     EXPECT_FALSE(moved.is_analysing);
-    EXPECT_EQ(Bundled(catalogue, "zenith")->bundled_version, "1.1.0");
+    EXPECT_EQ(Bundled(catalogue, "trebuchet")->bundled_version, "1.1.0");
+    EXPECT_EQ(Bundled(catalogue, "stoopid-chess")->bundled_version, "1.1.0");
+    EXPECT_EQ(Bundled(catalogue, "stoopid-chess")->engine_name, "Stoopid Chess 1.1.0")
+        << "a rising version's facts too";
 }
 
 TEST(BundledEngines, AnEngineThePersonRemovedStaysRemoved)
@@ -236,10 +247,10 @@ TEST(BundledEngines, AnEngineThePersonRemovedStaysRemoved)
     EngineCatalogue catalogue;
     SeedBundledEngines(catalogue, bundled);
     catalogue.Remove(1);
-    EXPECT_EQ(catalogue.removed_bundled, std::vector<std::string>{"zenith"});
+    EXPECT_EQ(catalogue.removed_bundled, std::vector<std::string>{"trebuchet"});
     EXPECT_FALSE(SeedBundledEngines(catalogue, bundled));
-    EXPECT_EQ(Bundled(catalogue, "zenith"), nullptr);
-    EXPECT_EQ(EngineCatalogue::FromJson(catalogue.ToJson())->removed_bundled, std::vector<std::string>{"zenith"});
+    EXPECT_EQ(Bundled(catalogue, "trebuchet"), nullptr);
+    EXPECT_EQ(EngineCatalogue::FromJson(catalogue.ToJson())->removed_bundled, std::vector<std::string>{"trebuchet"});
     catalogue.Remove(99); // nothing there: nothing removed
     EXPECT_EQ(catalogue.engines.size(), 2u);
 }
@@ -281,24 +292,24 @@ TEST(BundledEngines, EachMachineRunsTheBuildItsProcessorTakes)
 {
     const auto folder = reckless::test::ScratchPath("amphitheater-bundled-cpu") / "engines";
     WriteManifest(folder, "1.0.0");
-    const auto zenith = [&folder](const CpuLevels &cpu) -> std::string {
+    const auto trebuchet = [&folder](const CpuLevels &cpu) -> std::string {
         for (const BundledEngine &engine : ReadBundledEngines(folder, cpu))
         {
-            if (engine.id == "zenith")
+            if (engine.id == "trebuchet")
             {
                 return engine.executable.parent_path().filename().string();
             }
         }
         return "none";
     };
-    EXPECT_EQ(zenith(kModernCpu), "x86-64-v3-pext");
-    EXPECT_EQ(zenith(CpuLevels{true, true, false}), "x86-64-v2") << "no fast PEXT (Zen 1 and 2): the portable build";
-    EXPECT_EQ(zenith(CpuLevels{false, false, false}), "none") << "no build of it runs";
+    EXPECT_EQ(trebuchet(kModernCpu), "x86-64-v3-pext");
+    EXPECT_EQ(trebuchet(CpuLevels{true, true, false}), "x86-64-v2") << "no fast PEXT (Zen 1 and 2): the portable build";
+    EXPECT_EQ(trebuchet(CpuLevels{false, false, false}), "none") << "no build of it runs";
     const auto older = ReadBundledEngines(folder, CpuLevels{true, false, false});
     ASSERT_EQ(older.size(), 2u) << "an x86-64-v2 machine is offered no Pawnstar, whose build is AVX2 throughout";
-    EXPECT_EQ(older[0].id, "zenith");
-    std::filesystem::remove(folder / "zenith" / "x86-64-v3-pext" / "zenith");
-    EXPECT_EQ(zenith(kModernCpu), "x86-64-v2") << "a build that is not there is passed over";
+    EXPECT_EQ(older[0].id, "trebuchet");
+    std::filesystem::remove(folder / "trebuchet" / "x86-64-v3-pext" / "trebuchet");
+    EXPECT_EQ(trebuchet(kModernCpu), "x86-64-v2") << "a build that is not there is passed over";
 
     EXPECT_TRUE(MeetsRequirement(CpuLevels{}, ""));
     EXPECT_FALSE(MeetsRequirement(kModernCpu, "x86-64-v9"));
@@ -348,7 +359,7 @@ TEST(BundledEngines, TheControllerSeedsAndSavesTheListAsItStartsAndNeverWritesOv
     files.engines         = root / "settings" / "engines.json";
     files.bundled_engines = root / "engines";
     // As many as this machine's processor runs: all three on a modern x86-64, Stoopid Chess alone elsewhere, since the
-    // test's manifest gives Pawnstar and Zenith x86-64 builds only.
+    // test's manifest gives Pawnstar and Trebuchet x86-64 builds only.
     const std::size_t runnable = ReadBundledEngines(files.bundled_engines, DetectCpuLevels()).size();
     ASSERT_GE(runnable, 1u);
     {
@@ -378,6 +389,193 @@ TEST(BundledEngines, TheControllerSeedsAndSavesTheListAsItStartsAndNeverWritesOv
         EXPECT_TRUE(controller.catalogue().engines.empty());
     }
     EXPECT_FALSE(std::filesystem::exists(none.engines));
+}
+
+namespace
+{
+
+/**
+ * An engine list as Reckless Amphitheater 1.1.0 saved it, on the file as that release wrote it: Pawnstar, the engine
+ * under its old name with the person's settings, and the person's own engine named Zenith too.
+ * @param install The folder the old install's engines lay in.
+ * @param seeded_version The version the old entry was last seeded from.
+ * @return The file's text.
+ */
+std::string ListSavedBeforeTheRename(const std::string &install, const std::string &seeded_version = "3.0.0")
+{
+    return "{\"format\": 1, \"engines\": ["
+           "{\"name\": \"Pawnstar\", \"executable\": \"" +
+           install +
+           "/pawnstar/pawnstar\", \"bundled\": true, \"bundled_id\": \"pawnstar\", "
+           "\"bundled_version\": \"2.1.0\", \"engine_name\": \"Pawnstar 2.1.0\"},"
+           "{\"name\": \"Zenith\", \"executable\": \"" +
+           install +
+           "/zenith/x86-64-v3-pext/zenith\", \"options\": [{\"name\": \"Hash\", \"value\": \"256\"}], "
+           "\"ponder\": true, \"book\": \"/books/mine.bin\", \"book_depth\": 10, \"depth\": 18, "
+           "\"analyse\": false, \"author\": \"Jonny Reckless\", \"engine_name\": \"Zenith " +
+           seeded_version + "\", \"bundled\": true, \"bundled_id\": \"zenith\", \"bundled_version\": \"" +
+           seeded_version +
+           "\", \"declared\": [{\"name\": \"Hash\", \"type\": \"spin\", \"default\": \"64\"}]},"
+           "{\"name\": \"Zenith\", \"executable\": \"/engines/my-own-zenith\"}"
+           "]}";
+}
+
+/** A list from a file's text, which must read. */
+EngineCatalogue ReadList(const std::string &text, const std::filesystem::path &scratch)
+{
+    std::filesystem::create_directories(scratch);
+    const auto file = scratch / "engines.json";
+    std::ofstream(file, std::ios::binary | std::ios::trunc) << text;
+    std::string error;
+    auto        catalogue = EngineCatalogue::Load(file, &error);
+    EXPECT_TRUE(catalogue.has_value()) << error;
+    return catalogue ? *catalogue : EngineCatalogue{};
+}
+
+} // namespace
+
+TEST(BundledEngines, AnUpgradeMovesAListSavedUnderTheOldNameToTheNewEngineWithThePersonsSettingsKept)
+{
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed");
+    // The installer took the old engine away: its file is not there, and neither the entry nor a second one names it.
+    WriteManifest(root / "new" / "engines", "1.0.0");
+    const auto      bundled   = ReadBundledEngines(root / "new" / "engines", kModernCpu);
+    EngineCatalogue catalogue = ReadList(ListSavedBeforeTheRename((root / "old" / "engines").generic_string()), root);
+    ASSERT_EQ(catalogue.engines.size(), 3u);
+
+    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
+    EXPECT_EQ(Bundled(catalogue, "zenith"), nullptr) << "no entry left on the program the installer took away";
+    ASSERT_EQ(catalogue.engines.size(), 4u) << "the engine moved, not listed twice; Stoopid Chess is the one new one";
+    const EngineEntry &moved = catalogue.engines[1];
+    EXPECT_EQ(moved.bundled_id, "trebuchet") << "in its place in the list";
+    EXPECT_EQ(moved.config.name, "Trebuchet");
+    EXPECT_EQ(moved.config.executable,
+              Text((root / "new" / "engines" / "trebuchet" / "x86-64-v3-pext" / "trebuchet").lexically_normal()));
+    EXPECT_TRUE(std::filesystem::exists(PathOf(moved.config.executable)));
+    EXPECT_EQ(moved.engine_name, "Trebuchet 1.0.0");
+    EXPECT_EQ(moved.bundled_version, "1.0.0");
+    EXPECT_EQ(moved.declared.at(0).maximum, 1024) << "the new release's declared options";
+    EXPECT_EQ(moved.OptionValue("Hash"), "256");
+    EXPECT_FALSE(moved.HasOption("Threads")) << "nothing of the manifest's defaults laid over the person's";
+    EXPECT_TRUE(moved.config.does_ponder);
+    EXPECT_EQ(moved.book_path, "/books/mine.bin");
+    EXPECT_EQ(moved.book_depth, 10);
+    EXPECT_EQ(moved.depth, 18);
+    EXPECT_FALSE(moved.is_analysing);
+    EXPECT_FALSE(SeedBundledEngines(catalogue, bundled)) << "a second start changes nothing";
+    EXPECT_EQ(catalogue.engines.size(), 4u);
+}
+
+TEST(BundledEngines, TheVersionNumberRestartingWithTheNewNameIsNoDowngrade)
+{
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-restart");
+    WriteManifest(root / "new" / "engines", "1.0.0");
+    const auto bundled = ReadBundledEngines(root / "new" / "engines", kModernCpu);
+    // 3.0.0 from 1.1.0 and 2.1.0 from 1.0.x, both above the new number; and one that happens to equal it.
+    for (const std::string seeded : {"3.0.0", "2.1.0", "1.0.0"})
+    {
+        EngineCatalogue catalogue =
+            ReadList(ListSavedBeforeTheRename((root / "old" / "engines").generic_string(), seeded), root);
+        ASSERT_TRUE(SeedBundledEngines(catalogue, bundled));
+        const EngineEntry *moved = Bundled(catalogue, "trebuchet");
+        ASSERT_NE(moved, nullptr) << seeded;
+        EXPECT_EQ(moved->bundled_version, "1.0.0") << seeded;
+        EXPECT_EQ(moved->engine_name, "Trebuchet 1.0.0") << seeded;
+    }
+}
+
+TEST(BundledEngines, ANameThePersonGaveAndThePersonsOwnEngineOfTheOldNameStayThroughTheRename)
+{
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed-own");
+    WriteManifest(root / "new" / "engines", "1.0.0");
+    EngineCatalogue catalogue = ReadList(ListSavedBeforeTheRename((root / "old" / "engines").generic_string()), root);
+    catalogue.engines[1].config.name = "My Zenith";
+    const EngineEntry own            = catalogue.engines[2];
+    ASSERT_FALSE(own.IsBundled());
+
+    SeedBundledEngines(catalogue, ReadBundledEngines(root / "new" / "engines", kModernCpu));
+    EXPECT_EQ(catalogue.engines[1].bundled_id, "trebuchet");
+    EXPECT_EQ(catalogue.engines[1].config.name, "My Zenith") << "the person's word for it";
+    EXPECT_EQ(catalogue.engines[1].engine_name, "Trebuchet 1.0.0") << "what the program says of itself";
+    EXPECT_EQ(EntryJson(catalogue.engines[2]), EntryJson(own)) << "a person's own engine is never touched";
+}
+
+TEST(BundledEngines, AnEngineRemovedUnderTheOldNameStaysRemovedUnderTheNewOne)
+{
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed-removed");
+    WriteManifest(root / "new" / "engines", "1.0.0");
+    const auto      bundled = ReadBundledEngines(root / "new" / "engines", kModernCpu);
+    EngineCatalogue catalogue;
+    catalogue.removed_bundled = {"pawnstar", "zenith"};
+
+    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
+    EXPECT_EQ(catalogue.removed_bundled, (std::vector<std::string>{"pawnstar", "trebuchet"})) << "in its place";
+    EXPECT_EQ(Bundled(catalogue, "trebuchet"), nullptr) << "the person's opt-out holds";
+    EXPECT_EQ(Bundled(catalogue, "pawnstar"), nullptr);
+    EXPECT_EQ(catalogue.engines.size(), 1u) << "Stoopid Chess alone is added";
+    EXPECT_FALSE(SeedBundledEngines(catalogue, bundled)) << "a second start changes nothing";
+
+    // Both on the list, from running this release before an older one again: one record, not two.
+    catalogue.removed_bundled = {"trebuchet", "zenith"};
+    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
+    EXPECT_EQ(catalogue.removed_bundled, std::vector<std::string>{"trebuchet"});
+    EXPECT_EQ(Bundled(catalogue, "trebuchet"), nullptr);
+}
+
+TEST(BundledEngines, AListHoldingTheEngineUnderBothNamesKeepsTheNewOneAlone)
+{
+    // Running this release, then an older one again, which seeds the old name beside the new; then this release.
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed-both");
+    WriteManifest(root / "new" / "engines", "1.0.0");
+    const auto      bundled = ReadBundledEngines(root / "new" / "engines", kModernCpu);
+    EngineCatalogue catalogue;
+    SeedBundledEngines(catalogue, bundled);
+    ASSERT_EQ(catalogue.engines.at(1).bundled_id, "trebuchet");
+    catalogue.engines[1].SetOption("Hash", "512");
+    EngineEntry old;
+    old.config.name       = "Zenith";
+    old.config.executable = "/old/engines/zenith/x86-64-v2/zenith";
+    old.bundled_id        = "zenith";
+    old.bundled_version   = "3.0.0";
+    catalogue.engines.push_back(old);
+
+    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
+    EXPECT_EQ(Bundled(catalogue, "zenith"), nullptr);
+    ASSERT_EQ(catalogue.engines.size(), 3u);
+    EXPECT_EQ(Bundled(catalogue, "trebuchet")->OptionValue("Hash"), "512");
+    EXPECT_TRUE(catalogue.removed_bundled.empty()) << "dropped, not removed by the person";
+}
+
+TEST(BundledEngines, TheControllerBringsASavedListAndLayoutThroughTheRenameAsItStarts)
+{
+    const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed-controller");
+    std::filesystem::remove_all(root);
+    WriteManifest(root / "new" / "engines", "1.0.0");
+    std::filesystem::create_directories(root / "settings");
+    ControllerFiles files;
+    files.engines         = root / "settings" / "engines.json";
+    files.bundled_engines = root / "new" / "engines";
+    files.layout          = root / "settings" / "layout.json";
+    std::ofstream(files.engines, std::ios::binary)
+        << ListSavedBeforeTheRename((root / "old" / "engines").generic_string());
+    // The one thing a layout keeps that could name the engine is the book, and the built-in one is kept by no file's
+    // name: the book opens as it did, under the engine's new name. No other file holds an engine; a game, a match and a
+    // tournament are chosen afresh from the list each time, and the PGNs and logs a person saved are theirs.
+    std::ofstream(files.layout, std::ios::binary) << "{\"book\": \"built-in\"}";
+
+    MainView view(Pieces());
+    {
+        MainController controller(view, files);
+        ASSERT_NE(Bundled(controller.catalogue(), "trebuchet"), nullptr);
+        EXPECT_EQ(Bundled(controller.catalogue(), "zenith"), nullptr);
+        EXPECT_EQ(controller.book_path(), kBuiltInBook);
+        EXPECT_EQ(view.book_label().detail(), "Trebuchet's, built in");
+    }
+    const auto saved = EngineCatalogue::Load(files.engines);
+    ASSERT_TRUE(saved.has_value());
+    ASSERT_NE(Bundled(*saved, "trebuchet"), nullptr) << "written back, so the next start has nothing to do";
+    EXPECT_EQ(Bundled(*saved, "trebuchet")->config.name, "Trebuchet");
+    EXPECT_EQ(Bundled(*saved, "zenith"), nullptr);
 }
 
 TEST(BundledEngines, TheManagerShowsABundledEngineAsSuchAndRemovesItForGood)

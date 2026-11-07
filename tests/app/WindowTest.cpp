@@ -303,7 +303,7 @@ TEST(EngineLog, LongLinesWrapAtASpaceIndentedUnderTheirText)
 
     EngineLogModel model;
     model.Add("Pawnstar", LogDirection::kFromEngine, "info depth 24 pv e2e4 e7e5 g1f3");
-    model.Add("Zenith", LogDirection::kToEngine, "isready");
+    model.Add("Trebuchet", LogDirection::kToEngine, "isready");
     EXPECT_EQ(model.RowCount(), 2u);
     EXPECT_TRUE(model.SetWrapColumns(24));
     EXPECT_EQ(model.RowCount(), 4u);

@@ -13,7 +13,7 @@
 namespace amphitheater::app
 {
 
-/** The book setting naming the built-in book, Zenith's own (assets/books), which the window carries inside itself. */
+/** The book setting naming the built-in book, Trebuchet's own (assets/books), which the window carries itself. */
 inline constexpr std::string_view kBuiltInBook = "built-in";
 
 /** The window's layout a launch opens with. */

@@ -14,8 +14,8 @@ notices. Everything after it - the archive, the installers, the signing - reads 
              with the Developer ID after, packaging/macos/sign.sh), amphitheater-cli, LICENSE.txt, THIRD-PARTY-NOTICES.txt
 
 The folder is emptied first; a binary the build did not make stops it before anything is copied. Every engine the stage
-lays out answers its handshake on this machine before the stage ends (both of Zenith's x86-64 builds where the CPU
-takes both), so a stage holds only engines that run; an engine that needs a library a fresh machine lacks stops the
+lays out answers its handshake on this machine before the stage ends (both of Trebuchet's x86-64 builds where the
+CPU takes both), so a stage holds only engines that run; an engine that needs a library a fresh machine lacks stops the
 stage, or with --leave-out-unfit (a pull request's run, never a release) is left out of it with a warning. The cache is
 tools/bundled_engines.py's.
 """

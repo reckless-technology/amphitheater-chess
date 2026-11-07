@@ -49,7 +49,7 @@ void ShowSample(MainView &view)
     white.is_running = true;
     PlayerStripState black;
     black.is_white = false;
-    black.name     = "Zenith 0.9";
+    black.name     = "Trebuchet 0.9";
     black.details  = "Black \xc2\xb7 engine \xc2\xb7 Threads 1, Hash 64 MB, ponder";
     black.clock    = ClockText(238900);
     view.SetPlayers(white, black);
@@ -58,7 +58,7 @@ void ShowSample(MainView &view)
                   {"Opening", "B90 Sicilian, Najdorf, English Attack"},
                   {"Time control", "5 min + 3 s"},
                   {"Book", "openings-6ply.epd, left after move 3"},
-                  {"Match score", "Pawnstar 3\xc2\xbd - 2\xc2\xbd Zenith (Elo +35 \xc2\xb1 140)"},
+                  {"Match score", "Pawnstar 3\xc2\xbd - 2\xc2\xbd Trebuchet (Elo +35 \xc2\xb1 140)"},
                   {"FEN", game.CurrentPosition().ToFen(), true}});
 
     EngineBlock pawnstar;
@@ -69,29 +69,29 @@ void ShowSample(MainView &view)
     pawnstar.lines = {{"24/38", "+0.42", 1, "13.Ne2 Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1"},
                       {"23/35", "+0.31", 1, "13.Ne2 Ne8 14.f4 a5 15.Ng3 a4 16.Nd2 Nc5 17.f5", true},
                       {"22/33", "+0.38", 1, "13.Nd5 Nxd5 14.exd5 Bf5 15.Bd3 Bxd3 16.Qxd3 Nc5", true}};
-    EngineBlock zenith;
-    zenith.name        = "Zenith 0.9";
-    zenith.state       = "pondering 13.Ne2";
-    zenith.is_thinking = false;
-    zenith.stats       = "depth 21/33 \xc2\xb7 6.4 Mn \xc2\xb7 1.48 Mn/s \xc2\xb7 hash 21 %";
-    zenith.lines       = {{"21/33", "-0.27", -1, "13...Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1 bxc2+"},
-                          {"20/31", "-0.19", -1, "13...Ne8 14.f4 a5 15.f5 Bc4 16.Nf4 a4 17.Nd2", true},
-                          {"19/30", "-0.22", -1, "13...a5 14.f4 a4 15.Nd2 Nb6 16.f5 Bc4", true}};
-    view.SetAnalysis({pawnstar, zenith});
+    EngineBlock trebuchet;
+    trebuchet.name        = "Trebuchet 0.9";
+    trebuchet.state       = "pondering 13.Ne2";
+    trebuchet.is_thinking = false;
+    trebuchet.stats       = "depth 21/33 \xc2\xb7 6.4 Mn \xc2\xb7 1.48 Mn/s \xc2\xb7 hash 21 %";
+    trebuchet.lines       = {{"21/33", "-0.27", -1, "13...Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1 bxc2+"},
+                             {"20/31", "-0.19", -1, "13...Ne8 14.f4 a5 15.f5 Bc4 16.Nf4 a4 17.Nd2", true},
+                             {"19/30", "-0.22", -1, "13...a5 14.f4 a4 15.Nd2 Nb6 16.f5 Bc4", true}};
+    view.SetAnalysis({pawnstar, trebuchet});
     view.SetAnalysing(true);
 
     // Each engine's own scores at its own moves, from White's side, after the book's six plies: Pawnstar a little more
-    // pleased with White than Zenith is.
-    EvalSeries   pawnstar_scores{"Pawnstar 2.1", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
-    EvalSeries   zenith_scores{"Zenith 0.9", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
+    // pleased with White than Trebuchet is.
+    EvalSeries pawnstar_scores{"Pawnstar 2.1", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
+    EvalSeries trebuchet_scores{"Trebuchet 0.9", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
     const double white_view[] = {0.28, 0.33, 0.36, 0.40, 0.31, 0.34, 0.38, 0.36, 0.44};
     const double black_view[] = {0.18, 0.12, 0.21, 0.06, -0.08, 0.04, -0.15, -0.21, -0.27};
     for (std::size_t move = 0; move < std::size(white_view); ++move)
     {
-        pawnstar_scores.points[6 + 2 * move] = EvalPoint{white_view[move], std::nullopt};
-        zenith_scores.points[7 + 2 * move]   = EvalPoint{black_view[move], std::nullopt};
+        pawnstar_scores.points[6 + 2 * move]  = EvalPoint{white_view[move], std::nullopt};
+        trebuchet_scores.points[7 + 2 * move] = EvalPoint{black_view[move], std::nullopt};
     }
-    view.SetEval({pawnstar_scores, zenith_scores}, ply, ply, "12...b4  -0.27");
+    view.SetEval({pawnstar_scores, trebuchet_scores}, ply, ply, "12...b4  -0.27");
 
     EngineLog &log = view.log();
     log.Add("Pawnstar", LogDirection::kToEngine,
@@ -109,7 +109,7 @@ void ShowSample(MainView &view)
             "c3e2 f6e8 f3f4 a6a5 f4f5 a5a4 b3d4 e5d4 e2d4 b4b3 c1b1");
 
     view.SetStatus(
-        {"White to move", "Pawnstar searching", "Zenith pondering 13.Ne2", "Concurrency 1 \xc2\xb7 game 7 of 20"});
+        {"White to move", "Pawnstar searching", "Trebuchet pondering 13.Ne2", "Concurrency 1 \xc2\xb7 game 7 of 20"});
 }
 
 void ShowSampleBook(MainView &view)

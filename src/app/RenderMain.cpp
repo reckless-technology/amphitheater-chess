@@ -176,7 +176,7 @@ int main(int argc, char **argv)
     view.SetBounds({width, height});
     if (is_newgame)
     {
-        for (const char *name : {"Pawnstar 2.1", "Zenith 0.9"})
+        for (const char *name : {"Pawnstar 2.1", "Trebuchet 0.9"})
         {
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
@@ -204,11 +204,11 @@ int main(int argc, char **argv)
             pawnstar.declared.push_back(*amphitheater::uci::ParseOptionLine(line));
         }
         pawnstar.SetOption("Hash", "64");
-        amphitheater::app::EngineEntry zenith;
-        zenith.config.executable       = "C:/Engines/zenith/zenith.exe";
-        zenith.engine_name             = "Zenith 0.9";
-        zenith.author                  = "Jonny Reckless";
-        controller.catalogue().engines = {pawnstar, zenith};
+        amphitheater::app::EngineEntry trebuchet;
+        trebuchet.config.executable    = "C:/Engines/trebuchet/trebuchet.exe";
+        trebuchet.engine_name          = "Trebuchet 0.9";
+        trebuchet.author               = "Jonny Reckless";
+        controller.catalogue().engines = {pawnstar, trebuchet};
         controller.Command(amphitheater::app::kEngineManager);
     }
     if (is_setup)
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
     }
     if (is_tournament)
     {
-        for (const char *name : {"Pawnstar 2.1", "Zenith 0.9", "Stoopid Chess 1.4"})
+        for (const char *name : {"Pawnstar 2.1", "Trebuchet 0.9", "Stoopid Chess 1.4"})
         {
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
     }
     // Ten games of a double round robin of four: the leader two and a half points clear, one pairing yet to meet.
     using amphitheater::chess::GameResult;
-    const std::vector<std::string> names = {"Pawnstar 2.1", "Zenith 0.9", "Stoopid Chess 1.4", "Blunderbuss 3"};
+    const std::vector<std::string> names = {"Pawnstar 2.1", "Trebuchet 0.9", "Stoopid Chess 1.4", "Blunderbuss 3"};
     const std::vector<amphitheater::match::GameResultEntry> results = {
         {0, 1, GameResult::kWhiteWins}, {1, 0, GameResult::kDraw},      {0, 2, GameResult::kWhiteWins},
         {2, 0, GameResult::kDraw},      {1, 2, GameResult::kBlackWins}, {2, 1, GameResult::kWhiteWins},
@@ -253,11 +253,11 @@ int main(int argc, char **argv)
     // The five engines the installers carry, at the versions packaging/engines.json pins, as an install's About shows.
     amphitheater::app::AboutInfo about_info;
     about_info.version = amphitheater::VersionText();
-    about_info.engines = {{"Pawnstar", "1.2.0", "GPL-3.0"},
-                          {"Zenith", "2.1.0", "GPL-3.0-or-later"},
-                          {"Pawnstar-Go", "1.2.0", "GPL-3.0"},
-                          {"Pawnstar-RS", "1.2.0", "GPL-3.0"},
-                          {"Stoopid Chess", "3.0.0", "GPL-3.0"}};
+    about_info.engines = {{"Pawnstar", "2.1.0", "GPL-3.0"},
+                          {"Trebuchet", "1.0.0", "GPL-3.0-or-later"},
+                          {"Pawnstar-Go", "2.1.0", "GPL-3.0"},
+                          {"Pawnstar-RS", "2.1.0", "GPL-3.0"},
+                          {"Stoopid Chess", "4.1.0", "GPL-3.0"}};
     amphitheater::app::AboutDialog about(about_info);
     if (is_about)
     {

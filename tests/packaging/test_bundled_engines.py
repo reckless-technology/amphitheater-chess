@@ -65,7 +65,7 @@ class PinFile(unittest.TestCase):
     def test_the_committed_pins_hold_every_engine_on_every_platform(self):
         pins = be.load_pins()
         ids = [engine["id"] for engine in pins["engines"]]
-        self.assertEqual(ids, ["pawnstar", "zenith", "pawnstar-go", "pawnstar-rs", "stoopid-chess"])
+        self.assertEqual(ids, ["pawnstar", "trebuchet", "pawnstar-go", "pawnstar-rs", "stoopid-chess"])
         for engine in pins["engines"]:
             self.assertEqual(sorted(engine["builds"]), ["linux", "macos", "windows"], engine["id"])
             for option in engine["options"]:
@@ -77,9 +77,9 @@ class PinFile(unittest.TestCase):
             engine = next(e for e in pins["engines"] if e["id"] == engine_id)
             self.assertEqual({b.get("requires") for p in ("windows", "linux") for b in engine["builds"][p]},
                              {"x86-64-v3"}, f"{engine_id}'s x86-64 build is AVX2 throughout")
-        zenith = next(e for e in pins["engines"] if e["id"] == "zenith")
+        trebuchet = next(e for e in pins["engines"] if e["id"] == "trebuchet")
         for platform_name in ("windows", "linux"):
-            self.assertEqual([b.get("requires") for b in zenith["builds"][platform_name]],
+            self.assertEqual([b.get("requires") for b in trebuchet["builds"][platform_name]],
                              ["x86-64-v3-fast-pext", "x86-64-v2"], "the PEXT build first, the portable one after")
         # The file the update writes is the file committed.
         self.assertEqual(be.PINS.read_text(encoding="utf-8").replace("\r\n", "\n"),
