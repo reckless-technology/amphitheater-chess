@@ -15,7 +15,7 @@ enum Command : int
     kSavePgn,       ///< File > Save PGN...: the game shown, written to a file.
     kOpenBook,      ///< File > Open book...: a Polyglot book or a PGN, its moves for the position shown under the card.
     kMakeBook,      ///< File > Make book from games...: a book made from a library of games, saved and opened.
-    kUseBuiltInBook, ///< File > Built-in book: Zenith's own, which the window carries.
+    kUseBuiltInBook, ///< File > Built-in book: Trebuchet's own, which the window carries.
     kCloseBook,      ///< File > Close book.
     kQuit,           ///< File > Quit.
 

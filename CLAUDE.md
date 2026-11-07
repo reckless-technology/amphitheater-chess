@@ -116,7 +116,7 @@ GUI will save with the toolkit's JSON.
   argument. `PositionEditor` is Edit > Set up position over `chess::BoardSetup`; `GameAnalysisDialog` is Game >
   Analyse the game, which writes `[%eval]` comments, NAGs and the engine's lines into the tree; `TestSuiteDialog` is
   Engines > Test suite (`amphitheater-cli epd` on the command line); `BookPanel` is File > Open book's list of a
-  Polyglot or PGN book's moves under the card, drawn faintly on the board too, Zenith's own book built in with 1.d4
+  Polyglot or PGN book's moves under the card, drawn faintly on the board too, Trebuchet's own book built in with 1.d4
   added (`assets/books`, `make_book.py` writes it; regenerate rather than edit); `MakeBookDialog` is File > Make book from games (`amphitheater-cli makebook` on the command
   line). `EngineCatalogue` is the engine list
   (`reckless-technology/amphitheater/engines.json` in the user's settings folder); `WindowSizes` the View menu's window

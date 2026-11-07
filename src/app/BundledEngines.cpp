@@ -129,6 +129,64 @@ constexpr bool Bit(std::uint32_t value, int bit)
 
 #endif
 
+/**
+ * A list saved before a bundled engine took a new name brought up to it, so that the person's engine goes on as the new
+ * one rather than staying behind on a program the installer took away, with the new one listed beside it. The id moves
+ * in the list and among the engines the person removed; the name it was seeded with moves too, a name of the person's
+ * own staying; and the version it was seeded from is forgotten, so the new release's facts follow it however the two
+ * releases' numbers compare. An entry already under the new id, from running this release before an older one again,
+ * is the one kept.
+ * @param catalogue The list.
+ * @param old_id The engine's id before.
+ * @param old_name The name it was seeded with before.
+ * @param new_id Its id now.
+ * @param new_name The name it is seeded with now.
+ * @return Whether the list changed.
+ */
+bool CarryRenamedEngine(EngineCatalogue &catalogue, const std::string &old_id, const std::string &old_name,
+                        const std::string &new_id, const std::string &new_name)
+{
+    bool                      is_changed = false;
+    std::vector<std::string> &removed    = catalogue.removed_bundled;
+    if (const auto found = std::find(removed.begin(), removed.end(), old_id); found != removed.end())
+    {
+        if (std::find(removed.begin(), removed.end(), new_id) == removed.end())
+        {
+            *found = new_id;
+        }
+        else
+        {
+            removed.erase(found);
+        }
+        is_changed = true;
+    }
+    std::vector<EngineEntry> &engines = catalogue.engines;
+    const auto                has_id  = [](const std::string &id) {
+        return [&id](const EngineEntry &e) { return e.bundled_id == id; };
+    };
+    if (std::any_of(engines.begin(), engines.end(), has_id(new_id)))
+    {
+        const auto end = std::remove_if(engines.begin(), engines.end(), has_id(old_id));
+        is_changed     = is_changed || end != engines.end();
+        engines.erase(end, engines.end());
+        return is_changed;
+    }
+    for (EngineEntry &entry : engines)
+    {
+        if (entry.bundled_id == old_id)
+        {
+            entry.bundled_id = new_id;
+            entry.bundled_version.clear();
+            if (entry.config.name == old_name)
+            {
+                entry.config.name = new_name;
+            }
+            is_changed = true;
+        }
+    }
+    return is_changed;
+}
+
 } // namespace
 
 CpuLevels DetectCpuLevels()
@@ -313,7 +371,8 @@ std::vector<BundledEngine> ReadBundledEngines(const std::filesystem::path &folde
 
 bool SeedBundledEngines(EngineCatalogue &catalogue, const std::vector<BundledEngine> &bundled)
 {
-    bool is_changed = false;
+    // Zenith was renamed Trebuchet, since another chess program has the name, and lists saved before that still say so.
+    bool is_changed = CarryRenamedEngine(catalogue, "zenith", "Zenith", "trebuchet", "Trebuchet");
     for (const BundledEngine &engine : bundled)
     {
         const std::string executable = Utf8FromPath(engine.executable);

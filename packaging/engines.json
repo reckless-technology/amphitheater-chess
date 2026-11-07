@@ -58,17 +58,17 @@
       }
     },
     {
-      "id": "zenith",
-      "name": "Zenith",
-      "repository": "reckless-technology/zenith",
-      "tag": "v3.0.0",
-      "version": "3.0.0",
+      "id": "trebuchet",
+      "name": "Trebuchet",
+      "repository": "reckless-technology/trebuchet",
+      "tag": "v1.0.0",
+      "version": "1.0.0",
       "copyright": "Copyright (C) 2026 Jonny Reckless",
       "licence": "GPL-3.0-or-later",
       "source_asset_pattern": null,
       "source_asset": null,
-      "checksums_asset_pattern": "zenith-v{version}-SHA256SUMS.txt",
-      "checksums_asset": "zenith-v3.0.0-SHA256SUMS.txt",
+      "checksums_asset_pattern": "trebuchet-v{version}-SHA256SUMS.txt",
+      "checksums_asset": "trebuchet-v1.0.0-SHA256SUMS.txt",
       "options": [
         {
           "name": "Threads",
@@ -82,52 +82,52 @@
       "builds": {
         "windows": [
           {
-            "asset_pattern": "zenith-v{version}-windows-x86-64-v3-pext.zip",
-            "asset": "zenith-v3.0.0-windows-x86-64-v3-pext.zip",
-            "sha256": "88de89b30537bcfbbb1a94f57f725a3b90e0070db8f1a5d22062f872a58528e7",
-            "member_pattern": "zenith.exe",
-            "member": "zenith.exe",
-            "file": "x86-64-v3-pext/zenith.exe",
+            "asset_pattern": "trebuchet-v{version}-windows-x86-64-v3-pext.zip",
+            "asset": "trebuchet-v1.0.0-windows-x86-64-v3-pext.zip",
+            "sha256": "6d53f3af4b4c3d2a992bb5566b4cead200bd6f1c76e1dea296f82d44db7dfd0a",
+            "member_pattern": "trebuchet.exe",
+            "member": "trebuchet.exe",
+            "file": "x86-64-v3-pext/trebuchet.exe",
             "requires": "x86-64-v3-fast-pext"
           },
           {
-            "asset_pattern": "zenith-v{version}-windows-x86-64-v2.zip",
-            "asset": "zenith-v3.0.0-windows-x86-64-v2.zip",
-            "sha256": "0e0d3ff339b2059ff9888b9ad5caf9337929f8b1e643281c78d08ad74b81f256",
-            "member_pattern": "zenith.exe",
-            "member": "zenith.exe",
-            "file": "x86-64-v2/zenith.exe",
+            "asset_pattern": "trebuchet-v{version}-windows-x86-64-v2.zip",
+            "asset": "trebuchet-v1.0.0-windows-x86-64-v2.zip",
+            "sha256": "5c1ee297e7653c912926f1de8c8f4421757294edbee0d39079e8234244a9575a",
+            "member_pattern": "trebuchet.exe",
+            "member": "trebuchet.exe",
+            "file": "x86-64-v2/trebuchet.exe",
             "requires": "x86-64-v2"
           }
         ],
         "linux": [
           {
-            "asset_pattern": "zenith-v{version}-linux-x86-64-v3-pext.tar.gz",
-            "asset": "zenith-v3.0.0-linux-x86-64-v3-pext.tar.gz",
-            "sha256": "657f53c679d019cbb58a84b8f6134df865b075d612647b2d175e2c51e6ebfcaf",
-            "member_pattern": "zenith",
-            "member": "zenith",
-            "file": "x86-64-v3-pext/zenith",
+            "asset_pattern": "trebuchet-v{version}-linux-x86-64-v3-pext.tar.gz",
+            "asset": "trebuchet-v1.0.0-linux-x86-64-v3-pext.tar.gz",
+            "sha256": "de3698abb727e6a03b025ed88e75b781072b0b94f0874961217232fad4f9f20e",
+            "member_pattern": "trebuchet",
+            "member": "trebuchet",
+            "file": "x86-64-v3-pext/trebuchet",
             "requires": "x86-64-v3-fast-pext"
           },
           {
-            "asset_pattern": "zenith-v{version}-linux-x86-64-v2.tar.gz",
-            "asset": "zenith-v3.0.0-linux-x86-64-v2.tar.gz",
-            "sha256": "003dcd1b4cbe7a431ee0f9cbf9da73987abb1e2230f61f0b598f77a47ba925ca",
-            "member_pattern": "zenith",
-            "member": "zenith",
-            "file": "x86-64-v2/zenith",
+            "asset_pattern": "trebuchet-v{version}-linux-x86-64-v2.tar.gz",
+            "asset": "trebuchet-v1.0.0-linux-x86-64-v2.tar.gz",
+            "sha256": "d17b074d1f95f3825cbe006d70e3432ef34735ee42538f8c9c65f03123b818b6",
+            "member_pattern": "trebuchet",
+            "member": "trebuchet",
+            "file": "x86-64-v2/trebuchet",
             "requires": "x86-64-v2"
           }
         ],
         "macos": [
           {
-            "asset_pattern": "zenith-v{version}-macos-arm64.zip",
-            "asset": "zenith-v3.0.0-macos-arm64.zip",
-            "sha256": "55fa6d1b2bb6758689bec45248cee5be2de738d5cf44c9fabaeaf1c5a0ad0a7b",
-            "member_pattern": "zenith",
-            "member": "zenith",
-            "file": "zenith"
+            "asset_pattern": "trebuchet-v{version}-macos-arm64.zip",
+            "asset": "trebuchet-v1.0.0-macos-arm64.zip",
+            "sha256": "0564d40e8ef28ebe4cd78dd0924c540723c1c85bf31cc1c7281c6d84bc4b42eb",
+            "member_pattern": "trebuchet",
+            "member": "trebuchet",
+            "file": "trebuchet"
           }
         ]
       }
@@ -236,8 +236,8 @@
       "id": "stoopid-chess",
       "name": "Stoopid Chess",
       "repository": "reckless-technology/stoopid-chess",
-      "tag": "v3.0.0",
-      "version": "3.0.0",
+      "tag": "v4.1.0",
+      "version": "4.1.0",
       "copyright": "Copyright (C) 2009-2026 Jonny Reckless",
       "licence": "GPL-3.0",
       "source_asset_pattern": null,
@@ -252,26 +252,26 @@
         "windows": [
           {
             "asset_pattern": "stoopid-chess-{version}-windows-x86_64.exe",
-            "asset": "stoopid-chess-3.0.0-windows-x86_64.exe",
-            "sha256": "8b2e1980be0d0b7808389d52d32f3ac041cbf410c17648778663380a450a099c",
+            "asset": "stoopid-chess-4.1.0-windows-x86_64.exe",
+            "sha256": "85a88c0e726622f36e8de56929bebedbf006d7c0b2451061dd274ba8ebf6d2fd",
             "file": "stoopid-chess.exe"
           }
         ],
         "linux": [
           {
             "asset_pattern": "stoopid-chess-{version}-linux-x86_64",
-            "asset": "stoopid-chess-3.0.0-linux-x86_64",
-            "sha256": "04c8740c4a4128ac75e8510148a71a5faf116850014a876847f4e5fb375d2b72",
+            "asset": "stoopid-chess-4.1.0-linux-x86_64",
+            "sha256": "bf8fb34bfa1c97c7815867b88a8d3c54d909314dbeb9edcf3033e018ea4e2839",
             "file": "stoopid-chess"
           }
         ],
         "macos": [
           {
             "asset_pattern": "stoopid-chess-{version}-macos-arm64.zip",
-            "asset": "stoopid-chess-3.0.0-macos-arm64.zip",
-            "sha256": "0a7294f576e87000a97ecaa225bd558e6cdab12e6bcb678367d9f5af672442b1",
+            "asset": "stoopid-chess-4.1.0-macos-arm64.zip",
+            "sha256": "1a807940d23506eabb89cd8a41a4962fe6d305b1d936458d4dcf6c957cd6c90b",
             "member_pattern": "stoopid-chess-{version}-macos-arm64",
-            "member": "stoopid-chess-3.0.0-macos-arm64",
+            "member": "stoopid-chess-4.1.0-macos-arm64",
             "file": "stoopid-chess"
           }
         ]

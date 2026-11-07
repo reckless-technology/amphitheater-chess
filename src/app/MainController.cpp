@@ -1268,7 +1268,7 @@ bool MainController::OpenBook(const std::string &path)
     book_      = std::move(*book);
     book_path_ = path;
     book_position_.reset();
-    view_.SetBookShown(true, is_built_in ? "Zenith's, built in" : std::filesystem::path(path).filename().string());
+    view_.SetBookShown(true, is_built_in ? "Trebuchet's, built in" : std::filesystem::path(path).filename().string());
     RefreshBook(game_.PositionAt(view_ply_));
     RefreshMenuBar();
     return true;

@@ -4,7 +4,7 @@ packaging/engines.json by its tag, each platform's asset and the asset's SHA-256
 
     python3 tools/bundled_engines.py update [--check] [--cache DIR]
         Move every pin to its repository's latest release: the tag, the version, each asset's name and its SHA-256
-        computed from the download, held to GitHub's own digest of the asset and, for Zenith, to the release's
+        computed from the download, held to GitHub's own digest of the asset and, for Trebuchet, to the release's
         SHA256SUMS. --check writes nothing and exits 1 when a pin is behind. Opens nothing by itself: the pull request
         is a person's to make.
 
@@ -20,13 +20,13 @@ packaging/engines.json by its tag, each platform's asset and the asset's SHA-256
         the one run. The handshake (uci, isready, quit) runs every build this machine can run, so a staged engine
         that does not answer stops the stage; --no-handshake leaves it out, for a platform other than this machine's.
         A library an engine's release needs and does not carry - a companion, pinned in the engine's entry with its
-        archive, its own hash and its licence - is put beside every build of it (Zenith's libwinpthread-1.dll on
+        archive, its own hash and its licence - is put beside every build of it (Trebuchet's libwinpthread-1.dll on
         Windows, until its release links it statically); an engine that still imports what a fresh machine lacks
         stops the stage, or with --leave-out-unfit is left out of it with a warning.
 
     python3 tools/bundled_engines.py smoke ENGINES_DIR
         Every engine of a manifest, from where it lies, answers uci with uciok and isready with readyok, and names its
-        pinned version: each build this machine can run (both of Zenith's x86-64 builds where the CPU takes both).
+        pinned version: each build this machine can run (both of Trebuchet's x86-64 builds where the CPU takes both).
 
 The cache is --cache, else $RUNNER_TOOL_CACHE/reckless-amphitheater-engines, else build/engines-cache; each file is kept
 under its own SHA-256, so two pins never meet. RECKLESS_ENGINES_BASE_URL replaces https://github.com for the

@@ -79,7 +79,7 @@ void WriteManifest(const std::filesystem::path &folder)
     };
 
     const Spec  specs[] = {{"pawnstar", "Pawnstar", "1.2.0", "GPL-3.0", "x86-64-v3-fast-pext", true},
-                           {"zenith", "Zenith", "2.1.0", "GPL-3.0-or-later", "", true},
+                           {"trebuchet", "Trebuchet", "2.1.0", "GPL-3.0-or-later", "", true},
                            {"gone", "Gone", "0.1.0", "GPL-3.0", "", false}};
     json::Value engines = json::Value::MakeArray();
     for (const Spec &spec : specs)
@@ -190,7 +190,7 @@ TEST(About, TheEnginesTheInstallCarriesAreListedWithTheirVersionsAndLicences)
     auto *about = dynamic_cast<AboutDialog *>(controller.dialog());
     ASSERT_NE(about, nullptr);
     EXPECT_EQ(about->EngineLines(),
-              (std::vector<std::string>{"Pawnstar 1.2.0 (GPLv3)", "Zenith 2.1.0 (GPLv3 or later)"}))
+              (std::vector<std::string>{"Pawnstar 1.2.0 (GPLv3)", "Trebuchet 2.1.0 (GPLv3 or later)"}))
         << "every engine whose program is there, whatever this processor runs; the missing one left out";
     const std::vector<std::string> lines = about->Lines();
     EXPECT_NE(std::find(lines.begin(), lines.end(), "Bundled engines"), lines.end());

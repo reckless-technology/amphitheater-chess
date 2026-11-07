@@ -60,9 +60,9 @@ the board does: on along the line shown, a variation leaving it, or a person's m
 card takes only the height its lines need. The book open is kept in `layout.json` and opened again at the next
 launch; File > Close book takes it away.
 
-The window carries a book of its own (`assets/books`, embedded as `books/built-in.bin`): Zenith's, about 14,000
-positions built entirely from Zenith's self-play, with replies to openings Zenith does not choose itself, and 1.d4
-added as a first move (`assets/books/make_book.py`) - Zenith's lines after it were there already - so the book opens
+The window carries a book of its own (`assets/books`, embedded as `books/built-in.bin`): Trebuchet's, about 14,000
+positions built entirely from Trebuchet's self-play, with replies to openings Trebuchet does not choose itself, and 1.d4
+added as a first move (`assets/books/make_book.py`) - Trebuchet's lines after it were there already - so the book opens
 1.e4, 1.c4 and 1.d4, the last about a fifth of the time. A first launch opens it, and File > Built-in book opens it
 again. File > Open book takes a person's own book too: a Polyglot `.bin`,
 or a PGN file, read as a book of its games' openings (`chess/PgnBook.h`) - every move each game and each of its
@@ -175,7 +175,7 @@ runtime.
 | `notices` | `tools/third_party_notices.py --check` | `THIRD-PARTY-NOTICES.txt` as the build's fetches and the engines' pins write it |
 | `icon` | `tools/make_icon.py --check` | the committed icon as the script renders it from the artwork; skipped where the Python lacks Pillow or resvg-py |
 | `pieces_cburnett` | `assets/pieces/cburnett/convert_pieces.py --check` | the committed cburnett pieces as the script writes them from the Commons originals; skipped where the Python lacks svgelements or skia-pathops |
-| `book` | `assets/books/make_book.py --check` | the built-in book as the script writes it from Zenith's, with 1.d4 added |
+| `book` | `assets/books/make_book.py --check` | the built-in book as the script writes it from Trebuchet's, with 1.d4 added |
 | `render_main`, `render_flipped`, `render_newgame`, `render_engines`, `render_tournament`, `render_standings`, `render_about` | `amphitheater_render_main` | the window and its dialogs drawn to PNGs with no display |
 
 ```
@@ -434,9 +434,9 @@ says so. Nothing in the tree is edited to release.
 
 ## The bundled engines
 
-The installers carry five UCI engines, the binary of each one's latest release, unmodified: Pawnstar, Zenith,
+The installers carry five UCI engines, the binary of each one's latest release, unmodified: Pawnstar, Trebuchet,
 Pawnstar-Go, Pawnstar-RS and Stoopid Chess. `packaging/engines.json` pins each one - its repository, its tag, each
-platform's asset with its SHA-256 (Zenith's held to its release's SHA256SUMS, every one to GitHub's digest of the
+platform's asset with its SHA-256 (Trebuchet's held to its release's SHA256SUMS, every one to GitHub's digest of the
 asset), the file inside an archive, and the defaults it is seeded with. `tools/update-engines.sh` (or `.ps1`) moves the
 pins to each repository's latest release with fresh hashes and writes the file alone; read the diff, run
 `tools/third_party_notices.py <build-dir>` (the notices name each engine's version), and open the pull request.
@@ -455,7 +455,7 @@ proven.
 | Engine | Windows, Linux (x86-64) | macOS |
 |---|---|---|
 | Pawnstar | one build, AVX2 throughout: needs x86-64-v3 | arm64 |
-| Zenith | two builds: x86-64-v3-pext where the CPU has AVX2 and BMI2 with a fast PEXT (not AMD's Zen 1 and 2), else x86-64-v2 | arm64 |
+| Trebuchet | two builds: x86-64-v3-pext where the CPU has AVX2 and BMI2 with a fast PEXT (not AMD's Zen 1 and 2), else x86-64-v2 | arm64 |
 | Pawnstar-Go | one build, AVX2: needs x86-64-v3 | arm64 |
 | Pawnstar-RS | one build, any x86-64 | arm64 |
 | Stoopid Chess | one build (.NET, self-contained), any x86-64 | arm64 |
@@ -474,6 +474,9 @@ ends. A build tree's host carries no engines and seeds nothing.
 At every start the host reads the manifest (`src/app/BundledEngines.h`, CPUID for the x86-64 levels) and seeds the
 person's engine list:
 
+- a list saved before a bundled engine was renamed is brought up to the new name first: the entry and any record of
+  its removal take the new id, and the name it was seeded with the new name, while a name the person gave it stays and
+  so does every other setting;
 - an engine new to the list is added at its end, marked `bundled` (with its id and version), named as the manifest
   names it, with Threads 1 (where it has the option), Hash 64 MB and, for Pawnstar, Move Overhead 100 ms - never the
   engines' own Threads defaults, which oversubscribe a machine running a match two engines at a time;

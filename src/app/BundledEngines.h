@@ -8,8 +8,9 @@
 /// with, the options its handshake declared when it was packaged, and its builds in order of preference, each with what
 /// it asks of the CPU (tools/bundled_engines.py writes it). At every start the host reads it and seeds the engine list
 /// (SeedBundledEngines): an engine new to the list is added with the manifest's defaults, marked bundled; one the list
-/// holds already follows the install to its new path and version with the person's own settings kept; one the person
-/// removed stays removed; the person's own engines are never touched.
+/// holds already follows the install to its new path and version with the person's own settings kept, under its new
+/// id and name where the engine has been renamed; one the person removed stays removed; the person's own engines are
+/// never touched.
 
 #include "EngineCatalogue.h"
 
@@ -79,6 +80,8 @@ std::vector<BundledEngine> ReadBundledEngines(const std::filesystem::path &folde
 
 /**
  * Seed an engine list with the bundled engines, by these rules:
+ *  - a bundled engine or a removed one under an id the engine has since left takes its new id first, and the name it
+ *    was seeded with takes the new name, so the rules below find it as the engine it now is;
  *  - an engine the list marks bundled with the same id has its program moved to the bundled build's path, and on a new
  *    version its version, the name and author its handshake gave and its declared options moved to the new release's;
  *    everything a person sets - the name shown, the options, arguments, pondering, analysis, depth, book - is kept;

@@ -127,7 +127,7 @@ class CompetitionSession
     }
 
     /**
-     * A one-line summary of the score: "Pawnstar 3½ - 2½ Zenith (Elo +35 ± 140, LOS 70 %)" for a match, the leader's
+     * A one-line summary of the score: "Pawnstar 3½ - 2½ Trebuchet (Elo +35 ± 140, LOS 70 %)" for a match, the leader's
      * points for a tournament.
      * @return The text; empty before any game finished.
      */
