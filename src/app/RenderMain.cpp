@@ -176,7 +176,7 @@ int main(int argc, char **argv)
     view.SetBounds({width, height});
     if (is_newgame)
     {
-        for (const char *name : {"Pawnstar 2.1", "Trebuchet 0.9"})
+        for (const char *name : {"Pawnstar 2.2.0", "Trebuchet 1.0.0"})
         {
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
     {
         amphitheater::app::EngineEntry pawnstar;
         pawnstar.config.executable  = "C:/Engines/pawnstar/pawnstar.exe";
-        pawnstar.engine_name        = "Pawnstar 2.1";
+        pawnstar.engine_name        = "Pawnstar 2.2.0";
         pawnstar.author             = "Jonny Reckless";
         pawnstar.config.does_ponder = true;
         pawnstar.book_path          = "C:/Books/openings.bin";
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
         pawnstar.SetOption("Hash", "64");
         amphitheater::app::EngineEntry trebuchet;
         trebuchet.config.executable    = "C:/Engines/trebuchet/trebuchet.exe";
-        trebuchet.engine_name          = "Trebuchet 0.9";
+        trebuchet.engine_name          = "Trebuchet 1.0.0";
         trebuchet.author               = "Jonny Reckless";
         controller.catalogue().engines = {pawnstar, trebuchet};
         controller.Command(amphitheater::app::kEngineManager);
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
     }
     if (is_tournament)
     {
-        for (const char *name : {"Pawnstar 2.1", "Trebuchet 0.9", "Stoopid Chess 1.4"})
+        for (const char *name : {"Pawnstar 2.2.0", "Trebuchet 1.0.0", "Stoopid Chess 4.1.0"})
         {
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
@@ -239,7 +239,8 @@ int main(int argc, char **argv)
     }
     // Ten games of a double round robin of four: the leader two and a half points clear, one pairing yet to meet.
     using amphitheater::chess::GameResult;
-    const std::vector<std::string> names = {"Pawnstar 2.1", "Trebuchet 0.9", "Stoopid Chess 1.4", "Blunderbuss 3"};
+    const std::vector<std::string> names = {"Pawnstar 2.2.0", "Trebuchet 1.0.0", "Stoopid Chess 4.1.0",
+                                            "Blunderbuss 3"};
     const std::vector<amphitheater::match::GameResultEntry> results = {
         {0, 1, GameResult::kWhiteWins}, {1, 0, GameResult::kDraw},      {0, 2, GameResult::kWhiteWins},
         {2, 0, GameResult::kDraw},      {1, 2, GameResult::kBlackWins}, {2, 1, GameResult::kWhiteWins},
