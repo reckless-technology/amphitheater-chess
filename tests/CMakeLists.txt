@@ -62,6 +62,7 @@ if(AMPHITHEATER_GUI)
     amphitheater_suite(amphitheater_window_test
         SOURCES
             app/WindowTest.cpp
+            app/RepaintTest.cpp
             app/PlayTest.cpp
             app/BundledEnginesTest.cpp
             app/CatalogueTest.cpp

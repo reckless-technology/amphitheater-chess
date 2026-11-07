@@ -25,6 +25,9 @@ struct BoardArrow
     chess::Square        from;   ///< Where it starts.
     chess::Square        to;     ///< Where it points.
     reckless::gfx::Color colour; ///< Its colour, with its opacity.
+
+    /** @return Whether the two draw alike. */
+    bool operator==(const BoardArrow &) const = default;
 };
 
 /**

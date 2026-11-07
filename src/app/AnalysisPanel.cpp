@@ -22,8 +22,11 @@ AnalysisPanel::AnalysisPanel()
 
 void AnalysisPanel::SetBlocks(std::vector<EngineBlock> blocks)
 {
-    blocks_ = std::move(blocks);
-    Repaint();
+    if (blocks != blocks_)
+    {
+        blocks_ = std::move(blocks);
+        Repaint();
+    }
 }
 
 void AnalysisPanel::SetEmptyText(std::string text)
