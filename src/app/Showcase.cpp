@@ -43,13 +43,13 @@ void ShowSample(MainView &view)
 
     PlayerStripState white;
     white.is_white   = true;
-    white.name       = "Pawnstar 2.1";
+    white.name       = "Pawnstar 2.2.0";
     white.details    = "White \xc2\xb7 engine \xc2\xb7 Threads 1, Hash 64 MB, book";
     white.clock      = ClockText(251600);
     white.is_running = true;
     PlayerStripState black;
     black.is_white = false;
-    black.name     = "Trebuchet 0.9";
+    black.name     = "Trebuchet 1.0.0";
     black.details  = "Black \xc2\xb7 engine \xc2\xb7 Threads 1, Hash 64 MB, ponder";
     black.clock    = ClockText(238900);
     view.SetPlayers(white, black);
@@ -62,7 +62,7 @@ void ShowSample(MainView &view)
                   {"FEN", game.CurrentPosition().ToFen(), true}});
 
     EngineBlock pawnstar;
-    pawnstar.name  = "Pawnstar 2.1";
+    pawnstar.name  = "Pawnstar 2.2.0";
     pawnstar.state = "thinking 4.8 s";
     pawnstar.stats = "depth 24/38 \xc2\xb7 11.2 Mn \xc2\xb7 2.31 Mn/s \xc2\xb7 hash 34 %";
     // One line at a time, as every bundled engine gives: the newest, and the lines at the depths before it dimmed.
@@ -70,7 +70,7 @@ void ShowSample(MainView &view)
                       {"23/35", "+0.31", 1, "13.Ne2 Ne8 14.f4 a5 15.Ng3 a4 16.Nd2 Nc5 17.f5", true},
                       {"22/33", "+0.38", 1, "13.Nd5 Nxd5 14.exd5 Bf5 15.Bd3 Bxd3 16.Qxd3 Nc5", true}};
     EngineBlock trebuchet;
-    trebuchet.name        = "Trebuchet 0.9";
+    trebuchet.name        = "Trebuchet 1.0.0";
     trebuchet.state       = "pondering 13.Ne2";
     trebuchet.is_thinking = false;
     trebuchet.stats       = "depth 21/33 \xc2\xb7 6.4 Mn \xc2\xb7 1.48 Mn/s \xc2\xb7 hash 21 %";
@@ -82,8 +82,9 @@ void ShowSample(MainView &view)
 
     // Each engine's own scores at its own moves, from White's side, after the book's six plies: Pawnstar a little more
     // pleased with White than Trebuchet is.
-    EvalSeries pawnstar_scores{"Pawnstar 2.1", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
-    EvalSeries trebuchet_scores{"Trebuchet 0.9", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
+    EvalSeries pawnstar_scores{"Pawnstar 2.2.0", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
+    EvalSeries trebuchet_scores{"Trebuchet 1.0.0",
+                                std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
     const double white_view[] = {0.28, 0.33, 0.36, 0.40, 0.31, 0.34, 0.38, 0.36, 0.44};
     const double black_view[] = {0.18, 0.12, 0.21, 0.06, -0.08, 0.04, -0.15, -0.21, -0.27};
     for (std::size_t move = 0; move < std::size(white_view); ++move)

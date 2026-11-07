@@ -127,7 +127,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
   <p class="note"><strong>Mockup of the planned main window.</strong> Static, built from the real assets: Jonny's Staunton pieces, Monaspace Xenon for engine output, Noto Serif and the colours of the toolkit's new list views. The position is 12...b4 in the Sicilian, Najdorf, English Attack, with Pawnstar to move against Trebuchet. Flip turns the board.</p>
 
   <div class="window" role="img" aria-label="Mockup of the Reckless Amphitheater main window">
-    <div class="titlebar"><div class="dots"><span></span><span></span><span></span></div><div class="name">Reckless Amphitheater - Pawnstar 2.1 vs Trebuchet 0.9</div><div style="width:45px"></div></div>
+    <div class="titlebar"><div class="dots"><span></span><span></span><span></span></div><div class="name">Reckless Amphitheater - Pawnstar 2.2.0 vs Trebuchet 1.0.0</div><div style="width:45px"></div></div>
     <div class="menubar"><span>File</span><span>Edit</span><span>Game</span><span>Engines</span><span>Match</span><span>Tournament</span><span>View</span><span>Help</span></div>
 
     <div class="body">
@@ -177,7 +177,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
         <div>
           <p class="label">Analysis</p>
           <section class="engine">
-            <header><b>Pawnstar 2.1</b><span class="state">thinking 4.8 s</span><span class="stats">depth 24/38 &middot; 11.2 Mn &middot; 2.31 Mn/s &middot; hash 34 %</span></header>
+            <header><b>Pawnstar 2.2.0</b><span class="state">thinking 4.8 s</span><span class="stats">depth 24/38 &middot; 11.2 Mn &middot; 2.31 Mn/s &middot; hash 34 %</span></header>
             <table>
               <tr class="best"><td class="d">24/38</td><td class="s plus">+0.42</td><td class="pv">13.Ne2 Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1</td></tr>
               <tr><td class="d">24/35</td><td class="s plus">+0.31</td><td class="pv">13.gxf6 bxc3 14.Qxc3 Nxf6 15.Kb1 a5 16.Bh3 Bxh3 17.Rhg1</td></tr>
@@ -185,7 +185,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
             </table>
           </section>
           <section class="engine">
-            <header><b>Trebuchet 0.9</b><span class="state pondering">pondering 13.Ne2</span><span class="stats">depth 21/33 &middot; 6.4 Mn &middot; 1.48 Mn/s &middot; hash 21 %</span></header>
+            <header><b>Trebuchet 1.0.0</b><span class="state pondering">pondering 13.Ne2</span><span class="stats">depth 21/33 &middot; 6.4 Mn &middot; 1.48 Mn/s &middot; hash 21 %</span></header>
             <table>
               <tr class="best"><td class="d">21/33</td><td class="s minus">-0.27</td><td class="pv">13...Ne8 14.f4 a5 15.f5 a4 16.Nbd4 exd4 17.Nxd4 b3 18.Kb1 bxc2+</td></tr>
             </table>
@@ -268,8 +268,8 @@ function drawBoard() {
      </svg>`);
   document.getElementById("ranks").innerHTML = ranks.map((r) => `<span>${r}</span>`).join("");
   document.getElementById("files").innerHTML = [...files].map((f) => `<span>${f}</span>`).join("");
-  const black = `<span class="side" style="background:#141210"></span><div class="who"><b>Trebuchet 0.9</b><small>Black &middot; engine &middot; Threads 1, Hash 64 MB, ponder</small></div><span class="clock">3:58.9</span>`;
-  const white = `<span class="side" style="background:#f3ead6"></span><div class="who"><b>Pawnstar 2.1</b><small>White &middot; engine &middot; Threads 1, Hash 64 MB, book</small></div><span class="clock running">4:11.6</span>`;
+  const black = `<span class="side" style="background:#141210"></span><div class="who"><b>Trebuchet 1.0.0</b><small>Black &middot; engine &middot; Threads 1, Hash 64 MB, ponder</small></div><span class="clock">3:58.9</span>`;
+  const white = `<span class="side" style="background:#f3ead6"></span><div class="who"><b>Pawnstar 2.2.0</b><small>White &middot; engine &middot; Threads 1, Hash 64 MB, book</small></div><span class="clock running">4:11.6</span>`;
   document.getElementById("top-player").innerHTML = flipped ? white : black;
   document.getElementById("bottom-player").innerHTML = flipped ? black : white;
 }

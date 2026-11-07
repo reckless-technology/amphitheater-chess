@@ -75,8 +75,8 @@ TEST(EngineCatalogue, AnEnginesSummaryAndOptionsReadAsTheStripShowsThem)
     entry.SetOption("HASH", "128");
     EXPECT_EQ(entry.config.options.size(), 1u);
     EXPECT_EQ(entry.OptionValue("Hash"), "128");
-    entry.engine_name = "Pawnstar 2.1";
-    EXPECT_EQ(entry.DisplayName(), "Pawnstar 2.1");
+    entry.engine_name = "Pawnstar 2.2.0";
+    EXPECT_EQ(entry.DisplayName(), "Pawnstar 2.2.0");
     entry.config.does_ponder = true;
     EXPECT_EQ(entry.Summary(), "Threads 1, Hash 128 MB, ponder");
     EXPECT_EQ(entry.OptionValue("Missing"), "");
