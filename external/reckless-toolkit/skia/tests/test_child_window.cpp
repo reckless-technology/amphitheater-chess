@@ -13,6 +13,7 @@
 // (UriList.h), whatever the text holds.
 #include <gtest/gtest.h>
 
+#include <cstdio>
 #include <string>
 #include <utility>
 #include <vector>
@@ -362,6 +363,142 @@ TEST(ChildWindow, CtrlWithALetterReachesTheViewsAsTheLetterWithThePrimaryModifie
     child.reset();
     XCloseDisplay(display);
 }
+
+namespace
+{
+/** The panel, as far as the keys ask of one: it wants the keyboard, takes every key the views are given, and counts
+    them. */
+class KeyCounter final : public reckless::view::View
+{
+  public:
+    bool WantsKeyboardFocus() const override
+    {
+        return true;
+    }
+
+    bool KeyPressed(const reckless::view::KeyEvent &) override
+    {
+        ++taken;
+        return true;
+    }
+
+    int taken{0}; ///< how many keys the views were given
+};
+} // namespace
+
+TEST(ChildWindow, TheRawKeysGiveEveryEdgeAndLeaveTheViewsWhatTheyAlwaysHad)
+{
+    reckless::test::TestHostWindow top(240, 160);
+    if (!top.Valid())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "the run promises a window and there is no display";
+        }
+        GTEST_SKIP() << "no display";
+    }
+    top.Show(true);
+    KeyCounter root;
+    root.SetBounds({240, 160});
+    auto        loop  = std::make_unique<TurnedLoop>();
+    TurnedLoop &turns = *loop;
+    auto        child = reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::move(loop));
+    ASSERT_NE(child, nullptr);
+    turns.Turn();
+    root.host()->RequestKeyboardFocus(&root);
+
+    Display *display = XOpenDisplay(nullptr);
+    ASSERT_NE(display, nullptr);
+    const auto toplevel  = static_cast<::Window>(reinterpret_cast<std::uintptr_t>(top.Parent()));
+    ::Window   tree_root = 0, tree_parent = 0, *children = nullptr;
+    unsigned   count = 0;
+    ASSERT_NE(XQueryTree(display, toplevel, &tree_root, &tree_parent, &children, &count), 0);
+    ASSERT_EQ(count, 1u) << "the child window in the top-level";
+    const ::Window window = children[0];
+    XFree(children);
+
+    std::vector<reckless::window::RawKeyEvent> heard;
+    child->SetRawKeyCallback([&](const reckless::window::RawKeyEvent &key) { heard.push_back(key); });
+
+    // A key edge sent to the child window as the server delivers one, then the loop turned until it is heard. Each
+    // carries a server time of its own: two stamped alike would be auto-repeat's release and press (RawKey.h's
+    // IsX11AutoRepeatRelease) on a server that does not give detectable auto-repeat.
+    Time       stamp = 100;
+    const auto edge  = [&](KeySym symbol, bool is_down) {
+        XEvent key{};
+        key.xkey.type        = is_down ? KeyPress : KeyRelease;
+        key.xkey.display     = display;
+        key.xkey.window      = window;
+        key.xkey.root        = DefaultRootWindow(display);
+        key.xkey.state       = 0;
+        key.xkey.time        = stamp;
+        key.xkey.keycode     = XKeysymToKeycode(display, symbol);
+        key.xkey.same_screen = True;
+        stamp += 100;
+        XSendEvent(display, window, False, is_down ? KeyPressMask : KeyReleaseMask, &key);
+        XFlush(display);
+        for (int i = 0; i < 20; ++i)
+        {
+            turns.Turn();
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+    };
+
+    // The right arrow held until it repeats and then let go: three edges, and the views given the two presses they
+    // were always given and no release, which they have no event for.
+    edge(XK_Right, true);
+    edge(XK_Right, true);
+    edge(XK_Right, false);
+    ASSERT_EQ(heard.size(), 3u);
+    EXPECT_TRUE(heard[0].is_down);
+    EXPECT_FALSE(heard[0].is_repeat) << "the first press the window delivers is never a repeat";
+    EXPECT_EQ(heard[0].named_key, reckless::view::Key::kRight) << "the toolkit's own name, where it has one";
+    EXPECT_EQ(heard[0].physical_key_code, static_cast<std::uint32_t>(XKeysymToKeycode(display, XK_Right)))
+        << "X's keycode, which is the physical key";
+    EXPECT_EQ(heard[0].platform_key_code, heard[0].physical_key_code) << "and its own code besides";
+    EXPECT_TRUE(heard[1].is_repeat) << "a press of a key the window has said is down";
+    EXPECT_FALSE(heard[2].is_down);
+    EXPECT_EQ(root.taken, 2) << "the views were given the two presses and nothing else";
+
+    // The space bar, which the views' own enum does not name, and two keys held at once, each its own.
+    heard.clear();
+    edge(XK_space, true);
+    edge(XK_a, true);
+    ASSERT_EQ(heard.size(), 2u);
+    EXPECT_EQ(heard[0].named_key, reckless::view::Key::kNone) << "the space bar has no name in the views' enum";
+    EXPECT_EQ(heard[0].physical_key_code, static_cast<std::uint32_t>(XKeysymToKeycode(display, XK_space)));
+    EXPECT_FALSE(heard[1].is_repeat) << "another key is not a repeat of the one already held";
+
+    // The keyboard gone elsewhere: both keys still held are let go.
+    heard.clear();
+    XEvent focus{};
+    focus.xfocus.type    = FocusOut;
+    focus.xfocus.display = display;
+    focus.xfocus.window  = window;
+    focus.xfocus.mode    = NotifyNormal;
+    focus.xfocus.detail  = NotifyAncestor;
+    XSendEvent(display, window, False, FocusChangeMask, &focus);
+    XFlush(display);
+    for (int i = 0; i < 20; ++i)
+    {
+        turns.Turn();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    ASSERT_EQ(heard.size(), 2u) << "an up for each key still held, oldest first";
+    EXPECT_FALSE(heard[0].is_down);
+    EXPECT_FALSE(heard[1].is_down);
+    EXPECT_EQ(heard[0].physical_key_code, static_cast<std::uint32_t>(XKeysymToKeycode(display, XK_space)));
+    EXPECT_EQ(heard[1].physical_key_code, static_cast<std::uint32_t>(XKeysymToKeycode(display, XK_a)));
+
+    // A callback taken back is told nothing more.
+    heard.clear();
+    child->SetRawKeyCallback(nullptr);
+    edge(XK_Right, true);
+    edge(XK_Right, false);
+    EXPECT_TRUE(heard.empty());
+    child.reset();
+    XCloseDisplay(display);
+}
 #else
 TEST(ChildWindow, TakesTheDropsDraggedOverTheTopLevelItIsTheProxyOf)
 {
@@ -370,6 +507,7 @@ TEST(ChildWindow, TakesTheDropsDraggedOverTheTopLevelItIsTheProxyOf)
 #endif
 
 #if defined(_WIN32)
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -427,6 +565,128 @@ TEST(ChildWindow, CtrlWithALetterReachesTheViewsAsTheLetterWithThePrimaryModifie
     child.reset();
     DestroyWindow(top);
 }
+
+namespace
+{
+/** A key message's lparam as Windows writes it.
+    @param scan_code  the scan code the keyboard sent
+    @param extended   true for one of the extended keys, which Windows marks in bit 24
+    @param was_down   true where the key was already down, which Windows marks in bit 30
+    @return           the lparam */
+LPARAM KeyMessageFlags(UINT scan_code, bool extended, bool was_down)
+{
+    LPARAM flags = 1 | (static_cast<LPARAM>(scan_code) << 16);
+    flags |= extended ? (static_cast<LPARAM>(1) << 24) : 0;
+    flags |= was_down ? (static_cast<LPARAM>(1) << 30) : 0;
+    return flags;
+}
+
+/** The panel, as far as the keys ask of one: it wants the keyboard, takes every key the views are given, and counts
+    them. */
+class KeyCounter final : public reckless::view::View
+{
+  public:
+    bool WantsKeyboardFocus() const override
+    {
+        return true;
+    }
+
+    bool KeyPressed(const reckless::view::KeyEvent &) override
+    {
+        ++taken;
+        return true;
+    }
+
+    int taken{0}; ///< how many keys the views were given
+};
+} // namespace
+
+TEST(ChildWindow, TheRawKeysGiveEveryEdgeAndLeaveTheViewsWhatTheyAlwaysHad)
+{
+    HWND top = CreateWindowExW(0, L"STATIC", L"", WS_OVERLAPPEDWINDOW, 0, 0, 240, 160, nullptr, nullptr,
+                               GetModuleHandleW(nullptr), nullptr);
+    ASSERT_NE(top, nullptr);
+    KeyCounter root;
+    root.SetBounds({240, 160});
+    auto child = reckless::window::CreateChildWindow(top, root, 240, 160, 1.0f);
+    ASSERT_NE(child, nullptr);
+    HWND window = GetWindow(top, GW_CHILD);
+    ASSERT_NE(window, nullptr);
+    root.host()->RequestKeyboardFocus(&root);
+
+    // First with no one asking: the right arrow's down is the views', its up Windows' own, as it always was.
+    SendMessageW(window, WM_KEYDOWN, VK_RIGHT, KeyMessageFlags(0x4D, true, false));
+    SendMessageW(window, WM_KEYUP, VK_RIGHT, KeyMessageFlags(0x4D, true, true));
+    EXPECT_EQ(root.taken, 1) << "a key down to the views, and a key up to no one";
+    const int before = root.taken;
+
+    std::vector<reckless::window::RawKeyEvent> heard;
+    child->SetRawKeyCallback([&](const reckless::window::RawKeyEvent &key) { heard.push_back(key); });
+
+    // The right arrow again, held until it repeats and then let go: the first down is no repeat whatever Windows' own
+    // bit 30 says of it, since the window has not said the key is down.
+    SendMessageW(window, WM_KEYDOWN, VK_RIGHT, KeyMessageFlags(0x4D, true, true));
+    SendMessageW(window, WM_KEYDOWN, VK_RIGHT, KeyMessageFlags(0x4D, true, true));
+    SendMessageW(window, WM_KEYUP, VK_RIGHT, KeyMessageFlags(0x4D, true, true));
+    ASSERT_EQ(heard.size(), 3u);
+    EXPECT_TRUE(heard[0].is_down);
+    EXPECT_FALSE(heard[0].is_repeat) << "the first down the window delivers is never a repeat";
+    EXPECT_EQ(heard[0].platform_key_code, static_cast<std::uint32_t>(VK_RIGHT));
+    EXPECT_EQ(heard[0].physical_key_code, 0xE04Du) << "the scan code out of the message's flags, extended";
+    EXPECT_EQ(heard[0].named_key, reckless::view::Key::kRight) << "the toolkit's own name, where it has one";
+    EXPECT_TRUE(heard[1].is_down);
+    EXPECT_TRUE(heard[1].is_repeat) << "a down of a key the window has said is down";
+    EXPECT_FALSE(heard[2].is_down);
+    EXPECT_FALSE(heard[2].is_repeat);
+    EXPECT_EQ(root.taken, before + 2) << "the views were given the two downs and nothing else: the key ups are not "
+                                         "theirs, and the raw keys took none of the downs away";
+
+    // The space bar, which the views' own enum does not name and whose down they are not given at all - its character
+    // comes in a WM_CHAR of its own - delivered raw like any other key.
+    heard.clear();
+    const int before_space = root.taken;
+    SendMessageW(window, WM_KEYDOWN, VK_SPACE, KeyMessageFlags(0x39, false, false));
+    SendMessageW(window, WM_KEYUP, VK_SPACE, KeyMessageFlags(0x39, false, true));
+    ASSERT_EQ(heard.size(), 2u) << "the space bar's two edges, which the views have no name for";
+    EXPECT_EQ(heard[0].physical_key_code, 0x39u);
+    EXPECT_EQ(heard[0].named_key, reckless::view::Key::kNone);
+    EXPECT_FALSE(heard[1].is_down);
+    EXPECT_EQ(root.taken, before_space) << "and the views given nothing of it, as they never were";
+
+    // The two shift keys, whose virtual-key code is one and whose scan codes are two: the second is its own key, not a
+    // repeat of the first, and the up pairs with the key that sent it.
+    heard.clear();
+    SendMessageW(window, WM_KEYDOWN, VK_SHIFT, KeyMessageFlags(0x2A, false, false));
+    SendMessageW(window, WM_KEYDOWN, VK_SHIFT, KeyMessageFlags(0x36, false, false));
+    SendMessageW(window, WM_KEYUP, VK_SHIFT, KeyMessageFlags(0x2A, false, true));
+    ASSERT_EQ(heard.size(), 3u);
+    EXPECT_FALSE(heard[1].is_repeat) << "the other shift key is another key";
+    EXPECT_EQ(heard[1].physical_key_code, 0x36u);
+    EXPECT_FALSE(heard[2].is_down);
+    EXPECT_EQ(heard[2].physical_key_code, 0x2Au);
+
+    // The keyboard gone elsewhere: the right shift and the left control are still held, and both are let go.
+    heard.clear();
+    SendMessageW(window, WM_KEYDOWN, VK_CONTROL, KeyMessageFlags(0x1D, false, false));
+    heard.clear();
+    SendMessageW(window, WM_KILLFOCUS, 0, 0);
+    ASSERT_EQ(heard.size(), 2u) << "an up for each key still held, oldest first";
+    EXPECT_EQ(heard[0].physical_key_code, 0x36u);
+    EXPECT_EQ(heard[1].physical_key_code, 0x1Du);
+    EXPECT_FALSE(heard[0].is_down);
+    EXPECT_FALSE(heard[1].is_down);
+
+    // An up for a key whose down was never delivered is no one's, and a callback taken back is told nothing more.
+    heard.clear();
+    SendMessageW(window, WM_KEYUP, VK_SPACE, KeyMessageFlags(0x39, false, true));
+    EXPECT_TRUE(heard.empty()) << "the key went down before the window had the keyboard";
+    child->SetRawKeyCallback(nullptr);
+    SendMessageW(window, WM_KEYDOWN, VK_SPACE, KeyMessageFlags(0x39, false, false));
+    SendMessageW(window, WM_KEYUP, VK_SPACE, KeyMessageFlags(0x39, false, true));
+    EXPECT_TRUE(heard.empty()) << "nothing reaches a callback that was taken back";
+    child.reset();
+    DestroyWindow(top);
+}
 #endif
 
 #if defined(__APPLE__)
@@ -466,6 +726,149 @@ TEST(ChildWindow, AScrollSaysWhetherTheSystemInvertedTheDevicesDirection)
     ASSERT_TRUE(top.ScrollWheel(-3.0f, false));
     EXPECT_EQ(root.heard, (std::vector<std::pair<float, bool>>{{7.0f, true}, {-3.0f, false}}))
         << "each scroll's pixels as sent, and whether it was inverted";
+    child.reset(); // before the window it sits in
+}
+#endif
+
+// ------------------------------------------------------------------------------------------------------------------
+// How the window paces its frame callback (window/FramePacing.h, ChildWindow::SetFramePacing), on a real window with
+// whatever display clock the machine running the suite has. What each of these holds, and why it holds no rate, is
+// tests/FramePacingRule.h, which the macOS half uses too. Windows' and Linux's are here; macOS's are in
+// test_child_window_mac.mm, which is compiled as Objective-C++ and so can reach AppKit's run loop.
+#include "FramePacing.h"
+#include "FramePacingRule.h"
+#include "View.h"
+#include "Window.h"
+
+namespace
+{
+using reckless::test::HoldsWhicheverPacingItReached;
+using reckless::window::FramePacing;
+using reckless::window::FramePacingFallback;
+using reckless::window::FramePacingState;
+using reckless::window::FrameRequest;
+} // namespace
+
+#if defined(_WIN32)
+TEST(ChildWindowFramePacing, IsOnThePlatformTimerUntilItIsAskedAndSaysWhichItGotAndWhy)
+{
+    HWND top = CreateWindowExW(0, L"STATIC", L"", WS_OVERLAPPEDWINDOW, 0, 0, 240, 160, nullptr, nullptr,
+                               GetModuleHandleW(nullptr), nullptr);
+    ASSERT_NE(top, nullptr);
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto child = reckless::window::CreateChildWindow(top, root, 240, 160, 1.0f);
+    ASSERT_NE(child, nullptr);
+
+    const FramePacingState unasked = child->FramePacingNow();
+    EXPECT_EQ(unasked.pacing, FramePacing::kPlatformTimer) << "a window no one has asked is paced as it always was";
+    EXPECT_EQ(unasked.why, FramePacingFallback::kNotAsked);
+    EXPECT_EQ(unasked.display_hertz, 0.0) << "and has read nothing of its display";
+
+    // A lead of 5 ms, which every display a window can be paced on leaves room for at a divisor of 4.
+    const FramePacingState asked = child->SetFramePacing({FramePacing::kDisplayClock, 4, 1, 5000});
+    HoldsWhicheverPacingItReached(asked, 4, "Windows, asked for a frame every fourth refresh, 5 ms ahead", 5000, true);
+    EXPECT_EQ(child->FramePacingNow().pacing, asked.pacing) << "and says the same when asked again";
+    EXPECT_EQ(child->FramePacingNow().lead_microseconds, asked.lead_microseconds) << "with the same lead";
+
+    const FramePacingState back = child->SetFramePacing({});
+    EXPECT_EQ(back.pacing, FramePacing::kPlatformTimer) << "a default request puts it back on the platform's timer";
+    EXPECT_EQ(back.why, FramePacingFallback::kNotAsked);
+    child.reset();
+    DestroyWindow(top);
+}
+
+TEST(ChildWindowFramePacing, RunsTheFrameCallbackOnTheWindowsOwnThreadWhicheverItIsPacedBy)
+{
+    // Both ways round, and the unasked window first: a window no product has asked to pace runs its frame callback
+    // from WM_TIMER on the timer it always had, which is what keeps a product that does not opt in unchanged.
+    for (const bool does_ask : {false, true})
+    {
+        HWND top = CreateWindowExW(0, L"STATIC", L"", WS_OVERLAPPEDWINDOW, 0, 0, 240, 160, nullptr, nullptr,
+                                   GetModuleHandleW(nullptr), nullptr);
+        ASSERT_NE(top, nullptr);
+        reckless::view::View root;
+        root.SetBounds({240, 160});
+        auto child = reckless::window::CreateChildWindow(top, root, 240, 160, 1.0f);
+        ASSERT_NE(child, nullptr);
+        if (does_ask)
+        {
+            HoldsWhicheverPacingItReached(child->SetFramePacing({FramePacing::kDisplayClock, 4, 1, 2000}), 4,
+                                          "Windows, running frames 2 ms ahead", 2000, true);
+        }
+        else
+        {
+            ASSERT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked);
+        }
+
+        const DWORD        ours   = GetCurrentThreadId();
+        int                frames = 0;
+        std::vector<DWORD> threads;
+        child->SetFrameCallback([&] {
+            ++frames;
+            if (threads.size() < 4u)
+            {
+                threads.push_back(GetCurrentThreadId());
+            }
+        });
+        // A generous window, and the messages pumped as the window's own loop would: the frames come from WM_TIMER on
+        // the platform's timer and from a message the clock's thread posts on the display's clock, and either way
+        // they run from this thread's queue.
+        const ULONGLONG until = GetTickCount64() + 3000;
+        MSG             message{};
+        while (frames < 20 && GetTickCount64() < until)
+        {
+            MsgWaitForMultipleObjects(0, nullptr, FALSE, 50, QS_ALLINPUT);
+            while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+        }
+        std::printf("[ frame pacing ] Windows: %d frames in at most three seconds, %s\n", frames,
+                    does_ask ? "having asked for the display's clock" : "having asked for nothing");
+        std::fflush(stdout);
+        EXPECT_GE(frames, 20) << "the callback runs, whether or not anything was asked";
+        for (DWORD thread : threads)
+        {
+            EXPECT_EQ(thread, ours) << "the callback runs on the window's own thread, never the clock's";
+        }
+        child->SetFrameCallback(nullptr);
+        child.reset();
+        DestroyWindow(top);
+    }
+}
+#endif
+
+#if !defined(_WIN32) && !defined(__APPLE__)
+TEST(ChildWindowFramePacing, SaysPlainlyThatThereIsNoDisplayClockOnX11)
+{
+    // There is none, and the toolkit says so rather than faking a phase lock: X hands a window's pixels over with a
+    // copy, not a presentation, so nothing reports a vertical blank without a GL context or the Present extension -
+    // neither of which this present path has or cheaply could (window/linux/WindowLinux.cpp says why at length).
+    reckless::test::TestHostWindow top(240, 160);
+    if (!top.Valid())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "the run promised a window and there is none";
+        }
+        GTEST_SKIP() << "no display to make a window on";
+    }
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto child =
+        reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::make_unique<TurnedLoop>());
+    ASSERT_NE(child, nullptr);
+    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked) << "until someone asks";
+
+    const FramePacingState asked = child->SetFramePacing({FramePacing::kDisplayClock, 4, 1, 5000});
+    HoldsWhicheverPacingItReached(asked, 4, "Linux, asked for a frame every fourth refresh, 5 ms ahead", 5000);
+    EXPECT_EQ(asked.why, FramePacingFallback::kNoDisplayClock) << "which is the honest answer on X11, not a rate";
+    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNoDisplayClock) << "and it says the same again";
+
+    const FramePacingState back = child->SetFramePacing({});
+    EXPECT_EQ(back.why, FramePacingFallback::kNotAsked) << "a default request is a window asking for nothing";
     child.reset(); // before the window it sits in
 }
 #endif

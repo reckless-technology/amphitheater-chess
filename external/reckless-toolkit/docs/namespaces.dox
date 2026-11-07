@@ -10,8 +10,8 @@
 
 /** @namespace reckless
     The toolkit: the namespaces of the core, the drawing layer, the
-    look, the views, the panel, the windows, the app's platform, the audio device layer, the network, the update check
-    and the licence. */
+    look, the views, the panel, the windows, the app's platform, the audio device layer, the controller layer, the
+    network, the update check and the licence. */
 
 /** @namespace reckless::app
     An app's platform layer (app/): the application behind its platform seam, where a window goes, and the audio
@@ -63,6 +63,26 @@
 /** @namespace reckless::gfx::detail
     The drawing layer's internals. */
 
+/** @namespace reckless::input
+    The controller layer (input/): gamepads, joysticks and arcade encoders read as digital controls - each control's
+    edges, each device's coming and going - on each platform's own API (docs/input/gamepads.md). */
+
+/** @namespace reckless::input::evdev
+    The Linux kernel's event interface read as controllers: which nodes are controllers, where each code goes, and the
+    back end over a port that is the only thing to touch the kernel (input/linux/). */
+
+/** @namespace reckless::input::hid
+    USB HID controllers' report descriptors read as the Windows and macOS back ends read them: which collections are
+    controllers, which values axes and hats, a range repaired, a field's sign and a hat switch's direction
+    (input/HidUsages.h). */
+
+/** @namespace reckless::input::hidpath
+    What a Windows HID interface's path says: whether it is an XInput controller's, and its instance
+    (input/win/HidPaths.h). */
+
+/** @namespace reckless::input::xinput
+    An XInput controller's state as a device's controls, with none of Windows' headers (input/win/XInputPads.h). */
+
 /** @namespace reckless::licence
     The licence (licence/): its text and its Ed25519 signature checked against the public keys a build holds, offline,
     the licence a machine keeps for every product on it, and the build's demo switch. */
@@ -105,5 +125,5 @@
     The tooltip's text: words split, trimmed and wrapped to the balanced lines a tooltip draws. */
 
 /** @namespace reckless::window
-    The child window a panel is shown in (window/), written against no toolkit, and the shell at the root of every
-    window. */
+    The child window a panel is shown in (window/), written against no toolkit, the shell at the root of every
+    window, and the raw keys a window delivers to an owner that asks for them (window/RawKey.h). */

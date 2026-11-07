@@ -171,7 +171,9 @@ target_link_libraries(reckless_window_api INTERFACE reckless_gfx_skia reckless_w
 
 if(APPLE)
     set(RECKLESS_WINDOW_SOURCE "${RECKLESS_TOOLKIT_DIR}/window/mac/WindowMac.mm" CACHE INTERNAL "")
-    set(reckless_window_system "-framework AppKit" "-framework QuartzCore"
+    # CoreVideo is the display link a Mac below 14 paces a frame callback on (ChildWindow::SetFramePacing); Core
+    # Animation's, from 14, is QuartzCore's.
+    set(reckless_window_system "-framework AppKit" "-framework CoreVideo" "-framework QuartzCore"
                                "-framework UniformTypeIdentifiers")
 elseif(WIN32)
     set(RECKLESS_WINDOW_SOURCE "${RECKLESS_TOOLKIT_DIR}/window/win/WindowWin.cpp" CACHE INTERNAL "")
@@ -214,11 +216,19 @@ if(RECKLESS_TOOLKIT_BUILD_TESTS)
     # The child window's own suite (tests/test_child_window.cpp): on Linux, on a display, the files a desktop drags over
     # an app's top-level window taken by the child window that fills it, through XDND's proxy - run with the window
     # suites under xvfb-run; on macOS a scroll saying whether the system inverted the device's direction; on every
-    # platform the paths of a drag source's URI list (window/UriList.h). Named for its CTest, apart from a product's
-    # window suites.
-    add_executable(reckless_child_window_test tests/test_child_window.cpp)
+    # platform the paths of a drag source's URI list (window/UriList.h), and the raw keys an owner may ask the window
+    # for (window/RawKey.h) driven through the platform's own key events, with the macOS half in
+    # tests/test_child_window_mac.mm. Named for its CTest, apart from a product's window suites.
+    set(child_window_sources tests/test_child_window.cpp)
+    if(APPLE)
+        list(APPEND child_window_sources tests/test_child_window_mac.mm)
+    endif()
+    add_executable(reckless_child_window_test ${child_window_sources})
     target_link_libraries(reckless_child_window_test PRIVATE reckless_window reckless_test_host_window reckless_warnings
                                                              GTest::gtest_main)
+    if(APPLE)
+        target_compile_options(reckless_child_window_test PRIVATE -fobjc-arc)
+    endif()
     add_test(NAME child_window COMMAND reckless_child_window_test)
     set_tests_properties(child_window PROPERTIES LABELS window RESOURCE_LOCK display)
 endif()
