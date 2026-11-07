@@ -5,8 +5,8 @@
 #   tools/toolkit-pull.sh [<branch>]        the toolkit's main by default
 #
 # The toolkit is pulled, never edited here. A change to it is made in reckless-technology/reckless-toolkit, where
-# its own suites and CI hold it, and comes back to each product through this script - four products share it, and
-# an edit made here would be invisible to the other three and to the toolkit itself.
+# its own suites and CI hold it, and comes back to each product through this script - other products share it, and
+# an edit made here would be invisible to them and to the toolkit itself.
 #
 # One commit per pull, and the history stays linear. `git subtree pull` writes two commits - a squashed one holding
 # the change, and a merge joining it - and this flattens them into one. Nothing is lost by that: `git subtree`
