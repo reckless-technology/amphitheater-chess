@@ -10,7 +10,7 @@
 #     Homebrew's cmake and ninja on macOS)
 #   - the libraries the window's toolkit links on Linux (X11, FreeType, fontconfig) and xvfb for its suites' display
 #   - uv, Astral's tool installer, and with it clang-format and gcovr at the versions CI pins (build.yml)
-#   - the toolkit submodule (external/reckless-toolkit), which the window is built on, and the repository's .venv with
+#   - the toolkit's subtree (external/reckless-toolkit), checked for and never fetched, and the repository's .venv with
 #     tools/requirements.txt (resvg and Pillow, which tools/make_icon.py renders the app's icon with; the suites' Python,
 #     which the configure finds there)
 #   - the repo's git hooks (core.hooksPath .githooks) and the VS Code extensions .vscode/extensions.json recommends
@@ -130,11 +130,12 @@ linux_base() {
     fi
 }
 
-# The toolkit submodule, which the window is built on: initialised at the commit this repository pins.
-toolkit_submodule() {
-    if [ -f external/reckless-toolkit/CMakeLists.txt ]; then ok 'toolkit submodule' "$(git -C external/reckless-toolkit log -1 --format='%h %s')"
-    elif [ "$check" = 1 ]; then miss 'toolkit submodule' 'git submodule update --init'
-    else installing 'toolkit submodule' 'git submodule update --init'; git submodule update --init; fi
+# The toolkit, which the window is built on: a git subtree at external/reckless-toolkit whose files every commit
+# carries, so there is nothing to fetch, and with them missing the checkout is broken or partial.
+toolkit_subtree() {
+    if [ -f external/reckless-toolkit/CMakeLists.txt ]; then ok 'toolkit subtree' "$(git log -1 --format='%h %s' -- external/reckless-toolkit)"
+    elif [ "$check" = 1 ]; then miss 'toolkit subtree' 'external/reckless-toolkit is missing: clone or check out again'
+    else echo 'external/reckless-toolkit is missing: every commit carries it, so clone or check out again' >&2; exit 1; fi
 }
 
 # The repository's .venv with tools/requirements.txt: resvg and Pillow, which tools/make_icon.py renders the app's icon
@@ -236,7 +237,7 @@ fi
 uv_tool clang-format "$clang_format_version" exact 'which the pre-commit hook and CI format with'
 uv_tool gcovr "$gcovr_version" at-least "CI's coverage report"
 
-toolkit_submodule
+toolkit_subtree
 icon_python
 set_git_hooks
 install_vscode_extensions

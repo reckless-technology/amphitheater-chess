@@ -52,8 +52,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # The toolkit at the commit this change pins, which must be on the toolkit's main: a bump points at a commit the
-      # toolkit has merged, never at one only a branch of it holds, which could be rewritten under a commit here.
       - name: Decide what this run needs
         id: pick
         shell: bash

@@ -16,7 +16,7 @@
       clang-cl with its llvm-profdata and llvm-cov (the coverage-windows preset, tools/coverage-windows.ps1) and
       AddressSanitizer (the asan-windows preset)
     - uv, Astral's tool installer, and with it clang-format and gcovr at the versions CI pins (build.yml)
-    - the toolkit submodule (external/reckless-toolkit), which the window is built on, and the repository's .venv with
+    - the toolkit's subtree (external/reckless-toolkit), checked for and never fetched, and the repository's .venv with
       tools/requirements.txt (resvg and Pillow, which tools/make_icon.py renders the app's icon with; the suites'
       Python, which the configure finds there)
     - the repo's git hooks (core.hooksPath .githooks) and the VS Code extensions .vscode/extensions.json recommends
@@ -129,16 +129,15 @@ function Install-VisualStudio([string[]]$components) {
   if ($p.ExitCode -notin 0, 3010) { throw "the Visual Studio installer exited with $($p.ExitCode)" }
 }
 
-# The toolkit submodule (external/reckless-toolkit), which the window is built on, at the commit this repository pins.
-function Set-ToolkitSubmodule {
+# The toolkit, which the window is built on: a git subtree at external/reckless-toolkit whose files every commit
+# carries, so there is nothing to fetch, and with them missing the checkout is broken or partial.
+function Test-ToolkitSubtree {
   if (Test-Path 'external/reckless-toolkit/CMakeLists.txt') {
-    Write-Ok 'toolkit submodule' (git -C external/reckless-toolkit log -1 --format='%h %s')
+    Write-Ok 'toolkit subtree' (git log -1 --format='%h %s' -- external/reckless-toolkit)
     return
   }
-  if ($Check) { Write-Missing 'toolkit submodule' 'git submodule update --init'; return }
-  Write-Installing 'toolkit submodule' 'git submodule update --init'
-  git submodule update --init
-  if ($LASTEXITCODE -ne 0) { throw "git submodule update --init failed ($LASTEXITCODE)" }
+  if ($Check) { Write-Missing 'toolkit subtree' 'external/reckless-toolkit is missing: clone or check out again'; return }
+  throw 'external/reckless-toolkit is missing: every commit carries it, so clone or check out again'
 }
 
 # The repository's .venv with tools/requirements.txt: resvg and Pillow, which tools/make_icon.py renders the app's icon
@@ -274,7 +273,7 @@ else {
 Install-UvTool 'clang-format' $ClangFormatVersion 'which the pre-commit hook and CI format with'
 Install-UvTool 'gcovr' $GcovrVersion "CI's coverage report" -AtLeast
 
-Set-ToolkitSubmodule
+Test-ToolkitSubtree
 Set-IconPython
 Set-GitHooks
 Install-VSCodeExtensions

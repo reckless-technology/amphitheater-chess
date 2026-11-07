@@ -1,6 +1,6 @@
 """The approved mockup of the main window, made viewable: main-window-mockup.html beside this script is a template
 whose pieces and monospaced font are placeholders, and this fills them with the real assets - the twelve Staunton pieces
-(assets/pieces/staunton) as data URIs and Monaspace Xenon from the toolkit submodule - into one self-contained page.
+(assets/pieces/staunton) as data URIs and Monaspace Xenon from the toolkit's subtree - into one self-contained page.
 
     python docs/design/build-mockup.py [out.html]
 
@@ -26,7 +26,7 @@ def main(out):
     if len(pieces) != 12:
         raise SystemExit(f"build-mockup.py: twelve pieces expected in {pieces_dir}, found {len(pieces)}")
     if not font.exists():
-        raise SystemExit(f"build-mockup.py: {font} is missing - fetch the toolkit: git submodule update --init")
+        raise SystemExit(f"build-mockup.py: {font} is missing: every commit carries the toolkit, so clone or check out again")
     page = (here / "main-window-mockup.html").read_text(encoding="utf-8")
     page = page.replace("{{PIECES_JSON}}", json.dumps(pieces))
     page = page.replace("{{MONO_FONT}}", base64.b64encode(font.read_bytes()).decode("ascii"))
