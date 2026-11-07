@@ -27,7 +27,7 @@ statically), and starts every engine with only the system on its PATH.
 **The GUI is built on reckless-toolkit**, a git subtree at `external/reckless-toolkit` (public and GPLv3 since
 2026-10-24; its files are committed here, so a clone has them, CI fetches nothing of its own and a fork's pull
 request builds like any other). `tools/toolkit-pull.sh` brings its head in, and it is pulled, never edited here -
-an edit in this copy would be invisible to the toolkit and to the three other products that share it. It is built
+an edit in this copy would be invisible to the toolkit and to the other products that share it. It is built
 with the toolkit's GUI on, its suites off and no audio device layer. Only `src/app/` uses it: the libraries under `src/chess`,
 `src/uci`, `src/match` and `src/cli` depend on nothing of the toolkit or of vst-plugins, so they stay testable on their
 own, and `-DAMPHITHEATER_GUI=OFF` builds them without the toolkit. The toolkit's include namespace is flat (`"View.h"`), so
@@ -52,8 +52,8 @@ the toolkit's `reckless_bundle_icon`; the installers, the macOS uninstaller, the
 the Linux window's 256 take the same files. Change the composition in the script and run it again (`--check` holds the
 committed files to it); never edit a render.
 
-The GUI's needs shape the APIs: an `Engine` is polled from one thread (the toolkit has no thread-safe post, so the
-frame callback drains `PollEvent`); a tournament reports through a thread-safe event queue; `CallbackPlayer` is the
+The GUI's needs shape the APIs: an `Engine` is polled from one thread (the frame callback drains
+`PollEvent`); a tournament reports through a thread-safe event queue; `CallbackPlayer` is the
 human side (its callback blocks on the game's thread until the GUI hands it a move); `EngineConfig` is plain data the
 GUI will save with the toolkit's JSON.
 
