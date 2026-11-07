@@ -6,8 +6,8 @@
       "id": "pawnstar",
       "name": "Pawnstar",
       "repository": "reckless-technology/pawnstar",
-      "tag": "v2.1.0",
-      "version": "2.1.0",
+      "tag": "v2.2.0",
+      "version": "2.2.0",
       "copyright": "Copyright (C) 2026 Jonny Reckless",
       "licence": "GPL-3.0",
       "source_asset_pattern": null,
@@ -30,8 +30,8 @@
         "windows": [
           {
             "asset_pattern": "pawnstar-{version}-windows-x86_64.exe",
-            "asset": "pawnstar-2.1.0-windows-x86_64.exe",
-            "sha256": "3c47d22765100a4abf9dc37399c0a1b470bea323220540acffa8963206ab12dd",
+            "asset": "pawnstar-2.2.0-windows-x86_64.exe",
+            "sha256": "426825114fad06cbe2706d7aa1263e17886013d076dc7129f0be98ede5c4f22d",
             "file": "pawnstar.exe",
             "requires": "x86-64-v3"
           }
@@ -39,8 +39,8 @@
         "linux": [
           {
             "asset_pattern": "pawnstar-{version}-linux-x86_64",
-            "asset": "pawnstar-2.1.0-linux-x86_64",
-            "sha256": "e32a0db428abd723bcbcf501cd51ecafb8c82dd21a434b2cc4c4c59622d635b8",
+            "asset": "pawnstar-2.2.0-linux-x86_64",
+            "sha256": "b86d7af207df2aaddc3fa9d4717f3f7d0a0e6051c2c90bca6ea077433f170583",
             "file": "pawnstar",
             "requires": "x86-64-v3"
           }
@@ -48,10 +48,10 @@
         "macos": [
           {
             "asset_pattern": "pawnstar-{version}-macos-arm64.zip",
-            "asset": "pawnstar-2.1.0-macos-arm64.zip",
-            "sha256": "6fcaafc04c70efe6834743442b793f66d27f0fb4fcd47926b8c725d671a0b27a",
+            "asset": "pawnstar-2.2.0-macos-arm64.zip",
+            "sha256": "1ec30ca3426ba2d05bcd820b89a83bff5fc688367fbb795e69660ca2e97f95b1",
             "member_pattern": "pawnstar-{version}-macos-arm64",
-            "member": "pawnstar-2.1.0-macos-arm64",
+            "member": "pawnstar-2.2.0-macos-arm64",
             "file": "pawnstar"
           }
         ]
@@ -136,8 +136,8 @@
       "id": "pawnstar-go",
       "name": "Pawnstar-Go",
       "repository": "reckless-technology/pawnstar-go",
-      "tag": "v2.1.0",
-      "version": "2.1.0",
+      "tag": "v2.2.0",
+      "version": "2.2.0",
       "copyright": "Copyright (C) 2026 Jonny Reckless",
       "licence": "GPL-3.0",
       "source_asset_pattern": null,
@@ -156,8 +156,8 @@
         "windows": [
           {
             "asset_pattern": "pawnstar-go-{version}-windows-amd64.exe",
-            "asset": "pawnstar-go-2.1.0-windows-amd64.exe",
-            "sha256": "e112f194e8ff5f0026e5ac8aa243f0ed7848bcd65f2c54ddd1d9cbea0b0f0421",
+            "asset": "pawnstar-go-2.2.0-windows-amd64.exe",
+            "sha256": "472e0961c56acfcdced2e1baa8a69da5815b0c5dfcec766914d8bb69a9ccbf37",
             "file": "pawnstar-go.exe",
             "requires": "x86-64-v3"
           }
@@ -165,8 +165,8 @@
         "linux": [
           {
             "asset_pattern": "pawnstar-go-{version}-linux-amd64",
-            "asset": "pawnstar-go-2.1.0-linux-amd64",
-            "sha256": "59ecdb07c12ab16cb322608fc7bfcad1f9d49a038e0fcb2111037eec2f9894c2",
+            "asset": "pawnstar-go-2.2.0-linux-amd64",
+            "sha256": "f56291ce70ee33e0a1171b2f92f4ebcd05e7e00c4bae310750dd213fbf08c41a",
             "file": "pawnstar-go",
             "requires": "x86-64-v3"
           }
@@ -174,10 +174,10 @@
         "macos": [
           {
             "asset_pattern": "pawnstar-go-{version}-macos-arm64.zip",
-            "asset": "pawnstar-go-2.1.0-macos-arm64.zip",
-            "sha256": "87bd8c61466f6e2c24f7137408e07d32d4e728a4a4ff6b1e0e0c4bad9b5f27b9",
+            "asset": "pawnstar-go-2.2.0-macos-arm64.zip",
+            "sha256": "f02cfb489aa7b0f53b20c8dc64179e077c7e250eb08ee2c3627a0b3aa0bdc36a",
             "member_pattern": "pawnstar-go-{version}-macos-arm64",
-            "member": "pawnstar-go-2.1.0-macos-arm64",
+            "member": "pawnstar-go-2.2.0-macos-arm64",
             "file": "pawnstar-go"
           }
         ]
@@ -187,8 +187,8 @@
       "id": "pawnstar-rs",
       "name": "Pawnstar-RS",
       "repository": "reckless-technology/pawnstar-rs",
-      "tag": "v2.1.0",
-      "version": "2.1.0",
+      "tag": "v2.2.0",
+      "version": "2.2.0",
       "copyright": "Copyright (C) 2026 Jonny Reckless",
       "licence": "GPL-3.0",
       "source_asset_pattern": null,
@@ -207,26 +207,26 @@
         "windows": [
           {
             "asset_pattern": "pawnstar-rs-{version}-windows-x86_64.exe",
-            "asset": "pawnstar-rs-2.1.0-windows-x86_64.exe",
-            "sha256": "11d5310f50742daf4b9fa971eab9a2230d18b59bd5f3a9a98fd2d97d73fece5a",
+            "asset": "pawnstar-rs-2.2.0-windows-x86_64.exe",
+            "sha256": "a226928b98096eef060442acb4bb0daabe258e8a1f96e5d7c37a636c347c144d",
             "file": "pawnstar-rs.exe"
           }
         ],
         "linux": [
           {
             "asset_pattern": "pawnstar-rs-{version}-linux-x86_64",
-            "asset": "pawnstar-rs-2.1.0-linux-x86_64",
-            "sha256": "30d2a3c930859837f7ef2e3a963fd418d324bbf95ea0ac6620b43741abe865e0",
+            "asset": "pawnstar-rs-2.2.0-linux-x86_64",
+            "sha256": "0764522f1f4e39477b7f0851d1ca802b9bbfed1d0d70041e500fe9a819524a5b",
             "file": "pawnstar-rs"
           }
         ],
         "macos": [
           {
             "asset_pattern": "pawnstar-rs-{version}-macos-arm64.zip",
-            "asset": "pawnstar-rs-2.1.0-macos-arm64.zip",
-            "sha256": "d42932e5a5c041d4f7a0e3237c2e4126278fc34e5acc9b640c5c2cc3920e7dc3",
+            "asset": "pawnstar-rs-2.2.0-macos-arm64.zip",
+            "sha256": "aa878b649739cf950bf519797f0c353b0e469e9f0be18043eeb070b7c6c3c8ef",
             "member_pattern": "pawnstar-rs-{version}-macos-arm64",
-            "member": "pawnstar-rs-2.1.0-macos-arm64",
+            "member": "pawnstar-rs-2.2.0-macos-arm64",
             "file": "pawnstar-rs"
           }
         ]
