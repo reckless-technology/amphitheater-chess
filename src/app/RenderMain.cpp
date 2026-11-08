@@ -5,13 +5,13 @@
 //                       [standings] [about] [logfolded] [setup] [book] [makebook]
 //
 // The window shows the mockup's state (Showcase.h) unless "empty" asks for a fresh window's; "flipped" turns the board;
-// "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on two
-// engines, the first with options of every type; "tournament" opens Tournament > New tournament on three; "standings"
-// shows Tournament > Standings and crosstable for a double round robin of four after ten games; "about" shows Help >
-// About for an install carrying the five engines the installers pin; "logfolded" folds the engine log away to its
-// header; "setup" opens Edit > Set up position on the position shown; "book" opens a sample opening book over the
-// sample game, its moves under the card; "makebook" opens File > Make book from games over a library. The scale is
-// the device pixels per design pixel, 1 by default; the size is the window's, in design pixels.
+// "newgame" opens Game > New game over it, offering two engines; "engines" opens Engines > Manage engines on the five
+// engines the installers carry, the first with options of every type; "tournament" opens Tournament > New tournament on
+// three; "standings" shows Tournament > Standings and crosstable for a double round robin of four after ten games;
+// "about" shows Help > About for an install carrying the five engines the installers pin; "logfolded" folds the engine
+// log away to its header; "setup" opens Edit > Set up position on the position shown; "book" opens a sample opening
+// book over the sample game, its moves under the card; "makebook" opens File > Make book from games over a library.
+// The scale is the device pixels per design pixel, 1 by default; the size is the window's, in design pixels.
 
 #include "AboutDialog.h"
 #include "Commands.h"
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
     view.SetBounds({width, height});
     if (is_newgame)
     {
-        for (const char *name : {"Pawnstar 2.2.0", "Trebuchet 1.0.0"})
+        for (const char *name : {"Pawnstar 2.3.0", "Trebuchet 1.1.0"})
         {
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
     {
         amphitheater::app::EngineEntry pawnstar;
         pawnstar.config.executable  = "C:/Engines/pawnstar/pawnstar.exe";
-        pawnstar.engine_name        = "Pawnstar 2.2.0";
+        pawnstar.engine_name        = "Pawnstar 2.3.0";
         pawnstar.author             = "Jonny Reckless";
         pawnstar.config.does_ponder = true;
         pawnstar.book_path          = "C:/Books/openings.bin";
@@ -204,11 +204,30 @@ int main(int argc, char **argv)
             pawnstar.declared.push_back(*amphitheater::uci::ParseOptionLine(line));
         }
         pawnstar.SetOption("Hash", "64");
-        amphitheater::app::EngineEntry trebuchet;
-        trebuchet.config.executable    = "C:/Engines/trebuchet/trebuchet.exe";
-        trebuchet.engine_name          = "Trebuchet 1.0.0";
-        trebuchet.author               = "Jonny Reckless";
-        controller.catalogue().engines = {pawnstar, trebuchet};
+        controller.catalogue().engines = {pawnstar};
+
+        // The other four the installers carry, in their order, each named as its program names itself in "id name".
+        // Pawnstar-RS says "Pawnstar" there, so it carries a name of its own to tell it from Pawnstar.
+        struct OtherEngine
+        {
+            const char *executable;  ///< Its program.
+            const char *engine_name; ///< What its handshake says.
+            const char *name;        ///< The name it is given, shown instead of the handshake's; empty for none.
+        };
+
+        for (const OtherEngine &other :
+             {OtherEngine{"C:/Engines/trebuchet/trebuchet.exe", "Trebuchet 1.1.0", ""},
+              OtherEngine{"C:/Engines/pawnstar-go/pawnstar-go.exe", "Pawnstar-Go 2.3.0", ""},
+              OtherEngine{"C:/Engines/pawnstar-rs/pawnstar-rs.exe", "Pawnstar 2.3.0", "Pawnstar-RS 2.3.0"},
+              OtherEngine{"C:/Engines/stoopid-chess/stoopid-chess.exe", "Stoopid Chess 4.1.0", ""}})
+        {
+            amphitheater::app::EngineEntry engine;
+            engine.config.executable = other.executable;
+            engine.config.name       = other.name;
+            engine.engine_name       = other.engine_name;
+            engine.author            = "Jonny Reckless";
+            controller.catalogue().engines.push_back(engine);
+        }
         controller.Command(amphitheater::app::kEngineManager);
     }
     if (is_setup)
@@ -228,7 +247,7 @@ int main(int argc, char **argv)
     }
     if (is_tournament)
     {
-        for (const char *name : {"Pawnstar 2.2.0", "Trebuchet 1.0.0", "Stoopid Chess 4.1.0"})
+        for (const char *name : {"Pawnstar 2.3.0", "Trebuchet 1.1.0", "Stoopid Chess 4.1.0"})
         {
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
@@ -239,7 +258,7 @@ int main(int argc, char **argv)
     }
     // Ten games of a double round robin of four: the leader two and a half points clear, one pairing yet to meet.
     using amphitheater::chess::GameResult;
-    const std::vector<std::string> names = {"Pawnstar 2.2.0", "Trebuchet 1.0.0", "Stoopid Chess 4.1.0",
+    const std::vector<std::string> names = {"Pawnstar 2.3.0", "Trebuchet 1.1.0", "Stoopid Chess 4.1.0",
                                             "Blunderbuss 3"};
     const std::vector<amphitheater::match::GameResultEntry> results = {
         {0, 1, GameResult::kWhiteWins}, {1, 0, GameResult::kDraw},      {0, 2, GameResult::kWhiteWins},
