@@ -111,9 +111,23 @@ if(AMPHITHEATER_BUILD_TESTS)
     set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
     set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     set(gtest_force_shared_crt OFF CACHE BOOL "" FORCE)
+    # The tarball is fetched by amphitheater_download, which tries a 429 or a 5xx from GitHub again where FetchContent
+    # would not, and FetchContent takes it from the build tree, holding it to the hash as it would a download.
+    include(AmphitheaterDownload)
+    set(googletest_sha256 65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c)
+    set(googletest_archive "${CMAKE_BINARY_DIR}/_downloads/googletest-v1.17.0.tar.gz")
+    set(googletest_had "")
+    if(EXISTS "${googletest_archive}")
+        file(SHA256 "${googletest_archive}" googletest_had)
+    endif()
+    if(NOT FETCHCONTENT_SOURCE_DIR_GOOGLETEST AND NOT FETCHCONTENT_FULLY_DISCONNECTED
+       AND NOT googletest_had STREQUAL googletest_sha256)
+        amphitheater_download("https://github.com/google/googletest/archive/refs/tags/v1.17.0.tar.gz"
+                              "${googletest_archive}")
+    endif()
     FetchContent_Declare(googletest
-        URL      https://github.com/google/googletest/archive/refs/tags/v1.17.0.tar.gz
-        URL_HASH SHA256=65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c)
+        URL      "${googletest_archive}"
+        URL_HASH SHA256=${googletest_sha256})
     FetchContent_MakeAvailable(googletest)
     # googletest compiles its own two libraries under its own strict set (-Wall -Wconversion and /WX on clang-cl),
     # where clang 21's -Wcharacter-conversion meets its char8_t printer in gtest-printers.h. That is googletest's to
