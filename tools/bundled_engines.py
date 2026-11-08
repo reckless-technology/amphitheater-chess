@@ -33,9 +33,11 @@ under its own SHA-256, so two pins never meet. RECKLESS_ENGINES_BASE_URL replace
 downloads (the suite points it at a folder of its own through a file: URL). Only the standard library is used.
 """
 import hashlib
+import http.client
 import json
 import os
 import platform
+import random
 import re
 import shutil
 import stat
@@ -44,6 +46,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -141,14 +145,45 @@ def sha256_of(path):
     return digest.hexdigest()
 
 
-def download(url, into):
-    """A URL's bytes into a file, whole or not at all."""
+DOWNLOAD_ATTEMPTS = 6
+DOWNLOAD_PATIENCE_SECONDS = 120
+
+
+def is_transient(error):
+    """Whether a download's failure may pass if it is tried again: the server busy or failing (HTTP 429 or 5xx), the
+    connection timed out, refused, reset or dropped part way. Any other HTTP status (a 404 above all) is an answer, and
+    a missing file or a name that does not resolve will not mend in a minute."""
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code == 429 or 500 <= error.code <= 599
+    if isinstance(error, urllib.error.URLError):
+        error = error.reason
+    return isinstance(error, (TimeoutError, ConnectionError, http.client.IncompleteRead))
+
+
+def download(url, into, attempts=DOWNLOAD_ATTEMPTS, patience=DOWNLOAD_PATIENCE_SECONDS, sleep=time.sleep):
+    """A URL's bytes into a file, whole or not at all. A transient failure (is_transient) is tried again, up to
+    `attempts` tries in all, after a wait that doubles each time with up to half again at random, and no more than
+    `patience` seconds of waiting altogether; each retry says so on stderr. Any other failure, or the last, is raised
+    with nothing left behind. A stage fetches about seventeen files, so one passing failure would otherwise sink it."""
     into.parent.mkdir(parents=True, exist_ok=True)
     partial = into.with_name(into.name + ".part")
     request = urllib.request.Request(url, headers={"User-Agent": "reckless-amphitheater-packaging"})
-    with urllib.request.urlopen(request, timeout=300) as response, open(partial, "wb") as f:
-        shutil.copyfileobj(response, f, 1 << 20)
-    os.replace(partial, into)
+    waited = 0.0
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=300) as response, open(partial, "wb") as f:
+                shutil.copyfileobj(response, f, 1 << 20)
+            os.replace(partial, into)
+            return
+        except Exception as error:
+            partial.unlink(missing_ok=True)
+            delay = min(2 ** attempt * random.uniform(1.0, 1.5), patience - waited)
+            if attempt == attempts or delay <= 0 or not is_transient(error):
+                raise
+            print(f"  {url}: {error}; trying again in {delay:.1f} s (try {attempt + 1} of {attempts})",
+                  file=sys.stderr, flush=True)
+            sleep(delay)
+            waited += delay
 
 
 def fetch_pinned(repository, tag, asset, sha256, cache):
