@@ -273,10 +273,10 @@ int main(int argc, char **argv)
     // The five engines the installers carry, at the versions packaging/engines.json pins, as an install's About shows.
     amphitheater::app::AboutInfo about_info;
     about_info.version = amphitheater::VersionText();
-    about_info.engines = {{"Pawnstar", "2.2.0", "GPL-3.0"},
-                          {"Trebuchet", "1.0.0", "GPL-3.0-or-later"},
-                          {"Pawnstar-Go", "2.2.0", "GPL-3.0"},
-                          {"Pawnstar-RS", "2.2.0", "GPL-3.0"},
+    about_info.engines = {{"Pawnstar", "2.3.0", "GPL-3.0"},
+                          {"Trebuchet", "1.1.0", "GPL-3.0-or-later"},
+                          {"Pawnstar-Go", "2.3.0", "GPL-3.0"},
+                          {"Pawnstar-RS", "2.3.0", "GPL-3.0"},
                           {"Stoopid Chess", "4.1.0", "GPL-3.0"}};
     amphitheater::app::AboutDialog about(about_info);
     if (is_about)
