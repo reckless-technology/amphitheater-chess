@@ -7,6 +7,7 @@ version; and the update moves a pin to a newer release, refusing an asset whose 
 Run by CTest (packaging), the fake engine named by AMPHITHEATER_FAKE_ENGINE; every download is from a folder of the test's
 own through a file: URL.
 """
+import contextlib
 import hashlib
 import io
 import json
@@ -14,8 +15,10 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.error
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import bundled_engines as be  # noqa: E402
@@ -253,6 +256,82 @@ class Handshake(unittest.TestCase):
     def test_this_machine_meets_no_requirement_it_does_not_know(self):
         self.assertTrue(be.cpu_meets(""))
         self.assertFalse(be.cpu_meets("x86-64-v9"))
+
+
+class DroppedResponse(io.BytesIO):
+    """A response whose connection drops part way through its body."""
+
+    def read(self, *arguments):
+        raise ConnectionResetError("connection reset by peer")
+
+
+class Retries(unittest.TestCase):
+    """download() against a urlopen that answers each call from a script: an exception to raise, or the bytes."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.into = Path(self.temporary.name) / "cache" / "engine.exe"
+        self.waits = []
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def download(self, *answers, **limits):
+        script = list(answers)
+        self.calls = 0
+
+        def urlopen(request, timeout):
+            self.calls += 1
+            answer = script.pop(0)
+            if isinstance(answer, BaseException):
+                raise answer
+            return answer if isinstance(answer, io.BytesIO) else io.BytesIO(answer)
+
+        log = io.StringIO()
+        with mock.patch.object(be.urllib.request, "urlopen", urlopen), contextlib.redirect_stderr(log):
+            try:
+                be.download("https://example.com/engine.exe", self.into, sleep=self.waits.append, **limits)
+            finally:
+                self.log = log.getvalue()
+
+    @staticmethod
+    def http(code):
+        return urllib.error.HTTPError("https://example.com/engine.exe", code, "status", {}, None)
+
+    def test_a_transient_failure_is_tried_again_and_the_file_arrives_whole(self):
+        self.download(self.http(504), self.http(429), urllib.error.URLError(TimeoutError("timed out")),
+                      DroppedResponse(b"half"), b"engine")
+        self.assertEqual(self.into.read_bytes(), b"engine")
+        self.assertEqual(self.calls, 5)
+        self.assertEqual(len(self.waits), 4)
+        for attempt, wait in enumerate(self.waits, start=1):
+            self.assertGreaterEqual(wait, 2 ** attempt)
+            self.assertLessEqual(wait, 2 ** attempt * 1.5)
+        self.assertEqual(self.log.count("trying again"), 4, self.log)
+        self.assertIn("try 2 of 6", self.log)
+        self.assertEqual(list(self.into.parent.iterdir()), [self.into], "no partial file is left")
+
+    def test_an_answer_that_will_not_change_is_refused_at_once(self):
+        for answer in (self.http(404), self.http(403), urllib.error.URLError(FileNotFoundError("no such file"))):
+            self.waits.clear()
+            with self.assertRaises(urllib.error.URLError):
+                self.download(answer, b"never read")
+            self.assertEqual((self.calls, self.waits, self.log), (1, [], ""), answer)
+            self.assertFalse(self.into.exists())
+
+    def test_a_failure_that_lasts_gives_up_after_its_tries_within_its_patience(self):
+        with self.assertRaises(urllib.error.HTTPError):
+            self.download(*[self.http(503)] * 6)
+        self.assertEqual(self.calls, 6)
+        self.assertEqual(len(self.waits), 5)
+        self.assertLessEqual(sum(self.waits), be.DOWNLOAD_PATIENCE_SECONDS)
+        self.assertEqual(list(self.into.parent.iterdir()), [], "nothing is left behind")
+
+    def test_the_waiting_stops_at_its_patience(self):
+        with self.assertRaises(urllib.error.HTTPError):
+            self.download(*[self.http(500)] * 6, patience=10)
+        self.assertAlmostEqual(sum(self.waits), 10)
+        self.assertLess(self.calls, 6, "the tries end when the patience is spent")
 
 
 if __name__ == "__main__":
