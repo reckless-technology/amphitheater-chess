@@ -2,7 +2,9 @@
 // size of the window and putting it on screen with SetDIBitsToDevice in WM_PAINT, the mouse, the keys and dropped
 // files handed to a MouseRouter, and a window timer for the frame callback - or, where a product has asked for it
 // (ChildWindow::SetFramePacing), the display's own clock in a thread of the window's own, each frame posted here.
-// A popup is the same surface in a no-activate tool window over the host's, watched by a thread mouse hook for
+// Where a product has asked for the GPU (ChildWindow::SetDrawing) and linked its back end, the tree is drawn into a
+// surface on the GPU instead and presented with a swap (GpuPresenterWin.h), and nothing of the GPU is touched until
+// then. A popup is the same surface in a no-activate tool window over the host's, watched by a thread mouse hook for
 // presses outside it. The window class is the module's own, registered with the first window and unregistered with
 // the last, so two plug-ins' copies of this code never share a window procedure. Screen points are the screen's
 // pixels, opaque to the views.
@@ -53,6 +55,7 @@
 #include <dwmapi.h>
 
 #include "ClipboardWin.h"
+#include "GpuPresenterWin.h"
 #include "HandedKeys.h"
 
 namespace reckless::window
@@ -75,8 +78,18 @@ constexpr UINT kCallSoonMessage = WM_APP + 17;
 constexpr UINT kChooseFileMessage = WM_APP + 18;
 
 /** The message the display clock's thread posts to the window when a frame is due (ChildWindow::SetFramePacing).
-    Never posted to a window on the platform's timer, which is every window until a product asks. */
+    Never posted to a window on the platform's timer, which is every window until a product asks. Its WPARAM says which
+    of a frame's two passes it is: kFrameAsksToRun as the clock posts it, kFrameRuns as the window posts it to itself.
+ */
 constexpr UINT kDisplayFrameMessage = WM_APP + 19;
+
+/** The first pass of a frame: whether there is work ahead of it on the thread is read here, and the frame stands back
+    or goes on to its second pass. */
+constexpr WPARAM kFrameAsksToRun = 0;
+
+/** The second pass of a frame: the callback runs. A posted message of its own, so that every frame of one refresh has
+    read the queue before any of them has invalidated a window, and none takes another's paint for work ahead of it. */
+constexpr WPARAM kFrameRuns = 1;
 
 /** The message the display clock's thread posts to the window when it has given up on the display and the platform's
     own timer is to take over. */
@@ -441,7 +454,11 @@ double DisplayRefreshHertzOf(HWND window) noexcept
     The waiting is in a thread of the window's own and each frame is posted to the window (kDisplayFrameMessage), so
     the callback runs on the window's thread as the timer's always has, and a plug-in's editor inside a host's loop is
     served as well as an app on its own loop. **At most one frame is in flight**: a window whose thread is busy - a
-    modal loop, a dialog, a drag - is never handed a backlog to run in a burst.
+    modal loop, a dialog, a drag - is never handed a backlog to run in a burst. A frame that is never answered is asked
+    for again (IsFrameInFlightLost), since a host that throws one posted message away would otherwise leave the window
+    with no frames for good, and only the last of those is answered. A window may stand the frame back
+    (DoesFrameStandBack, FrameStoodBack), and the clock then posts the same frame again shortly, off its own schedule,
+    until it is taken: the schedule goes on underneath, and a refresh that passes meanwhile is simply not a frame.
 
     A product's lead (FrameRequest::lead_microseconds) wakes each frame that long before the vertical blank it is due
     at rather than at it, so a frame that takes a few milliseconds is finished as the compositor takes it instead of
@@ -479,12 +496,15 @@ class WinDisplayClock
         request_ = request;
         gave_up_because_.store(static_cast<int>(FramePacingFallback::kNone), std::memory_order_relaxed);
         is_frame_in_flight_.store(false, std::memory_order_relaxed);
+        ask_again_seconds_   = 0.0;
+        asked_after_seconds_ = 0.0;
         // Without the high resolution the timer is the system clock's 15.625 ms again, which is the whole fault being
         // fixed, so a Windows that refuses the flag is told apart from one that takes it rather than paced badly.
-        timer_ = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
-                                        TIMER_MODIFY_STATE | SYNCHRONIZE);
-        stop_  = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-        if (timer_ == nullptr || stop_ == nullptr)
+        timer_      = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
+                                             TIMER_MODIFY_STATE | SYNCHRONIZE);
+        stop_       = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+        stood_back_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+        if (timer_ == nullptr || stop_ == nullptr || stood_back_ == nullptr)
         {
             Stop();
             return false;
@@ -516,6 +536,11 @@ class WinDisplayClock
             CloseHandle(stop_);
             stop_ = nullptr;
         }
+        if (stood_back_ != nullptr)
+        {
+            CloseHandle(stood_back_);
+            stood_back_ = nullptr;
+        }
         display_hertz_.store(0.0, std::memory_order_release);
         lead_microseconds_.store(0, std::memory_order_release);
     }
@@ -525,6 +550,26 @@ class WinDisplayClock
     void FrameTaken() noexcept
     {
         is_frame_in_flight_.store(false, std::memory_order_release);
+    }
+
+    /** Whether a frame the window has just taken off its queue is the one it is to answer, rather than one asked for
+        before it: a thread that was busy while the clock asked again (IsFrameInFlightLost) finds several on its queue,
+        and one that has stopped the clock and started it finds the old clock's.
+        @param asking  the number the frame was posted with, its message's LPARAM
+        @return        true where it is the latest asked */
+    bool IsLatestAsk(LPARAM asking) const noexcept
+    {
+        return static_cast<LPARAM>(latest_ask_.load(std::memory_order_acquire)) == asking;
+    }
+
+    /** The frame the window was just handed left for now, with work ahead of it on the thread: still in flight, so no
+        other is posted over it, and posted again shortly (FrameAsksAgainAfter). Nothing on a stopped clock. */
+    void FrameStoodBack() noexcept
+    {
+        if (stood_back_ != nullptr)
+        {
+            SetEvent(stood_back_);
+        }
     }
 
     /** Why the clock gave up on the display, where it has: what the window reads as it handles
@@ -567,11 +612,18 @@ class WinDisplayClock
     {
         for (;;)
         {
-            const double seconds = due_seconds - QpcSeconds();
-            if (seconds <= 0.0)
+            const double now = QpcSeconds();
+            if (ask_again_seconds_ > 0.0 && now >= ask_again_seconds_)
+            {
+                ask_again_seconds_ = 0.0;
+                AskForTheFrame(now);
+            }
+            if (due_seconds <= now)
             {
                 return Woke::kDue;
             }
+            const double seconds =
+                (ask_again_seconds_ > 0.0 && ask_again_seconds_ < due_seconds ? ask_again_seconds_ : due_seconds) - now;
             LARGE_INTEGER due{};
             // Negative is relative, in hundreds of nanoseconds: the only form that needs nothing of the system clock,
             // which a time change or a daylight saving moves under an absolute one.
@@ -584,11 +636,17 @@ class WinDisplayClock
             {
                 return Woke::kStopped;
             }
-            const HANDLE waited_on[] = {stop_, timer_};
-            const DWORD  woke        = WaitForMultipleObjects(2, waited_on, FALSE, kClockWaitsAtMostMilliseconds);
+            const HANDLE waited_on[] = {stop_, stood_back_, timer_};
+            const DWORD  woke        = WaitForMultipleObjects(3, waited_on, FALSE, kClockWaitsAtMostMilliseconds);
             if (woke == WAIT_OBJECT_0 || woke == WAIT_FAILED)
             {
                 return Woke::kStopped;
+            }
+            if (woke == WAIT_OBJECT_0 + 1)
+            {
+                const double answered = QpcSeconds();
+                asked_after_seconds_  = FrameAsksAgainAfter(asked_after_seconds_, answered - asked_seconds_);
+                ask_again_seconds_    = answered + asked_after_seconds_;
             }
         }
     }
@@ -602,26 +660,36 @@ class WinDisplayClock
         PostMessageW(window_, kDisplayClockGaveUpMessage, 0, 0);
     }
 
+    /** The frame in flight posted to the window, numbered as the one the window is to answer: any asked before it and
+        still on the queue are passed over as they come off it. Where the queue has no room the frame is not in flight
+        after all, and the next frame asks instead.
+        @param now  the clock now, in seconds on the performance counter */
+    void AskForTheFrame(double now)
+    {
+        asked_seconds_    = now;
+        const auto asking = latest_ask_.fetch_add(1, std::memory_order_acq_rel) + 1;
+        if (PostMessageW(window_, kDisplayFrameMessage, kFrameAsksToRun, static_cast<LPARAM>(asking)) == FALSE)
+        {
+            is_frame_in_flight_.store(false, std::memory_order_release);
+        }
+    }
+
     /** The thread's whole body: the compositor read, the display under the window watched, the next frame put on the
         display's grid, waited for and posted. */
     void Wait()
     {
-        FrameClock        clock;
-        RefreshSteadiness steadiness;
-        HMONITOR          display        = nullptr;
-        double            display_hertz  = 0.0;
-        double            period_divided = 0.0;
-        std::size_t       unsteady       = 0;
+        FrameClock         clock;
+        RefreshSteadiness  steadiness;
+        CompositorReadings readings;
+        HMONITOR           display        = nullptr;
+        double             display_hertz  = 0.0;
+        double             period_divided = 0.0;
+        std::size_t        unsteady       = 0;
         for (;;)
         {
-            const CompositionTiming timing         = CompositionTimingNow();
-            const HMONITOR          under          = MonitorFromWindow(window_, MONITOR_DEFAULTTONEAREST);
-            const bool              is_display_new = under != display;
-            // A period further from the one being divided than one period read twice could be: the mode changed, or
-            // the window arrived on a display of another rate.
-            const bool has_period_moved =
-                timing.period_seconds > 0.0 && std::fabs(timing.period_seconds - period_divided) >
-                                                   kRefreshPeriodsHoldStillWithin * timing.period_seconds;
+            CompositionTiming timing         = CompositionTimingNow();
+            const HMONITOR    under          = MonitorFromWindow(window_, MONITOR_DEFAULTTONEAREST);
+            const bool        is_display_new = under != display;
             if (is_display_new)
             {
                 // Another display under the window: another grid to land on, and nothing of the one being left is
@@ -629,15 +697,43 @@ class WinDisplayClock
                 display  = under;
                 unsteady = 0;
                 steadiness.Forget();
+                readings.Forget();
+                display_hertz = DisplayRefreshHertzOf(window_);
             }
-            if (is_display_new || has_period_moved)
+            const bool is_set_aside = readings.Note(timing.hertz, display_hertz);
+            // A reading that agrees with the mode but is wandering is no more a period to put a frame on than one that
+            // does not: it goes on being the mode's until the readings are one rate read over again.
+            const bool is_on_the_mode =
+                is_set_aside || (IsBelievableRefreshRate(display_hertz) &&
+                                 !readings.does_read_steadily(display_hertz) && !readings.does_disagree_for_good());
+            if (is_on_the_mode)
+            {
+                timing.hertz          = display_hertz;
+                timing.period_seconds = 1.0 / display_hertz;
+            }
+            // A period further from the one being divided than one period read twice could be: the mode changed, or
+            // the window arrived on a display of another rate.
+            const bool has_period_moved =
+                timing.period_seconds > 0.0 && std::fabs(timing.period_seconds - period_divided) >
+                                                   kRefreshPeriodsHoldStillWithin * timing.period_seconds;
+            if (has_period_moved)
             {
                 // The rate to divide is read again rather than carried over - a mode change on the one display is
                 // caught here, and reading it only when something has moved keeps it off every frame's path.
                 display_hertz = DisplayRefreshHertzOf(window_);
             }
-            steadiness.Note(timing.period_seconds);
-            unsteady = steadiness.does_hold_still() ? 0 : unsteady + 1;
+            if (IsBelievableRefreshRate(display_hertz))
+            {
+                // Two readings of an unchanged panel can be a twentieth apart and more (CompositorReadings), so with a
+                // mode to compare them with it is only a wider spread that says the panel's rate varies.
+                unsteady = readings.does_vary() ? unsteady + 1 : 0;
+                steadiness.Forget();
+            }
+            else
+            {
+                steadiness.Note(timing.period_seconds);
+                unsteady = steadiness.does_hold_still() ? 0 : unsteady + 1;
+            }
 
             DisplayClockReading reading;
             reading.has_clock        = timing.is_read;
@@ -670,8 +766,11 @@ class WinDisplayClock
             }
             // The due time pulled onto the grid the compositor's last vertical blank and its period describe, which
             // is where a whole number of refresh periods lands by construction.
-            clock.MoveNextFrameTo(
-                OnTheRefreshGrid(clock.next_frame_seconds(), timing.vblank_seconds, timing.period_seconds));
+            if (!is_on_the_mode || has_period_moved)
+            {
+                clock.MoveNextFrameTo(
+                    OnTheRefreshGrid(clock.next_frame_seconds(), timing.vblank_seconds, timing.period_seconds));
+            }
             if (WaitUntil(LedWakeSeconds(clock.next_frame_seconds(), lead_seconds)) == Woke::kStopped)
             {
                 return;
@@ -679,22 +778,33 @@ class WinDisplayClock
             const double woke_on_the_grid = QpcSeconds() + lead_seconds; // the waking, on the clock's own timeline
             // One frame in flight at a time: where the window has not taken the last one, this one is given up
             // rather than queued behind it, and the clock's own catching up decides what happens next.
-            if (!is_frame_in_flight_.exchange(true, std::memory_order_acq_rel) &&
-                PostMessageW(window_, kDisplayFrameMessage, 0, 0) == FALSE)
+            const double asking_now = QpcSeconds();
+            if (!is_frame_in_flight_.exchange(true, std::memory_order_acq_rel))
             {
-                is_frame_in_flight_.store(false, std::memory_order_release);
+                asked_after_seconds_ = 0.0;
+                AskForTheFrame(asking_now);
+            }
+            else if (IsFrameInFlightLost(asking_now - asked_seconds_))
+            {
+                // A window whose thread is only busy answers the last of these as it comes back, and never a burst.
+                AskForTheFrame(asking_now);
             }
             clock.Advance(woke_on_the_grid);
         }
     }
 
-    HANDLE            timer_{nullptr};            ///< the high-resolution waitable timer each frame is waited on.
-    HANDLE            stop_{nullptr};             ///< set to end the thread, waited on beside the timer.
-    std::thread       thread_;                    ///< the thread that waits; not joinable while the clock is stopped.
-    HWND              window_{nullptr};           ///< the window each frame is posted to.
-    FrameRequest      request_{};                 ///< the divisor and the frames to make up, the product's.
+    HANDLE            timer_{nullptr};           ///< the high-resolution waitable timer each frame is waited on.
+    HANDLE            stop_{nullptr};            ///< set to end the thread, waited on beside the timer.
+    HANDLE            stood_back_{nullptr};      ///< set as the window stands a frame back, waited on beside the timer.
+    double            ask_again_seconds_{0.0};   ///< when a frame stood back is posted again; 0 for none. The thread's.
+    double            asked_seconds_{0.0};       ///< when the frame in flight was last posted. The thread's.
+    double            asked_after_seconds_{0.0}; ///< the wait before it was last posted; 0 for its first. The thread's.
+    std::thread       thread_;                   ///< the thread that waits; not joinable while the clock is stopped.
+    HWND              window_{nullptr};          ///< the window each frame is posted to.
+    FrameRequest      request_{};                ///< the divisor and the frames to make up, the product's.
     std::atomic<bool> is_frame_in_flight_{false}; ///< a frame posted and not yet taken off the window's queue.
-    std::atomic<int>  gave_up_because_{
+    std::atomic<std::int32_t> latest_ask_{0};     ///< the number of the frame last asked for; the window's to compare.
+    std::atomic<int>          gave_up_because_{
         static_cast<int>(FramePacingFallback::kNone)}; ///< FramePacingFallback, as an int for std::atomic.
     std::atomic<double>       display_hertz_{0.0};     ///< the rate being divided, as the thread last read it.
     std::atomic<std::int32_t> lead_microseconds_{0};   ///< the lead in force, as the thread last held it.
@@ -1103,8 +1213,8 @@ class WinSurface : public view::Host
             if (paced_message_)
             {
                 // Copied: answering the clock's giving up replaces the callback, and a call may not destroy itself.
-                const std::function<void(UINT)> paced = paced_message_;
-                paced(message);
+                const std::function<void(UINT, WPARAM, LPARAM)> paced = paced_message_;
+                paced(message, wparam, lparam);
             }
             return 0;
         case kCallSoonMessage: {
@@ -1236,6 +1346,9 @@ class WinSurface : public view::Host
                 SetFocus(previous_focus_);
             }
             KillTimer(hwnd_, kFrameTimer);
+            // The views' surface before the GPU it is on, and both while the window and its device context are there.
+            surface_.reset();
+            gpu_.reset();
             SetWindowLongPtrW(hwnd_, GWLP_USERDATA, 0);
             DestroyWindow(hwnd_);
             hwnd_ = nullptr;
@@ -1247,11 +1360,26 @@ class WinSurface : public view::Host
         registered_ = false;
     }
 
-    /** The raster made again at the root's size times the scale, cleared, with the Skia surface over it. */
+    /** The raster made again at the root's size times the scale, cleared, with the Skia surface over it - or, on the
+        GPU, the GPU's surface at that size, and the CPU raster instead where the GPU will not make one. */
     void ResizeRaster()
     {
         pixel_width_  = std::max(1, static_cast<int>(std::lround(root_.width() * scale_)));
         pixel_height_ = std::max(1, static_cast<int>(std::lround(root_.height() * scale_)));
+        if (gpu_)
+        {
+            surface_.reset();
+            surface_ = gpu_->SurfaceOfSize(pixel_width_, pixel_height_);
+            if (surface_)
+            {
+                std::vector<std::uint32_t>().swap(pixels_); // no raster while the GPU draws
+                return;
+            }
+            // No surface of this size on the GPU, or the GPU gone: the CPU raster from here, and the reason kept.
+            gpu_.reset();
+            drawing_.drawing = Drawing::kCpuRaster;
+            drawing_.why     = DrawingFallback::kNoSurface;
+        }
         pixels_.assign(static_cast<std::size_t>(pixel_width_) * static_cast<std::size_t>(pixel_height_), 0u);
         surface_ = SkSurfaces::WrapPixels(
             SkImageInfo::Make(pixel_width_, pixel_height_, kBGRA_8888_SkColorType, kPremul_SkAlphaType), pixels_.data(),
@@ -1267,6 +1395,66 @@ class WinSurface : public view::Host
             .SmallestIntegerContainer();
     }
 
+    /** The GPU made on the window by the back end it was asked for with (`gpu_backend_`), and `drawing_` saying
+        whichever it came to: the GPU, or the CPU raster and the step that refused. The surface is the caller's to make
+        (ResizeRaster).
+        @return  true when the window now draws on the GPU */
+    bool MakeGpu()
+    {
+        win::GpuPresenterMade made = gpu_backend_->make(hwnd_);
+        if (!made.renderer.empty())
+        {
+            drawing_.renderer = std::move(made.renderer);
+        }
+        if (!made.presenter)
+        {
+            drawing_.drawing = Drawing::kCpuRaster;
+            drawing_.why     = made.why;
+            return false;
+        }
+        gpu_             = std::move(made.presenter);
+        drawing_.drawing = Drawing::kGpu;
+        drawing_.why     = DrawingFallback::kNone;
+        return true;
+    }
+
+    /** The GPU let go - its surface first - and the window back on the CPU raster, `why` kept; the whole window drawn
+        again. Nothing for a window that was not on the GPU.
+        @param why  why the window draws with the CPU raster now */
+    void LetGoOfTheGpu(DrawingFallback why)
+    {
+        if (gpu_)
+        {
+            surface_.reset();
+            gpu_.reset();
+            drawing_.drawing = Drawing::kCpuRaster;
+            drawing_.why     = why;
+            ResizeRaster();
+            InvalidateRect(hwnd_, nullptr, FALSE);
+        }
+    }
+
+    /** The GPU lost - the driver reset, the context abandoned, or the context no longer made current - and made again
+        in its place, at most kMostGpuContextsLost times; the CPU raster where it is not made again, and either way the
+        whole window drawn again, since nothing of the lost surface is left. */
+    void GpuLost()
+    {
+        surface_.reset();
+        gpu_.reset();
+        ++drawing_.contexts_lost;
+        if (!MayMakeTheGpuContextAgain(drawing_.contexts_lost))
+        {
+            drawing_.drawing = Drawing::kCpuRaster;
+            drawing_.why     = DrawingFallback::kContextLostTooOften;
+        }
+        else if (!MakeGpu())
+        {
+            drawing_.why = DrawingFallback::kContextNotMadeAgain;
+        }
+        ResizeRaster();
+        InvalidateRect(hwnd_, nullptr, FALSE);
+    }
+
     view::View                &root_;            ///< the tree drawn.
     view::MouseRouter          router_;          ///< hands the mouse, keys and drops to the tree.
     float                      scale_;           ///< window pixels per design pixel.
@@ -1274,14 +1462,22 @@ class WinSurface : public view::Host
     int                        pixel_width_{1};  ///< the raster's width, in pixels.
     int                        pixel_height_{1}; ///< the raster's height, in pixels.
     std::vector<std::uint32_t> pixels_;          ///< the raster, B G R A with premultiplied alpha, top-down.
-    sk_sp<SkSurface>           surface_;         ///< Skia's surface over the raster.
-    std::function<void()>      frame_;           ///< the frame callback, run on the frame timer; may be empty.
+    /** The GPU the tree is drawn on (ChildWindow::SetDrawing): **null until a product asks for the GPU** and its back
+        end makes one, so a popup's and an unasked child window's is null for the window's whole life and the tree is
+        rastered and handed to SetDIBitsToDevice exactly as it always was. Declared before `surface_`, which may be on
+        it and so goes first. */
+    std::unique_ptr<win::GpuPresenter> gpu_;
+    sk_sp<SkSurface> surface_; ///< Skia's surface the tree is drawn into: over the raster, or on the GPU.
+    /** The back end the GPU was asked for with, to make it again with when it is lost; null until a product asks. */
+    const GpuBackend     *gpu_backend_{nullptr};
+    DrawingState          drawing_{}; ///< what the window draws with, and why where it fell back.
+    std::function<void()> frame_;     ///< the frame callback, run on the frame timer; may be empty.
     /** What the window does with a message its display clock's thread posted - a frame due, or the clock giving up
         (ChildWindow::SetFramePacing). **Empty until a product asks to be paced on the display's clock**, and nothing
         posts those messages until then: a popup's and an unasked child window's is empty for the window's whole
         life, and the frame callback runs from WM_TIMER alone, exactly as it always did. */
-    std::function<void(UINT message)> paced_message_;
-    bool                              no_activate_{false}; ///< a click does not activate the window: a popup's.
+    std::function<void(UINT message, WPARAM pass, LPARAM asking)> paced_message_;
+    bool no_activate_{false}; ///< a click does not activate the window: a popup's.
     /** The window a key no view took is handed on to (ChildWindow::HandOnKeysTo); null to hand on none. */
     HWND key_target_{nullptr};
     /** Told of every raw key edge (ChildWindow::SetRawKeyCallback); empty until an owner asks, and then nothing of the
@@ -1321,6 +1517,11 @@ class WinSurface : public view::Host
         {
             return;
         }
+        if (gpu_ && !gpu_->BeginFrame())
+        {
+            GpuLost();
+            return;
+        }
         const gfx::RectI dirty = gfx::RectI::LeftTopRightBottom(area.left, area.top, area.right, area.bottom)
                                      .Intersection({pixel_width_, pixel_height_});
         if (!dirty.IsEmpty())
@@ -1339,6 +1540,15 @@ class WinSurface : public view::Host
                 view::PaintTree(root_, canvas);
             }
             sk->restore();
+        }
+        if (gpu_)
+        {
+            // The whole surface to the window and swapped: the paint's clip is GDI's and the GL's present ignores it.
+            if (!gpu_->Present())
+            {
+                GpuLost();
+            }
+            return;
         }
         BITMAPINFO info{};
         info.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
@@ -1611,11 +1821,17 @@ class WinChildWindow final : public ChildWindow, public WinSurface
     {
         request_ = request;
         pacing_  = DecidedPacing();
+        if (pacing_.pacing == FramePacing::kDisplayClock)
+        {
+            has_clock_found_disagreement_ = false; // it agrees now: the clock's thread judges it again from here
+        }
         if (pacing_.pacing == FramePacing::kDisplayClock && !paced_message_)
         {
             // Installed once a product has asked and never taken back: a frame still on the queue as the clock stops
             // is a frame callback the platform timer would have run anyway.
-            paced_message_ = [this](UINT message) { HandlePacedMessage(message); };
+            paced_message_ = [this](UINT message, WPARAM pass, LPARAM asking) {
+                HandlePacedMessage(message, pass, asking);
+            };
         }
         ArrangePacing();
         return FramePacingNow();
@@ -1637,6 +1853,59 @@ class WinChildWindow final : public ChildWindow, public WinSurface
             }
         }
         return state;
+    }
+
+    /** The window drawn as `request` asks: on the GPU where the request names a back end, the environment has not
+        turned the GPU off and the back end makes one on this window, and with the CPU raster otherwise. A request for
+        the CPU raster on a window that was never on the GPU touches nothing; one that changes what the window draws
+        with draws the whole window again on the new one.
+        @param request  what the product asks for; DrawingRequest{} for the CPU raster
+        @return         what the window is drawing with, and why where it fell back */
+    DrawingState SetDrawing(const DrawingRequest &request) override
+    {
+        const DrawingState chosen = ChosenDrawing(
+            request, IsGpuDrawingForcedOff(core::EnvironmentVariable(kGpuDrawingEnvironmentVariable)), true);
+        if (chosen.drawing != Drawing::kGpu)
+        {
+            LetGoOfTheGpu(chosen.why);
+            drawing_.drawing = chosen.drawing;
+            drawing_.why     = chosen.why;
+            return DrawingNow();
+        }
+        if (gpu_ && request.gpu_backend == gpu_backend_)
+        {
+            return DrawingNow(); // asked again for what it has
+        }
+        LetGoOfTheGpu(DrawingFallback::kNotAsked);
+        gpu_backend_           = request.gpu_backend;
+        drawing_.contexts_lost = 0;
+        drawing_.renderer.clear();
+        MakeGpu();
+        ResizeRaster();
+        InvalidateRect(hwnd_, nullptr, FALSE);
+        return DrawingNow();
+    }
+
+    /** What the window is drawing with now: what SetDrawing answered, or the CPU raster and why where the GPU has since
+        been lost and not made again, or would not make a surface at a new size.
+        @return  the drawing in force */
+    DrawingState DrawingNow() const override
+    {
+        return drawing_;
+    }
+
+    /** The rate of the mode of the display the window is on now: the whole hertz Windows names it in, and the
+        compositor's reading only where the mode names no rate.
+        @return  the rate, in hertz; 0 where neither can be believed */
+    double DisplayModeHertz() const override
+    {
+        DisplayClockReading reading;
+        reading.display_hertz = DisplayRefreshHertzOf(hwnd_);
+        if (!IsBelievableRefreshRate(reading.display_hertz))
+        {
+            reading.compositor_hertz = CompositionTimingNow().hertz;
+        }
+        return ModeHertzOf(reading);
     }
 
     /** Visible with every window above it, and its top-level window not minimised.
@@ -1673,9 +1942,13 @@ class WinChildWindow final : public ChildWindow, public WinSurface
     {
         const CompositionTiming timing = CompositionTimingNow();
         DisplayClockReading     reading;
-        reading.has_clock        = timing.is_read;
-        reading.compositor_hertz = timing.hertz;
-        reading.display_hertz    = DisplayRefreshHertzOf(hwnd_);
+        reading.has_clock     = timing.is_read;
+        reading.display_hertz = DisplayRefreshHertzOf(hwnd_);
+        // One reading is not enough to refuse on (CompositorReadings), and the clock's own thread goes on to judge it,
+        // unless that thread has already found this display to disagree: asking again while that is still so is
+        // answered at once, and starts no clock to find it out a second time.
+        reading.compositor_hertz =
+            has_clock_found_disagreement_ ? timing.hertz : RateOfOneReading(timing.hertz, reading.display_hertz);
         return ChosenPacing(request_, reading);
     }
 
@@ -1687,6 +1960,7 @@ class WinChildWindow final : public ChildWindow, public WinSurface
     {
         KillTimer(hwnd_, kFrameTimer);
         clock_.Stop();
+        frame_first_asked_seconds_ = 0.0;
         if (!frame_)
         {
             return;
@@ -1705,14 +1979,47 @@ class WinChildWindow final : public ChildWindow, public WinSurface
         SetTimer(hwnd_, kFrameTimer, kFrameMilliseconds, nullptr);
     }
 
-    /** A message the display clock's thread posted, on this window's thread: a frame due - the clock told it has been
-        taken, and the callback run as the timer's is - or the clock giving up, which puts the window back on the
-        platform's timer with the reason kept for the product to read.
-        @param message  kDisplayFrameMessage or kDisplayClockGaveUpMessage */
-    void HandlePacedMessage(UINT message)
+    /** A message the display clock's thread posted, on this window's thread: a frame due, in its two passes, or the
+        clock giving up, which puts the window back on the platform's timer with the reason kept for the product to
+        read. In its first pass the frame reads the thread's queue, and with a paint or an expired timer of any window
+        waiting - this one's, another panel's, a host's - it stands back behind them (DoesFrameStandBack), since a
+        posted message outranks both and would otherwise take the thread from them. It reads what is really there,
+        GetQueueStatus' high word, across every module on the thread: each plug-in carries its own copy of this code,
+        so no count kept here could see the others. In its second pass the clock is told the frame has been taken and
+        the callback runs, as the timer's does. Passing through the queue between the two is what lets every frame of
+        one refresh read the queue before any has invalidated a window, so they do not take each other for work ahead.
+        @param message  kDisplayFrameMessage or kDisplayClockGaveUpMessage
+        @param pass     for a frame, kFrameAsksToRun or kFrameRuns
+        @param asking   for a frame's first pass, the number the clock asked for it under (WinDisplayClock::IsLatestAsk)
+     */
+    void HandlePacedMessage(UINT message, WPARAM pass, LPARAM asking)
     {
         if (message == kDisplayFrameMessage)
         {
+            if (pass == kFrameAsksToRun)
+            {
+                if (!clock_.IsLatestAsk(asking))
+                {
+                    return; // asked for again since, or by a clock since stopped: that one answers instead
+                }
+                const double now = QpcSeconds();
+                if (frame_first_asked_seconds_ == 0.0)
+                {
+                    frame_first_asked_seconds_ = now;
+                }
+                const bool is_work_ahead = HIWORD(GetQueueStatus(QS_PAINT | QS_TIMER)) != 0;
+                if (DoesFrameStandBack(is_work_ahead, now - frame_first_asked_seconds_))
+                {
+                    clock_.FrameStoodBack();
+                    return;
+                }
+                frame_first_asked_seconds_ = 0.0;
+                if (PostMessageW(hwnd_, kDisplayFrameMessage, kFrameRuns, 0) == FALSE)
+                {
+                    clock_.FrameTaken(); // a queue with no room: the frame lost, as a busy thread loses one
+                }
+                return;
+            }
             clock_.FrameTaken();
             if (frame_)
             {
@@ -1721,12 +2028,16 @@ class WinChildWindow final : public ChildWindow, public WinSurface
             return;
         }
         pacing_ = {FramePacing::kPlatformTimer, 0, pacing_.display_hertz, 0.0, clock_.gave_up_because(), 0};
+        has_clock_found_disagreement_ = clock_.gave_up_because() == FramePacingFallback::kRefreshRateDisagrees;
         ArrangePacing();
     }
 
     FrameRequest     request_{}; ///< what the product asked for; FrameRequest{} until it asks, which is the default.
     FramePacingState pacing_{};  ///< what the window is pacing on, and why where it fell back.
     WinDisplayClock  clock_;     ///< the display clock's thread; stopped, and holding nothing, until a product asks.
+    double frame_first_asked_seconds_{0.0}; ///< when the frame standing back first asked to run; 0 for none standing.
+    bool   has_clock_found_disagreement_{
+        false}; ///< true once the clock's thread has given up on the two rates disagreeing.
 };
 
 namespace

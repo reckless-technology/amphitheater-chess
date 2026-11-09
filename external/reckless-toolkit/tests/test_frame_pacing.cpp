@@ -97,7 +97,8 @@ TEST(FramePacingFallbackText, EveryReasonHasWordsOfItsOwn)
                                          FramePacingFallback::kRefreshRateUnknown,
                                          FramePacingFallback::kRefreshRateNotBelievable,
                                          FramePacingFallback::kRefreshRateDisagrees,
-                                         FramePacingFallback::kRefreshRateUnsteady};
+                                         FramePacingFallback::kRefreshRateUnsteady,
+                                         FramePacingFallback::kDisplayLinkSilent};
     std::vector<std::string>  seen;
     for (FramePacingFallback why : every)
     {
@@ -761,4 +762,348 @@ TEST(Lead, ALeadMovesOnlyTheWakingNotTheScheduleNorItsCatchingUp)
         }
     }
     EXPECT_GT(given_up, 0) << "the stall was long enough to be given up on, so the catching up was exercised";
+}
+
+TEST(DisplayLinkSilence, ALinkThatHasStoppedIsToldFromOneThatIsTicking)
+{
+    using reckless::window::IsDisplayLinkSilent;
+    using reckless::window::kDisplayLinkSilentSeconds;
+    EXPECT_FALSE(IsDisplayLinkSilent(10.0, 10.0));
+    EXPECT_FALSE(IsDisplayLinkSilent(10.0, 10.0 + 1.0 / 20.0)) << "the slowest refresh believed, a whole tick on";
+    EXPECT_FALSE(IsDisplayLinkSilent(10.0, 10.0 + kDisplayLinkSilentSeconds * 0.99));
+    EXPECT_TRUE(IsDisplayLinkSilent(10.0, 10.0 + kDisplayLinkSilentSeconds));
+    EXPECT_TRUE(IsDisplayLinkSilent(10.0, 1000.0));
+    EXPECT_GE(kDisplayLinkSilentSeconds, 4.0 / 20.0)
+        << "more than a few ticks of the slowest refresh a display can have";
+}
+
+TEST(FrameStandsBack, AFrameInFlightIsTakenForLostOnlyAfterTheBound)
+{
+    using reckless::window::IsFrameInFlightLost;
+    using reckless::window::kFrameInFlightIsLostAfterSeconds;
+    EXPECT_FALSE(IsFrameInFlightLost(0.0));
+    EXPECT_FALSE(IsFrameInFlightLost(0.25)) << "a frame that has only stood back for as long as one can";
+    EXPECT_TRUE(IsFrameInFlightLost(kFrameInFlightIsLostAfterSeconds));
+    EXPECT_TRUE(IsFrameInFlightLost(60.0));
+}
+
+TEST(FrameStandsBack, AsksAgainSoonUnlessItIsAskingFasterThanTheThreadCanGetOn)
+{
+    using reckless::window::FrameAsksAgainAfter;
+    using reckless::window::kFrameAsksAgainAfterAtLeastSeconds;
+    using reckless::window::kFrameAsksAgainAfterAtMostSeconds;
+    EXPECT_EQ(FrameAsksAgainAfter(0.0, 0.0), kFrameAsksAgainAfterAtLeastSeconds)
+        << "a first stand back waits the least";
+    EXPECT_EQ(FrameAsksAgainAfter(0.0, 0.0035), kFrameAsksAgainAfterAtLeastSeconds);
+    EXPECT_EQ(FrameAsksAgainAfter(kFrameAsksAgainAfterAtLeastSeconds, 0.0035), kFrameAsksAgainAfterAtLeastSeconds)
+        << "answered only after a paint: the thread is getting on, and the wait stays short";
+    // Answered at once, over and over: a thread answering questions and reaching no paint, however many windows ask.
+    double waited = 0.0;
+    double most   = 0.0;
+    for (int asked = 0; asked < 40; ++asked)
+    {
+        waited = FrameAsksAgainAfter(waited, 0.00002);
+        most   = waited > most ? waited : most;
+    }
+    EXPECT_EQ(most, kFrameAsksAgainAfterAtMostSeconds) << "the wait grows to its bound";
+    EXPECT_EQ(waited, kFrameAsksAgainAfterAtMostSeconds)
+        << "and holds there while the thread is still answering at once";
+    EXPECT_EQ(FrameAsksAgainAfter(waited, 0.0035 + 2.0 * waited), kFrameAsksAgainAfterAtLeastSeconds)
+        << "and the first answer that took long enough to be a paint brings it back down";
+}
+
+TEST(CompositorReadings, AReadingThatWandersIsSetAsideForTheModeOfThePanelUnderIt)
+{
+    // Readings of the kind taken on a 240 Hz panel whose kernel vertical blank held at 240 a second, one window at 30
+    // frames a second.
+    using reckless::window::CompositorReadings;
+    const double       measured[] = {240.0, 233.1, 221.4, 208.7, 197.3, 216.2, 238.9, 244.8, 212.5, 199.6,
+                                     205.1, 228.4, 240.0, 251.3, 240.0, 226.3, 181.0, 203.4, 219.9, 239.1};
+    CompositorReadings readings;
+    int                set_aside = 0;
+    for (double hertz : measured)
+    {
+        set_aside += readings.Note(hertz, 240.0) ? 1 : 0;
+        EXPECT_FALSE(readings.does_disagree_for_good()) << "they do not hold still among themselves";
+        EXPECT_FALSE(readings.does_vary()) << "and are not whole multiples apart";
+    }
+    EXPECT_GT(set_aside, 0) << "the ones further than a twentieth off were set aside";
+    EXPECT_FALSE(readings.Note(240.0, 240.0)) << "and one that agrees is taken as it is";
+}
+
+TEST(CompositorReadings, ASteadyReadingIsWorthMoreThanTheModeAndAWanderingOneIsNot)
+{
+    using reckless::window::CompositorReadings;
+    using reckless::window::kRefreshPeriodsJudged;
+    CompositorReadings steady;
+    EXPECT_FALSE(steady.does_read_steadily(59.0)) << "nothing judged yet";
+    for (std::size_t reading = 0; reading < kRefreshPeriodsJudged; ++reading)
+    {
+        steady.Note(59.9413 + 0.002 * static_cast<double>(reading % 3), 59.0);
+    }
+    EXPECT_TRUE(steady.does_read_steadily(59.0)) << "59.94 Hz read over again, on a mode Windows gives as 59";
+    CompositorReadings wandering;
+    const double       measured[] = {240.0, 233.1, 241.4, 228.7, 240.3, 236.2, 238.9, 244.8};
+    for (double hertz : measured)
+    {
+        wandering.Note(hertz, 240.0);
+    }
+    EXPECT_FALSE(wandering.does_read_steadily(240.0)) << "these all agree with the mode, and are no rate to divide";
+    CompositorReadings stuck;
+    for (std::size_t reading = 0; reading < kRefreshPeriodsJudged; ++reading)
+    {
+        stuck.Note(233.0, 240.0);
+    }
+    EXPECT_FALSE(stuck.does_read_steadily(240.0)) << "nor is a wandering reading that has stuck for a moment";
+}
+
+TEST(ModeHertz, TheModeIsTheRateAndTheCompositorOnlyWhereTheModeNamesNone)
+{
+    using reckless::window::ModeHertzOf;
+    DisplayClockReading reading;
+    reading.display_hertz    = 240.0;
+    reading.compositor_hertz = 181.0; // measured on a 240 Hz panel with one window drawing thirty pictures a second
+    EXPECT_EQ(ModeHertzOf(reading), 240.0) << "the mode holds still where the compositor's reading wanders";
+    reading.display_hertz    = 1.0; // Windows' answer for the hardware's default, which is no rate
+    reading.compositor_hertz = 59.94;
+    EXPECT_EQ(ModeHertzOf(reading), 59.94);
+    reading.display_hertz    = 0.0; // a built-in panel's mode on a Mac can name no rate
+    reading.compositor_hertz = 120.0;
+    EXPECT_EQ(ModeHertzOf(reading), 120.0);
+    reading.compositor_hertz = 5000.0;
+    EXPECT_EQ(ModeHertzOf(reading), 0.0) << "nothing a display could be, so nothing to work a divisor out from";
+    EXPECT_EQ(ModeHertzOf(DisplayClockReading{}), 0.0);
+}
+
+TEST(ModeHertz, ARateOfSixtyOrBelowComesOfEveryPanelsModeHoweverItIsNamed)
+{
+    // What docs/window/frame-pacing.md, "Choosing a divisor", tells a product to write, on the numbers a mode is named
+    // in: whole hertz on Windows, where a fractional panel's may be rounded either way, and as the mode says on a Mac.
+    const auto divisor_for = [](double mode_hertz) {
+        return static_cast<int>(std::ceil(static_cast<double>(std::lround(mode_hertz)) / 60.0));
+    };
+
+    const struct
+    {
+        double hertz;
+        int    divisor;
+    } panels[] = {{30.0, 1},  {50.0, 1},  {59.0, 1},  {59.94, 1},  {60.0, 1},   {60.02, 1}, {75.0, 2},
+                  {90.0, 2},  {100.0, 2}, {119.0, 2}, {119.88, 2}, {120.0, 2},  {143.0, 3}, {143.98, 3},
+                  {144.0, 3}, {165.0, 3}, {180.0, 3}, {239.0, 4},  {239.76, 4}, {240.0, 4}, {360.0, 6}};
+
+    for (const auto &panel : panels)
+    {
+        EXPECT_EQ(divisor_for(panel.hertz), panel.divisor) << panel.hertz << " Hz";
+        const double frames_a_second = panel.hertz / panel.divisor;
+        EXPECT_GE(frames_a_second, 30.0) << panel.hertz << " Hz";
+        EXPECT_LE(frames_a_second, 60.02) << panel.hertz << " Hz";
+    }
+}
+
+TEST(CompositorReadings, OneReadingIsAnsweredWithOnlyWhereItIsTheModeReadMoreFinely)
+{
+    using reckless::window::RateOfOneReading;
+    EXPECT_EQ(RateOfOneReading(59.94, 60.0), 59.94) << "a mode Windows rounded up";
+    EXPECT_EQ(RateOfOneReading(59.94, 59.0), 59.94) << "and one it cut down";
+    EXPECT_EQ(RateOfOneReading(143.98, 144.0), 143.98);
+    EXPECT_EQ(RateOfOneReading(240.2576, 240.0), 240.2576);
+    // Within the twentieth the two are taken to agree, and past what a divisor can be worked out from: 252 / 60 is over
+    // 4, and a product rounding up would be at 48 frames a second on a panel that gives it 60.
+    EXPECT_EQ(RateOfOneReading(252.0, 240.0), 240.0);
+    EXPECT_EQ(RateOfOneReading(181.0, 240.0), 240.0);
+    EXPECT_EQ(RateOfOneReading(0.0, 240.0), 240.0) << "a compositor that said nothing";
+    EXPECT_EQ(RateOfOneReading(59.94, 0.0), 59.94) << "a mode that names no rate leaves the reading";
+    EXPECT_EQ(RateOfOneReading(59.94, 1.0), 59.94) << "and so does the hardware's default";
+}
+
+TEST(CompositorReadings, AWindowOnAnotherMonitorDisagreesForGood)
+{
+    // A window dragged to a 60 Hz monitor of a desktop the compositor reads at 240: the mode moves, the reading does
+    // not.
+    using reckless::window::CompositorReadings;
+    using reckless::window::kCompositorDisagreesForGoodAfterReadings;
+    CompositorReadings readings;
+    for (int i = 0; i < 100; ++i)
+    {
+        readings.Note(240.0, 240.0);
+    }
+    readings.Forget();
+    for (std::size_t reading = 0; reading + 1 < kCompositorDisagreesForGoodAfterReadings; ++reading)
+    {
+        EXPECT_TRUE(readings.Note(240.0 + static_cast<double>(reading % 2), 60.0))
+            << "set aside at first: reading " << reading;
+        EXPECT_FALSE(readings.does_disagree_for_good());
+    }
+    EXPECT_FALSE(readings.Note(240.0, 60.0)) << "the reading that fills the count is believed";
+    EXPECT_TRUE(readings.does_disagree_for_good());
+    EXPECT_FALSE(readings.does_vary()) << "this is another monitor, not a varying panel";
+    EXPECT_FALSE(readings.Note(60.0, 60.0)) << "back on a display it agrees with";
+    EXPECT_FALSE(readings.does_disagree_for_good());
+}
+
+TEST(CompositorReadings, AWanderingReadingThatSticksForAMomentIsNotAnotherMonitor)
+{
+    // A run of readings far from the mode holding still among themselves, as was seen once on the unchanged 240 Hz
+    // panel.
+    using reckless::window::CompositorReadings;
+    using reckless::window::kRefreshPeriodsJudged;
+    CompositorReadings readings;
+    for (std::size_t reading = 0; reading < kRefreshPeriodsJudged + 2; ++reading)
+    {
+        EXPECT_TRUE(readings.Note(218.0, 240.0)) << "set aside: reading " << reading;
+    }
+    EXPECT_FALSE(readings.does_disagree_for_good());
+}
+
+TEST(CompositorReadings, APanelWhoseRateReallyVariesIsTold)
+{
+    // A variable-refresh panel following what is drawn on it: no real panel of this kind has been measured here, so
+    // this is the shape the page describes, whole multiples apart.
+    using reckless::window::CompositorReadings;
+    using reckless::window::kRefreshPeriodsJudged;
+    CompositorReadings readings;
+    const double       varying[] = {240.0, 120.0, 80.0, 48.0, 96.0, 200.0, 144.0, 60.0};
+    for (double hertz : varying)
+    {
+        readings.Note(hertz, 240.0);
+    }
+    EXPECT_TRUE(readings.does_vary());
+    EXPECT_FALSE(readings.does_disagree_for_good()) << "it does not hold still at another rate";
+
+    CompositorReadings too_few;
+    for (std::size_t reading = 0; reading + 1 < kRefreshPeriodsJudged; ++reading)
+    {
+        too_few.Note(reading % 2 == 0 ? 240.0 : 60.0, 240.0);
+    }
+    EXPECT_FALSE(too_few.does_vary()) << "nothing is judged until there are enough to judge";
+
+    CompositorReadings no_mode;
+    EXPECT_FALSE(no_mode.Note(60.0, 0.0)) << "with no mode to set a reading aside for, a reading is all there is";
+    EXPECT_FALSE(no_mode.Note(0.0, 240.0)) << "and a compositor that says nothing has said nothing to set aside";
+}
+
+TEST(FrameStandsBack, OnlyForWorkAheadAndNotForEver)
+{
+    using reckless::window::DoesFrameStandBack;
+    using reckless::window::kFrameStandsBackAtMostSeconds;
+    EXPECT_FALSE(DoesFrameStandBack(false, 0.0)) << "a thread with nothing waiting runs the frame at once";
+    EXPECT_FALSE(DoesFrameStandBack(false, 10.0));
+    EXPECT_TRUE(DoesFrameStandBack(true, 0.0));
+    EXPECT_TRUE(DoesFrameStandBack(true, kFrameStandsBackAtMostSeconds * 0.99));
+    EXPECT_FALSE(DoesFrameStandBack(true, kFrameStandsBackAtMostSeconds))
+        << "a queue whose paint or timer never comes costs a frame this long, not the window's frames for good";
+}
+
+namespace
+{
+/** What a thread's queue does with paced frames, in a model with no window: a posted message is taken before any paint,
+    an invalid window nearest the top of the z-order is painted first, and a timer waits for both. Each window asks to
+    run a frame at every tick; `does_stand_back` says whether the frame is held to DoesFrameStandBack.
+
+    The model is what docs/window/frame-pacing.md measures on a real thread, and the queue's three rules are the ones
+    `tools/frame-pacing-harness.cpp`'s paint-rank run shows there. */
+struct QueueRun
+{
+    std::vector<int> paints;         ///< each window's paints, the top of the z-order first.
+    int              host_timers{0}; ///< how many of the host-like window's timers ran.
+};
+
+QueueRun RunAQueue(int windows, double paint_seconds, double frame_seconds, double run_seconds, bool does_stand_back)
+{
+    QueueRun run;
+    run.paints.assign(static_cast<std::size_t>(windows), 0);
+    std::vector<char> is_invalid(static_cast<std::size_t>(windows), 0);
+    std::vector<char> is_frame_waiting(static_cast<std::size_t>(windows), 0);
+    const double      host_timer_seconds = 0.020;
+    double            next_host_timer    = host_timer_seconds;
+    bool              is_host_timer_due  = false;
+    double            next_tick          = 0.0;
+    double            now                = 0.0;
+    while (now < run_seconds)
+    {
+        while (now >= next_tick)
+        {
+            std::fill(is_frame_waiting.begin(), is_frame_waiting.end(), char{1});
+            next_tick += frame_seconds;
+        }
+        while (now >= next_host_timer)
+        {
+            is_host_timer_due = true;
+            next_host_timer += host_timer_seconds;
+        }
+        // The posted frames first: each read the queue before any of this refresh has run, so they run or stand back
+        // together.
+        const bool is_paint_waiting = std::any_of(is_invalid.begin(), is_invalid.end(), [](char v) { return v != 0; });
+        const bool does_frame_wait =
+            does_stand_back && reckless::window::DoesFrameStandBack(is_paint_waiting || is_host_timer_due, 0.0);
+        if (!does_frame_wait &&
+            std::any_of(is_frame_waiting.begin(), is_frame_waiting.end(), [](char v) { return v != 0; }))
+        {
+            for (std::size_t i = 0; i < is_invalid.size(); ++i)
+            {
+                if (is_frame_waiting[i] != 0)
+                {
+                    is_invalid[i]       = 1;
+                    is_frame_waiting[i] = 0;
+                }
+            }
+            continue;
+        }
+        // Then the paint nearest the top of the z-order.
+        const auto paint = std::find(is_invalid.begin(), is_invalid.end(), char{1});
+        if (paint != is_invalid.end())
+        {
+            *paint = 0;
+            ++run.paints[static_cast<std::size_t>(paint - is_invalid.begin())];
+            now += paint_seconds;
+            continue;
+        }
+        // Then a timer, and otherwise the thread sleeps until something is due.
+        if (is_host_timer_due)
+        {
+            is_host_timer_due = false;
+            ++run.host_timers;
+            continue;
+        }
+        now = std::min(next_tick, next_host_timer);
+    }
+    return run;
+}
+} // namespace
+
+TEST(FrameStandsBack, ASaturatedThreadStarvesNoWindowAndNoHostWhenItsFramesWaitTheirTurn)
+{
+    const double   frame_seconds = 1.0 / 60.0;
+    const double   paint_seconds = 0.0036; // about what a panel cost on the display this page measures
+    const QueueRun free_running  = RunAQueue(8, paint_seconds, frame_seconds, 10.0, false);
+    EXPECT_EQ(free_running.paints.back(), 0) << "frames ahead of the paints: the bottom of the z-order gets none";
+    EXPECT_EQ(free_running.host_timers, 0) << "and neither does a host's timer on the thread";
+
+    const QueueRun waiting    = RunAQueue(8, paint_seconds, frame_seconds, 10.0, true);
+    const auto [fewest, most] = std::minmax_element(waiting.paints.begin(), waiting.paints.end());
+    EXPECT_GT(*fewest, 0) << "every window is painted";
+    EXPECT_LE(*most - *fewest, 2) << "and they take it in turn";
+    EXPECT_GT(waiting.host_timers, 0) << "and the host's timer runs";
+    int total_free    = 0;
+    int total_waiting = 0;
+    for (int paints : free_running.paints)
+    {
+        total_free += paints;
+    }
+    for (int paints : waiting.paints)
+    {
+        total_waiting += paints;
+    }
+    EXPECT_GE(total_waiting * 100, total_free * 90) << "at about what the thread can paint either way";
+}
+
+TEST(FrameStandsBack, AThreadWithRoomRunsEveryFrameOnItsOwnTick)
+{
+    const double   frame_seconds = 1.0 / 60.0;
+    const QueueRun run           = RunAQueue(4, 0.0036, frame_seconds, 10.0, true);
+    for (int paints : run.paints)
+    {
+        EXPECT_NEAR(paints, 600, 2) << "four panels fit a refresh, and every one has every frame";
+    }
+    EXPECT_GT(run.host_timers, 0);
 }
