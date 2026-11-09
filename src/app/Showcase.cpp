@@ -43,7 +43,7 @@ void ShowSample(MainView &view)
 
     PlayerStripState white;
     white.is_white   = true;
-    white.name       = "Pawnstar 2.3.0";
+    white.name       = "Pawnstar 2.3.1";
     white.details    = "White \xc2\xb7 engine \xc2\xb7 Threads 1, Hash 64 MB, book";
     white.clock      = ClockText(251600);
     white.is_running = true;
@@ -62,7 +62,7 @@ void ShowSample(MainView &view)
                   {"FEN", game.CurrentPosition().ToFen(), true}});
 
     EngineBlock pawnstar;
-    pawnstar.name  = "Pawnstar 2.3.0";
+    pawnstar.name  = "Pawnstar 2.3.1";
     pawnstar.state = "thinking 4.8 s";
     pawnstar.stats = "depth 24/38 \xc2\xb7 11.2 Mn \xc2\xb7 2.31 Mn/s \xc2\xb7 hash 34 %";
     // One line at a time, as every bundled engine gives: the newest, and the lines at the depths before it dimmed.
@@ -82,7 +82,7 @@ void ShowSample(MainView &view)
 
     // Each engine's own scores at its own moves, from White's side, after the book's six plies: Pawnstar a little more
     // pleased with White than Trebuchet is.
-    EvalSeries pawnstar_scores{"Pawnstar 2.3.0", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
+    EvalSeries pawnstar_scores{"Pawnstar 2.3.1", std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
     EvalSeries trebuchet_scores{"Trebuchet 1.1.0",
                                 std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(ply))};
     const double white_view[] = {0.28, 0.33, 0.36, 0.40, 0.31, 0.34, 0.38, 0.36, 0.44};
