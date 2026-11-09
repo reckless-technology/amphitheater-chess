@@ -27,7 +27,7 @@ struct AnalysisLine
 /** One engine's block. */
 struct EngineBlock
 {
-    std::string name;               ///< "Pawnstar 2.3.0".
+    std::string name;               ///< "Pawnstar 2.3.1".
     std::string state;              ///< The chip: "thinking 4.8 s", "pondering 13.Ne2"; empty for none.
     bool        is_thinking = true; ///< The chip lit in the accent; else in the muted ink.
     std::string stats;              ///< "depth 24/38 · 11.2 Mn · 2.31 Mn/s · hash 34 %".
