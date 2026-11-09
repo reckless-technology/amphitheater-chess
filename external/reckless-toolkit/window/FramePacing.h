@@ -41,6 +41,7 @@ enum class FramePacingFallback
     kRefreshRateNotBelievable, ///< the rate read is not one a display can have, so nothing is divided by it
     kRefreshRateDisagrees,     ///< the compositor and the window's own display named different rates
     kRefreshRateUnsteady,      ///< the refresh period will not hold still: a variable-refresh panel, mid-change
+    kDisplayLinkSilent,        ///< the display link has stopped ticking: the window is on no screen, for now
 };
 
 /** `why` in words, for a product to report or log.
@@ -66,6 +67,8 @@ inline const char *TextOf(FramePacingFallback why) noexcept
         return "the compositor and the window's display name different refresh rates";
     case FramePacingFallback::kRefreshRateUnsteady:
         return "the display's refresh period will not hold still";
+    case FramePacingFallback::kDisplayLinkSilent:
+        return "the display link has stopped ticking, so the window is on no screen";
     }
     return "unknown";
 }
@@ -105,6 +108,14 @@ struct FrameRequest
         is in force. A frame that misses the blank it led is shown a whole refresh later, so the margin is the
         product's to choose with care. */
     std::int32_t lead_microseconds{0};
+
+    /** Whether the frame callback goes on running while a window is on no screen, where its display's clock stops for
+        that - a Mac's display link, which macOS stops for a window that is hidden. True, a window whose clock has
+       fallen silent runs on the platform's timer until the clock ticks again, so a product goes on being told, and can
+       tell its panel the window no longer shows or stand its pacing down. False, the default, a window is left with no
+        frames until it shows again. Read only where `pacing` asks for the display's clock, and it changes nothing on
+        Windows, whose clock does not stop. */
+    bool keeps_frames_off_screen{false};
 };
 
 /** What a window ended up pacing on, for a product to report, log or adapt to (ChildWindow::SetFramePacing,
@@ -119,8 +130,9 @@ struct FramePacingState
         nothing. */
     int refresh_divisor{0};
 
-    /** The display's refresh rate, in hertz, as the window read it. 0 where nothing said, and on the platform timer,
-        which reads none. */
+    /** The display's refresh rate, in hertz, as the window read it: the rate being divided, which is the one to report.
+        It can move by a fraction of a hertz from one reading to the next, so a divisor is worked out from
+        ChildWindow::DisplayModeHertz instead. 0 where nothing said, and on the platform timer, which reads none. */
     double display_hertz{0.0};
 
     /** The frames a second the callback is being run at: `display_hertz` over `refresh_divisor`. **0 on the platform
@@ -237,6 +249,42 @@ struct RefreshRateChoice
     double              hertz{0.0};                                    ///< the rate to divide; 0 where there is none
     FramePacingFallback why{FramePacingFallback::kRefreshRateUnknown}; ///< kNone where `hertz` is a rate
 };
+
+/** How close a compositor's reading must be to the mode of the window's display to be that mode read more finely, in
+    hertz: Windows gives a mode in whole hertz, so a 59.94 Hz panel's mode may say 59 or 60. A bound on what a mode's
+    number can mean, not a rate. */
+inline constexpr double kModeIsNamedWithinHertz = 1.0;
+
+/** The rate of the panel, for a product that works its divisor out from it (ChildWindow::DisplayModeHertz): the mode of
+    the window's display where that is believable, since it holds still where a compositor's reading wanders with what
+   is being composed, and only where the mode names no rate the compositor's.
+    @param reading  what the platform said
+    @return         the rate, in hertz; 0 where neither can be believed */
+constexpr double ModeHertzOf(const DisplayClockReading &reading) noexcept
+{
+    if (IsBelievableRefreshRate(reading.display_hertz))
+    {
+        return reading.display_hertz;
+    }
+    return IsBelievableRefreshRate(reading.compositor_hertz) ? reading.compositor_hertz : 0.0;
+}
+
+/** The rate a window answers with where it has one reading of the compositor to go on, as it is asked for the clock:
+   the reading where that is the mode of the window's display read more finely, and otherwise the mode. One reading can
+   be anywhere a compositor's go (CompositorReadings), and the clock this starts stays on the mode until its readings
+    settle, so the answer does not say a rate that clock is not dividing.
+    @param compositor_hertz  the rate the compositor reports now, in hertz
+    @param display_hertz     the rate of the mode of the window's display, in hertz
+    @return                  the rate to answer with, in hertz: `compositor_hertz` where the mode names no rate */
+inline double RateOfOneReading(double compositor_hertz, double display_hertz) noexcept
+{
+    if (!IsBelievableRefreshRate(display_hertz) ||
+        std::fabs(compositor_hertz - display_hertz) <= kModeIsNamedWithinHertz)
+    {
+        return compositor_hertz;
+    }
+    return display_hertz;
+}
 
 /** The refresh rate to divide, from the two readings a platform can take, and the reason where there is none: the
     compositor's own where it is believable, the window's display's where the compositor gave none, and none at all
@@ -408,6 +456,205 @@ class RefreshSteadiness
     double      periods_[kRefreshPeriodsJudged]{}; ///< the readings kept, oldest overwritten first
     std::size_t next_{0};                          ///< where the next reading goes
     std::size_t count_{0};                         ///< how many of `periods_` hold a reading
+};
+
+/** How long a display link may say nothing before its window takes it to have stopped, in seconds. A display's slowest
+    believable refresh ticks five times over in this, so a link that is ticking at all is never mistaken; what it comes
+    to is how long a window just hidden goes with no frame at all. */
+inline constexpr double kDisplayLinkSilentSeconds = 0.25;
+
+/** Whether a display link has stopped ticking. macOS stops a link made from a view whose window is hidden or on no
+    screen, and a window paced on nothing but that link would then get no frame at all: nothing to run its owner's
+    frame callback, so nothing to tell the panel it no longer shows, or to stand the pacing down
+    (docs/window/frame-pacing.md, "A window that does not show").
+    @param last_tick_seconds  when the link last ticked, or when it started where it has not yet
+    @param now_seconds        the clock now, on the same clock
+    @return                   true where the link has said nothing for kDisplayLinkSilentSeconds */
+constexpr bool IsDisplayLinkSilent(double last_tick_seconds, double now_seconds) noexcept
+{
+    return now_seconds - last_tick_seconds >= kDisplayLinkSilentSeconds;
+}
+
+/** The longest a frame stands back for other work on its window's thread (DoesFrameStandBack), in seconds. A bound on
+    what a thread can be doing, not a rate: long enough that a thread saturated with panels goes round them all well
+    inside it, so a healthy thread never reaches it, and short enough that a queue whose paint or timer never comes - a
+    host pumping only some messages, a window whose paint never validates it - costs a frame this long rather than the
+    window's frames for good. */
+inline constexpr double kFrameStandsBackAtMostSeconds = 0.25;
+
+/** Whether a frame the display's clock has handed to a window waits for the work ahead of it on the window's thread,
+    rather than running now. A posted frame message outranks every WM_PAINT and every WM_TIMER on its thread, so a frame
+    that simply ran would invalidate its window again ahead of paints still owed, and on a thread with more panels than
+    a refresh has room for the windows nearest the top of the z-order would take every paint there is. So a frame goes
+    behind them, as the platform's own timer always has by being the last message a thread takes
+    (docs/window/frame-pacing.md, "Several windows on one thread").
+    @param is_work_ahead       whether a paint or an expired timer is waiting on the thread, of any window, as the
+                               window read it before any frame of this refresh had run
+    @param seconds_stood_back  how long this frame has already stood back
+    @return                    true where the frame is to wait and ask again */
+constexpr bool DoesFrameStandBack(bool is_work_ahead, double seconds_stood_back) noexcept
+{
+    return is_work_ahead && seconds_stood_back < kFrameStandsBackAtMostSeconds;
+}
+
+/** How long a frame may be in flight unanswered before the clock asks for it again, in seconds. A frame is a posted
+    message, and a queue can lose one that WM_TIMER, which is generated as it is taken, could not: a host's pump that
+    takes a message and throws it away, a hook that rewrites it. With a frame in flight no other is posted, so without
+    this one lost message would leave the window with no frames at all, and nothing to run a product's own check on
+    them. A bound on what a thread can be doing, not a rate: long enough that a thread that is merely busy is asked only
+    a few times, and it answers just the last. */
+inline constexpr double kFrameInFlightIsLostAfterSeconds = 1.0;
+
+/** Whether a frame in flight has gone unanswered for as long as one that was lost.
+    @param seconds_since_asked  how long since the frame was last posted, in seconds
+    @return                     true where the clock is to ask for it again */
+constexpr bool IsFrameInFlightLost(double seconds_since_asked) noexcept
+{
+    return seconds_since_asked >= kFrameInFlightIsLostAfterSeconds;
+}
+
+/** The shortest a frame that stood back waits before asking again, in seconds: short, because a thread that has just
+    finished its last paint stays idle until some frame asks. Measured on a Tape panel's paint at this and at a tenth of
+    a millisecond's multiples (docs/window/frame-pacing.md, "Several windows on one thread"). */
+inline constexpr double kFrameAsksAgainAfterAtLeastSeconds = 0.0001;
+
+/** The longest a frame that stood back waits before asking again, in seconds. */
+inline constexpr double kFrameAsksAgainAfterAtMostSeconds = 0.002;
+
+/** How long a frame that has just stood back waits before asking again. Its asking again is a posted message, which
+    outranks the very paint it stood back for, so a thread with many windows all asking could go on answering them and
+    never reach the paint: with no wait at all, six panels went from 47 pictures a second each to 9. A thread that is
+    getting on with its work answers a frame only between paints; one that answers within a moment of being asked is not
+    getting past its questions, and is left alone for twice as long. Each window finds this out for itself, so it holds
+    however many windows are on the thread, and in however many modules.
+    @param waited_seconds       how long the frame waited before it last asked; 0 where it has not stood back before
+    @param answered_in_seconds  how long the window took to answer it, from the asking to its standing back
+    @return                     how long to wait before asking again, in seconds */
+constexpr double FrameAsksAgainAfter(double waited_seconds, double answered_in_seconds) noexcept
+{
+    const double doubled = 2.0 * waited_seconds;
+    if (waited_seconds <= 0.0 || answered_in_seconds >= doubled)
+    {
+        return kFrameAsksAgainAfterAtLeastSeconds;
+    }
+    return doubled < kFrameAsksAgainAfterAtMostSeconds ? doubled : kFrameAsksAgainAfterAtMostSeconds;
+}
+
+/** How many times its narrowest the widest of the readings judged together may be, before a compositor's readings are
+    taken for a panel whose rate is really varying rather than for a reading that wanders with the panel where it is. A
+    bound on what a reading of an unchanged panel does: its readings stayed within 1.42 times their narrowest on a panel
+    whose scan-out was measured holding still, where a panel that really varies reads whole multiples apart. */
+inline constexpr double kCompositorReadingsVaryAbove = 1.5;
+
+/** How many readings in a row must disagree with the mode before they can be another monitor's. A bound on what a
+   reading of an unchanged panel does: the longest such run measured was 8, and a run of 8 that also held still among
+   itself was seen, which left the clock for two seconds on a panel that had not changed. */
+inline constexpr std::size_t kCompositorDisagreesForGoodAfterReadings = 24;
+
+/** How far apart the readings judged together may be and still be one rate read over again, as a share of the
+   narrowest: the same panel's reading went from 240.0038 to 240.2576 Hz, a tenth of a percent, while it held still. */
+inline constexpr double kCompositorReadsSteadilyWithin = 0.01;
+
+/**
+    What a compositor's readings of its own rate mean, where the mode of the window's display gives a rate to compare
+   them with. They are not a measure of the panel on their own: on a 240 Hz panel whose kernel vertical blank and scan
+   line held at 240 a second, with one window drawing thirty pictures a second, the compositor read 181 to 257 Hz, and
+   at sixty a second 212 to 242 (docs/window/frame-pacing.md). So one reading that disagrees with the mode is no reason
+   to leave the display's clock, and no period to put a frame on: it is set aside for the mode. Two things are still
+   believed: readings that have gone on disagreeing for kCompositorDisagreesForGoodAfterReadings and hold still among
+   themselves, which is a window on a monitor the compositor is not timed by; and readings further apart than
+   kCompositorReadingsVaryAbove, which is a panel whose rate really does vary.
+*/
+class CompositorReadings
+{
+  public:
+    /** A reading noted.
+        @param compositor_hertz  the rate the compositor reports now, in hertz
+        @param display_hertz     the rate of the mode of the window's display, in hertz
+        @return                  true where the reading disagrees with a mode that can be believed and is to be set
+       aside for it */
+    bool Note(double compositor_hertz, double display_hertz) noexcept
+    {
+        const bool can_compare = IsBelievableRefreshRate(display_hertz) && IsBelievableRefreshRate(compositor_hertz);
+        const bool does_disagree =
+            can_compare && std::fabs(compositor_hertz - display_hertz) / display_hertz > kRefreshRatesAgreeWithin;
+        disagreeing_ = does_disagree ? disagreeing_ + 1 : 0;
+        if (can_compare)
+        {
+            readings_[next_] = compositor_hertz;
+            next_            = (next_ + 1) % kRefreshPeriodsJudged;
+            count_           = count_ < kRefreshPeriodsJudged ? count_ + 1 : count_;
+        }
+        return does_disagree && !does_disagree_for_good();
+    }
+
+    /** Whether the readings have disagreed with the mode for as long as a wandering reading cannot, and held still
+       among themselves at the end of it: another monitor's rate, and to be believed.
+        @return  true where they have */
+    bool does_disagree_for_good() const noexcept
+    {
+        return disagreeing_ >= kCompositorDisagreesForGoodAfterReadings &&
+               widest() - narrowest() <= kRefreshPeriodsHoldStillWithin * narrowest();
+    }
+
+    /** Whether the readings judged together are further apart than a reading of an unchanged panel goes: a panel whose
+       rate really does vary.
+        @return  true where they are; false until there are enough to judge */
+    bool does_vary() const noexcept
+    {
+        return count_ == kRefreshPeriodsJudged && widest() > kCompositorReadingsVaryAbove * narrowest();
+    }
+
+    /** Whether the readings judged together are one rate read over again, and the mode's to within the whole hertz
+       Windows gives a mode in, so worth more than the mode: a 59.94 Hz panel's reading is the rate to divide, and a
+       wandering one, even one that has stuck for a moment, is not.
+        @param display_hertz  the rate of the mode of the window's display, in hertz
+        @return               true where they are; false until there are enough to judge */
+    bool does_read_steadily(double display_hertz) const noexcept
+    {
+        return count_ == kRefreshPeriodsJudged &&
+               widest() - narrowest() <= kCompositorReadsSteadilyWithin * narrowest() &&
+               widest() <= display_hertz + kModeIsNamedWithinHertz &&
+               narrowest() >= display_hertz - kModeIsNamedWithinHertz;
+    }
+
+    /** Every reading forgotten: what a window does when its display changes. */
+    void Forget() noexcept
+    {
+        disagreeing_ = 0;
+        next_        = 0;
+        count_       = 0;
+    }
+
+  private:
+    /** The widest of the readings kept.
+        @return  the rate, in hertz */
+    double widest() const noexcept
+    {
+        double most = 0.0;
+        for (std::size_t i = 0; i < count_; ++i)
+        {
+            most = readings_[i] > most ? readings_[i] : most;
+        }
+        return most;
+    }
+
+    /** The narrowest of the readings kept.
+        @return  the rate, in hertz */
+    double narrowest() const noexcept
+    {
+        double least = count_ > 0 ? readings_[0] : 0.0;
+        for (std::size_t i = 1; i < count_; ++i)
+        {
+            least = readings_[i] < least ? readings_[i] : least;
+        }
+        return least;
+    }
+
+    double      readings_[kRefreshPeriodsJudged]{}; ///< the readings kept, oldest overwritten first
+    std::size_t next_{0};                           ///< where the next reading goes
+    std::size_t count_{0};                          ///< how many of `readings_` hold a reading
+    std::size_t disagreeing_{0};                    ///< how many readings in a row have disagreed with the mode
 };
 
 /**

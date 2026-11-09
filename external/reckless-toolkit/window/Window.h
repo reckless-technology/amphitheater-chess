@@ -6,6 +6,8 @@
 
 #include "FramePacing.h"
 #include "Geometry.h"
+#include "GpuDrawing.h"
+#include "ProcessEnvironment.h"
 #include "RawKey.h"
 #include "View.h"
 
@@ -102,7 +104,9 @@ class ChildWindow
         Where the window is paced on the display's clock, the frame callback still runs on the window's own thread -
         the waiting is a thread of the window's own, which hands each frame to the window's loop - so nothing a
         callback touches moves to another thread, and a callback that outruns the display loses frames rather than
-        letting them pile up.
+        letting them pile up. It also waits its turn behind the paints and timers already waiting on the window's
+       thread, so a thread with more windows than a refresh has room for shares itself among them
+        (docs/window/frame-pacing.md, "Several windows on one thread").
 
         The divisor is re-derived whenever the display changes under the window: a mode change, and the window being
         moved to a monitor with another rate. Where the new display has no rate to divide the window falls back and
@@ -120,6 +124,53 @@ class ChildWindow
         so. A product that reports or logs its pacing reads this rather than keeping SetFramePacing's answer.
         @return  the pacing in force */
     virtual FramePacingState FramePacingNow() const
+    {
+        return {};
+    }
+
+    /** The refresh rate of the mode of the display the window is on now, in hertz (ModeHertzOf): what a product that
+        works its divisor out from the panel's rate reads, before it asks for anything and with nothing started. Windows
+        gives a mode in whole hertz, so 59.94 Hz reads 59 or 60 and 143.98 Hz reads 143 or 144, as the driver names it,
+        and macOS as its mode says. It is not the rate FramePacingState::display_hertz reports, which is the one being
+        divided and moves as the compositor's readings do (docs/window/frame-pacing.md, "Choosing a divisor"). Asks the
+        system each time, so read it as often as the display might have moved, about once a second, and not every frame.
+        @return  the rate, in hertz; 0 where nothing can say, as on a platform with no display clock, Linux among them
+     */
+    virtual double DisplayModeHertz() const
+    {
+        return 0.0;
+    }
+
+    /** The window drawn as `request` asks: on the GPU - Skia's Ganesh on the platform's GL, each frame presented with a
+        swap - where the platform has a GPU path, the request names a back end (GpuDrawingRequest, which needs
+        reckless_window_gpu linked) and a context can be made, and with the CPU raster it has always drawn with where
+        not. The answer says which it is drawing with and, where it fell back, why (GpuDrawing.h,
+        docs/window/gpu-drawing.md).
+
+        **Nothing until it is asked.** A window whose owner has not called this makes no context, loads no GL and draws
+        exactly as it always did; `DrawingRequest{}` asks for that, and calling it with `DrawingRequest{}` after the GPU
+        puts the window back on the CPU raster. It may be called at any time, before the first frame or after: the
+        window's whole picture is drawn again on whichever it ends up with.
+
+        On the GPU the views draw into a canvas whose pixels are on the GPU, so a view that writes them by hand
+        (`SkCanvas::accessTopLayerPixels`) is answered null there and draws another way; the frame callback, its pacing
+        (SetFramePacing) and the views' paints are otherwise as they were. The window rebuilds its GPU surface as
+        its size or scale changes - a resize, full screen, a move to a monitor of another DPI - and makes its context
+        again if the GPU is lost (DrawingState::contexts_lost), going back to the CPU raster where it cannot.
+        @param request  what the product asks for; `DrawingRequest{}` for the CPU raster, which is the default
+        @return         what the window is drawing with, and why where it fell back */
+    virtual DrawingState SetDrawing(const DrawingRequest &request)
+    {
+        // No GPU path here: the CPU raster, and the reason.
+        return ChosenDrawing(request, IsGpuDrawingForcedOff(core::EnvironmentVariable(kGpuDrawingEnvironmentVariable)),
+                             false);
+    }
+
+    /** What the window is drawing with now: the answer SetDrawing gave, unless the GPU has since been lost and could
+        not be made again, in which case the window has gone back to the CPU raster and this says so. A product that
+        reports or logs its drawing reads this rather than keeping SetDrawing's answer.
+        @return  the drawing in force */
+    virtual DrawingState DrawingNow() const
     {
         return {};
     }

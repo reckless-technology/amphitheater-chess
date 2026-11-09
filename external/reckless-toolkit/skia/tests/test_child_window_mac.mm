@@ -170,6 +170,10 @@ TEST(ChildWindowFramePacing, IsOnThePlatformTimerUntilItIsAskedAndSaysWhichItGot
     EXPECT_EQ(unasked.why, FramePacingFallback::kNotAsked);
 
     // A lead asked for, which a Mac's display link does not yet keep: the state says 0 (docs/window/frame-pacing.md).
+    const double mode_hertz = child->DisplayModeHertz();
+    EXPECT_TRUE(mode_hertz == 0.0 || reckless::window::IsBelievableRefreshRate(mode_hertz)) << mode_hertz;
+    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked) << "reading the rate asks for nothing";
+
     const FramePacingState asked = child->SetFramePacing({FramePacing::kDisplayClock, 2, 1, 5000});
     HoldsWhicheverPacingItReached(asked, 2, "macOS, asked for a frame every second refresh, 5 ms ahead", 5000);
 
@@ -223,4 +227,116 @@ TEST(ChildWindowFramePacing, TicksOnTheDisplayLinkOfTheOneCiPlatformWithAWindowS
         child->SetFrameCallback(nullptr);
         child.reset(); // before the window it sits in
     }
+}
+
+TEST(ChildWindowFramePacing, AHiddenWindowThatDoesNotAskHasNoFramesUntilItShowsAndSaysWhyMeanwhile)
+{
+    // What a product that has not asked has always had, and may rely on: its frames stop with the link, and come back
+    // on the clock as the window shows, its schedule its own.
+    reckless::test::TestHostWindow top(240, 160);
+    ASSERT_TRUE(top.Valid());
+    top.Show(true);
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto child = reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f);
+    ASSERT_NE(child, nullptr);
+    int frames = 0;
+    child->SetFrameCallback([&] { ++frames; });
+    const FramePacingState asked = child->SetFramePacing({FramePacing::kDisplayClock, 1, 1, 0});
+    if (asked.pacing != FramePacing::kDisplayClock)
+    {
+        child->SetFrameCallback(nullptr);
+        child.reset();
+        GTEST_SKIP() << "no display link on this machine, so nothing to fall silent";
+    }
+    const auto run_for = [](NSTimeInterval seconds) {
+        const NSTimeInterval until = [NSDate timeIntervalSinceReferenceDate] + seconds;
+        while ([NSDate timeIntervalSinceReferenceDate] < until)
+        {
+            [[NSRunLoop mainRunLoop] runMode:NSDefaultRunLoopMode
+                                  beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+        }
+    };
+    run_for(0.5);
+    EXPECT_GT(frames, 0);
+    top.Show(false);
+    run_for(reckless::window::kDisplayLinkSilentSeconds * 3.0);
+    const int hidden_from = frames;
+    run_for(0.5);
+    std::printf(
+        "[ frame pacing ] macOS, hidden, having not asked for frames off a screen: %d frames in half a second, %s\n",
+        frames - hidden_from, reckless::window::TextOf(child->FramePacingNow().why));
+    std::fflush(stdout);
+    EXPECT_EQ(frames, hidden_from) << "no timer takes over for a product that did not ask for one";
+    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kDisplayLinkSilent) << "and the window still says why";
+
+    top.Show(true);
+    run_for(0.5);
+    EXPECT_GT(frames, hidden_from) << "shown again the frames come back";
+    EXPECT_EQ(child->FramePacingNow().pacing, FramePacing::kDisplayClock) << "on the clock, with no one asking";
+    child->SetFrameCallback(nullptr);
+    child.reset(); // before the window it sits in
+}
+
+TEST(ChildWindowFramePacing, AHiddenWindowThatAsksStillHasFramesAndSaysWhyAndTheClockComesBackAsItShows)
+{
+    // macOS stops a display link made from a view whose window is hidden, and with nothing else to run it the frame
+    // callback would stop too: no frame, so nothing to tell the panel it no longer shows and no way for a product to
+    // stand its pacing down. A product that asks for frames off a screen is put on the timer the window has always
+    // used, and is told why, with no one asking again.
+    reckless::test::TestHostWindow top(240, 160);
+    ASSERT_TRUE(top.Valid());
+    top.Show(true);
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto child = reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f);
+    ASSERT_NE(child, nullptr);
+    int frames = 0;
+    child->SetFrameCallback([&] { ++frames; });
+    const FramePacingState asked = child->SetFramePacing({FramePacing::kDisplayClock, 1, 1, 0, true});
+    HoldsWhicheverPacingItReached(asked, 1, "macOS, a window about to be hidden");
+    if (asked.pacing != FramePacing::kDisplayClock)
+    {
+        child->SetFrameCallback(nullptr);
+        child.reset();
+        GTEST_SKIP() << "no display link on this machine, so nothing to fall silent";
+    }
+    const auto run_for = [](NSTimeInterval seconds) {
+        const NSTimeInterval until = [NSDate timeIntervalSinceReferenceDate] + seconds;
+        while ([NSDate timeIntervalSinceReferenceDate] < until)
+        {
+            [[NSRunLoop mainRunLoop] runMode:NSDefaultRunLoopMode
+                                  beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+        }
+    };
+    run_for(0.5);
+    EXPECT_GT(frames, 0) << "the link ticks while the window shows";
+    EXPECT_EQ(child->FramePacingNow().pacing, FramePacing::kDisplayClock);
+
+    top.Show(false);
+    run_for(reckless::window::kDisplayLinkSilentSeconds * 3.0); // long enough for the link to be seen to have stopped
+    const int              hidden_from = frames;
+    const FramePacingState hidden      = child->FramePacingNow();
+    run_for(0.5);
+    std::printf("[ frame pacing ] macOS, hidden: %d frames in half a second, %s\n", frames - hidden_from,
+                reckless::window::TextOf(hidden.why));
+    std::fflush(stdout);
+    EXPECT_FALSE(child->Showing());
+    EXPECT_GT(frames, hidden_from) << "a hidden window still has frames, or nothing could tell it that it is hidden";
+    EXPECT_EQ(hidden.pacing, FramePacing::kPlatformTimer) << "and does not claim the clock it is no longer on";
+    EXPECT_EQ(hidden.why, FramePacingFallback::kDisplayLinkSilent);
+    EXPECT_EQ(hidden.frames_a_second, 0.0);
+
+    top.Show(true);
+    run_for(0.5);
+    const int shown_from = frames;
+    run_for(1.0);
+    const FramePacingState shown = child->FramePacingNow();
+    EXPECT_LE(frames - shown_from, static_cast<int>(1.5 * shown.frames_a_second) + 5)
+        << "and the timer that stood in for the link has stopped: this is no rate, only that frames do not come twice";
+    EXPECT_EQ(shown.pacing, FramePacing::kDisplayClock) << "shown again, with no one asking, the clock comes back";
+    EXPECT_EQ(shown.why, FramePacingFallback::kNone);
+    EXPECT_GT(shown.frames_a_second, 0.0);
+    child->SetFrameCallback(nullptr);
+    child.reset(); // before the window it sits in
 }

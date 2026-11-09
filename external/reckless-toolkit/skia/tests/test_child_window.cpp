@@ -13,11 +13,16 @@
 // (UriList.h), whatever the text holds.
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdio>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "include/core/SkCanvas.h"
+#include "include/core/SkImageInfo.h"
+
+#include "SkiaCanvas.h"
 #include "UriList.h"
 
 TEST(ChildWindow, AUriListsFilePathsArePercentDecodedAndAStrayPercentIsItself)
@@ -735,6 +740,13 @@ TEST(ChildWindow, AScrollSaysWhetherTheSystemInvertedTheDevicesDirection)
 // whatever display clock the machine running the suite has. What each of these holds, and why it holds no rate, is
 // tests/FramePacingRule.h, which the macOS half uses too. Windows' and Linux's are here; macOS's are in
 // test_child_window_mac.mm, which is compiled as Objective-C++ and so can reach AppKit's run loop.
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <functional>
+#include <memory>
+#include <vector>
+
 #include "FramePacing.h"
 #include "FramePacingRule.h"
 #include "View.h"
@@ -743,6 +755,7 @@ TEST(ChildWindow, AScrollSaysWhetherTheSystemInvertedTheDevicesDirection)
 namespace
 {
 using reckless::test::HoldsWhicheverPacingItReached;
+using reckless::window::ChildWindow;
 using reckless::window::FramePacing;
 using reckless::window::FramePacingFallback;
 using reckless::window::FramePacingState;
@@ -750,6 +763,91 @@ using reckless::window::FrameRequest;
 } // namespace
 
 #if defined(_WIN32)
+#include <tlhelp32.h> // windows.h first, which the top of this file has included and this needs for its types
+
+namespace
+{
+/** A panel that says what it learnt of the canvas it was painted on: whether the canvas has a GPU context, and whether
+    its pixels can be written by hand, which a product's skin relies on where it has them. */
+class CanvasWitness final : public reckless::view::View
+{
+  public:
+    void Paint(reckless::gfx::Canvas &canvas) override
+    {
+        canvas.FillAll(reckless::gfx::Color::FromRgb(20, 40, 60));
+        ++paints;
+        if (auto *skia_canvas = dynamic_cast<reckless::gfx::SkiaCanvas *>(&canvas))
+        {
+            SkImageInfo info;
+            std::size_t row_bytes = 0;
+            is_on_gpu             = skia_canvas->skia().recordingContext() != nullptr;
+            has_pixels_in_memory  = skia_canvas->skia().accessTopLayerPixels(&info, &row_bytes) != nullptr;
+            is_raster_as_before   = info.colorType() == kBGRA_8888_SkColorType && row_bytes == info.width() * 4u;
+        }
+    }
+
+    int  paints{0};                   ///< how many times it has been painted.
+    bool is_on_gpu{false};            ///< the last paint's canvas had a GPU context.
+    bool has_pixels_in_memory{false}; ///< the last paint's canvas gave its pixels to be written by hand.
+    bool is_raster_as_before{false};  ///< and they were the raster's: B G R A, rows packed, as SetDIBitsToDevice takes.
+};
+} // namespace
+
+TEST(ChildWindowDrawing, AWindowThatIsNotAskedDrawsWithTheCpuRasterAsItAlwaysDidAndLoadsNoGl)
+{
+    // What keeps a product that does not opt in unchanged, held from the outside: this suite links the window and not
+    // the GPU's back end (reckless_window_gpu), as every plug-in and every app that does not ask does, so nothing of
+    // the GL is in the process, and the canvas the views draw on is the raster it always was.
+    EXPECT_EQ(GetModuleHandleW(L"opengl32.dll"), nullptr) << "a window that links no GPU back end loads no GL";
+    HWND top = CreateWindowExW(WS_EX_NOACTIVATE, L"STATIC", L"", WS_POPUP, 100, 100, 240, 160, nullptr, nullptr,
+                               GetModuleHandleW(nullptr), nullptr);
+    ASSERT_NE(top, nullptr);
+    ShowWindow(top, SW_SHOWNOACTIVATE);
+    CanvasWitness witness;
+    witness.SetBounds({240, 160});
+    auto child = reckless::window::CreateChildWindow(top, witness, 240, 160, 1.0f);
+    ASSERT_NE(child, nullptr);
+    const reckless::window::DrawingState unasked = child->DrawingNow();
+    EXPECT_EQ(unasked.drawing, reckless::window::Drawing::kCpuRaster) << "a window no one has asked draws as it did";
+    EXPECT_EQ(unasked.why, reckless::window::DrawingFallback::kNotAsked);
+    EXPECT_TRUE(unasked.renderer.empty()) << "and has made no GL context";
+    EXPECT_EQ(unasked.contexts_lost, 0);
+
+    const ULONGLONG until = GetTickCount64() + 1500;
+    MSG             message{};
+    while (witness.paints == 0 && GetTickCount64() < until)
+    {
+        MsgWaitForMultipleObjects(0, nullptr, FALSE, 20, QS_ALLINPUT);
+        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+    const bool was_painted = witness.paints > 0;
+    if (was_painted)
+    {
+        EXPECT_FALSE(witness.is_on_gpu) << "the canvas has no GPU context";
+        EXPECT_TRUE(witness.has_pixels_in_memory) << "its pixels can be written by hand, as a product's skin does";
+        EXPECT_TRUE(witness.is_raster_as_before) << "and they are the raster SetDIBitsToDevice is handed";
+    }
+
+    // Asked for the GPU with no back end linked: said, and still nothing of the GL loaded.
+    const reckless::window::DrawingState not_linked = child->SetDrawing({reckless::window::Drawing::kGpu, nullptr});
+    EXPECT_EQ(not_linked.drawing, reckless::window::Drawing::kCpuRaster);
+    EXPECT_TRUE(not_linked.why == reckless::window::DrawingFallback::kNotLinked ||
+                not_linked.why == reckless::window::DrawingFallback::kForcedOff)
+        << reckless::window::TextOf(not_linked.why);
+    EXPECT_EQ(child->SetDrawing({}).why, reckless::window::DrawingFallback::kNotAsked) << "and back to not asked";
+    EXPECT_EQ(GetModuleHandleW(L"opengl32.dll"), nullptr) << "asking loads no GL where no back end is linked";
+    child.reset();
+    DestroyWindow(top);
+    if (!was_painted)
+    {
+        GTEST_SKIP() << "nothing painted at all: a window station that shows nothing, so the canvas is not held";
+    }
+}
+
 TEST(ChildWindowFramePacing, IsOnThePlatformTimerUntilItIsAskedAndSaysWhichItGotAndWhy)
 {
     HWND top = CreateWindowExW(0, L"STATIC", L"", WS_OVERLAPPEDWINDOW, 0, 0, 240, 160, nullptr, nullptr,
@@ -776,6 +874,157 @@ TEST(ChildWindowFramePacing, IsOnThePlatformTimerUntilItIsAskedAndSaysWhichItGot
     EXPECT_EQ(back.why, FramePacingFallback::kNotAsked);
     child.reset();
     DestroyWindow(top);
+}
+
+TEST(ChildWindowFramePacing, AWindowThatIsNotAskedTakesItsFramesFromItsTimerAndStartsNoThread)
+{
+    // What keeps a product that does not opt in unchanged, held from the outside: which message each frame arrives on,
+    // and how many threads the process has. The window that asks is the control, so a count of none here is one that
+    // could have been more than none.
+    const auto threads_in_this_process = [] {
+        int           count    = 0;
+        const HANDLE  snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        THREADENTRY32 entry{};
+        entry.dwSize = sizeof(entry);
+        for (BOOL more = Thread32First(snapshot, &entry); more != FALSE; more = Thread32Next(snapshot, &entry))
+        {
+            count += entry.th32OwnerProcessID == GetCurrentProcessId() ? 1 : 0;
+        }
+        CloseHandle(snapshot);
+        return count;
+    };
+    for (const bool does_ask : {false, true})
+    {
+        HWND top = CreateWindowExW(0, L"STATIC", L"", WS_OVERLAPPEDWINDOW, 0, 0, 240, 160, nullptr, nullptr,
+                                   GetModuleHandleW(nullptr), nullptr);
+        ASSERT_NE(top, nullptr);
+        reckless::view::View root;
+        root.SetBounds({240, 160});
+        auto child = reckless::window::CreateChildWindow(top, root, 240, 160, 1.0f);
+        ASSERT_NE(child, nullptr);
+        const int threads_before = threads_in_this_process();
+        EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked);
+        const double mode_hertz = child->DisplayModeHertz();
+        EXPECT_TRUE(mode_hertz == 0.0 || reckless::window::IsBelievableRefreshRate(mode_hertz)) << mode_hertz;
+        EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked) << "reading the rate asks for nothing";
+        if (does_ask)
+        {
+            child->SetFramePacing({FramePacing::kDisplayClock, 1, 1});
+        }
+        const bool is_on_the_clock = child->FramePacingNow().pacing == FramePacing::kDisplayClock;
+        int        frames          = 0;
+        child->SetFrameCallback([&] { ++frames; });
+        const int       threads_with_frames = threads_in_this_process();
+        int             timers              = 0;
+        int             posted              = 0;
+        MSG             message{};
+        const ULONGLONG until = GetTickCount64() + 3000;
+        while (frames < 20 && GetTickCount64() < until)
+        {
+            MsgWaitForMultipleObjects(0, nullptr, FALSE, 50, QS_ALLINPUT);
+            while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+            {
+                timers += message.message == WM_TIMER ? 1 : 0;
+                posted += message.message >= WM_APP && message.message < 0xC000 ? 1 : 0;
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+        }
+        std::printf("[ frame pacing ] Windows, %s: %d frames, %d WM_TIMER, %d of the window's own messages, %d threads "
+                    "then %d; the mode %.2f Hz\n",
+                    does_ask ? "asked for the display's clock" : "asked for nothing", frames, timers, posted,
+                    threads_before, threads_with_frames, mode_hertz);
+        std::fflush(stdout);
+        EXPECT_GE(frames, 20) << "the callback runs either way";
+        if (!is_on_the_clock)
+        {
+            EXPECT_GE(timers, frames) << "every frame is a WM_TIMER";
+            EXPECT_EQ(posted, 0) << "and nothing is posted to the window for one";
+        }
+        else
+        {
+            EXPECT_EQ(timers, 0) << "the control: on the clock no frame is a WM_TIMER";
+            EXPECT_GE(posted, frames) << "and each is posted to the window";
+            EXPECT_EQ(threads_with_frames, threads_before + 1) << "the control: the clock's thread, seen";
+        }
+        if (!does_ask)
+        {
+            EXPECT_EQ(threads_with_frames, threads_before) << "no thread of a clock";
+        }
+        child->SetFrameCallback(nullptr);
+        child.reset();
+        DestroyWindow(top);
+    }
+}
+
+TEST(ChildWindowFramePacing, AFrameAHostThrowsAwayIsAskedForAgainAndABusyThreadIsHandedNoBurst)
+{
+    // A frame is a posted message and one frame is in flight at a time, so a host's pump that took one and did not
+    // dispatch it would otherwise leave the window with no frames for good, still saying it is on the clock.
+    HWND top = CreateWindowExW(0, L"STATIC", L"", WS_OVERLAPPEDWINDOW, 0, 0, 240, 160, nullptr, nullptr,
+                               GetModuleHandleW(nullptr), nullptr);
+    ASSERT_NE(top, nullptr);
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto child = reckless::window::CreateChildWindow(top, root, 240, 160, 1.0f);
+    ASSERT_NE(child, nullptr);
+    const bool is_on_the_clock =
+        child->SetFramePacing({FramePacing::kDisplayClock, 1, 1}).pacing == FramePacing::kDisplayClock;
+    int frames = 0;
+    child->SetFrameCallback([&] { ++frames; });
+    MSG        message{};
+    const auto pump_for = [&message](ULONGLONG milliseconds) {
+        const ULONGLONG until = GetTickCount64() + milliseconds;
+        while (GetTickCount64() < until)
+        {
+            MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
+            while (GetTickCount64() < until && PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+        }
+    };
+    int thrown_away = 0;
+    int after_lost  = 0;
+    int after_block = 0;
+    if (is_on_the_clock)
+    {
+        pump_for(200);
+        const ULONGLONG wait_until = GetTickCount64() + 500;
+        while (thrown_away == 0 && GetTickCount64() < wait_until)
+        {
+            thrown_away += PeekMessageW(&message, nullptr, WM_APP, 0xBFFF, PM_REMOVE) != FALSE ? 1 : 0;
+        }
+        const int frames_then = frames;
+        pump_for(2500);
+        after_lost = frames - frames_then;
+        // Busy for long enough that the clock has asked several times over, then a moment to take what it asked.
+        Sleep(3500);
+        const int frames_before = frames;
+        pump_for(5);
+        after_block = frames - frames_before;
+    }
+    std::printf(
+        "[ frame pacing ] Windows, a posted frame thrown away %d time(s): %d frames in the 2.5 s after; %d in the "
+        "5 ms after a 3.5 s block\n",
+        thrown_away, after_lost, after_block);
+    std::fflush(stdout);
+    child->SetFrameCallback(nullptr);
+    child.reset();
+    DestroyWindow(top);
+    if (!is_on_the_clock)
+    {
+        GTEST_SKIP() << "no display clock on this machine, so no frame to lose";
+    }
+    if (thrown_away == 0)
+    {
+        GTEST_SKIP() << "no frame came to throw away: a window station that shows nothing";
+    }
+    EXPECT_GT(after_lost, 0) << "the window has frames again";
+    // At most what was in flight as it went busy, the last asked for, and the one next due: every asking run would be
+    // those and the three the clock asked for in between.
+    EXPECT_LE(after_block, 3) << "and a thread back from being busy has the last it was asked for, not a burst";
 }
 
 TEST(ChildWindowFramePacing, RunsTheFrameCallbackOnTheWindowsOwnThreadWhicheverItIsPacedBy)
@@ -838,6 +1087,236 @@ TEST(ChildWindowFramePacing, RunsTheFrameCallbackOnTheWindowsOwnThreadWhicheverI
         DestroyWindow(top);
     }
 }
+
+namespace
+{
+/** A panel whose paint costs what it is told to, and counts them. */
+class SlowPanel final : public reckless::view::View
+{
+  public:
+    void Paint(reckless::gfx::Canvas &) override
+    {
+        const auto until = std::chrono::steady_clock::now() + std::chrono::microseconds(paint_microseconds);
+        while (std::chrono::steady_clock::now() < until)
+        {
+        }
+        ++paints;
+        if (on_painted)
+        {
+            on_painted();
+        }
+    }
+
+    int                   paints{0};             ///< how many times it has been painted.
+    int                   paint_microseconds{0}; ///< what a paint costs.
+    std::function<void()> on_painted;            ///< told of each paint; may be empty.
+};
+
+int host_like_timers = 0; ///< the WM_TIMERs the host-like window has taken.
+int host_like_paints = 0; ///< the WM_PAINTs the host-like window has taken.
+
+/** A host's own window beside the panels, on their thread: a timer that invalidates it and a paint of its own.
+    @param window   the window
+    @param message  the message
+    @param wparam   the message's first parameter
+    @param lparam   the message's second parameter
+    @return         the message's result */
+LRESULT CALLBACK HostLikeWindowProcedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
+{
+    switch (message)
+    {
+    case WM_ERASEBKGND:
+        return 1;
+    case WM_TIMER:
+        ++host_like_timers;
+        InvalidateRect(window, nullptr, FALSE);
+        return 0;
+    case WM_PAINT: {
+        PAINTSTRUCT paint{};
+        BeginPaint(window, &paint);
+        ++host_like_paints;
+        EndPaint(window, &paint);
+        return 0;
+    }
+    default:
+        return DefWindowProcW(window, message, wparam, lparam);
+    }
+}
+} // namespace
+
+TEST(ChildWindowFramePacing, AThreadWithMorePanelsThanARefreshHasRoomForStarvesNoneOfThemNorItsHost)
+{
+    // More paint than the thread can do: six panels at 6 ms a paint against frames a sixtieth of a second apart. A
+    // posted frame outranks every paint and every timer, so frames that simply ran would keep the windows nearest the
+    // top of the z-order invalid, and the rest of the panels and the host's own window would get nothing at all.
+    WNDCLASSW host_class{};
+    host_class.lpfnWndProc   = HostLikeWindowProcedure;
+    host_class.hInstance     = GetModuleHandleW(nullptr);
+    host_class.lpszClassName = L"RecklessPacingTestHostLike";
+    RegisterClassW(&host_class);
+    host_like_timers = 0;
+    host_like_paints = 0;
+    HWND host        = CreateWindowExW(WS_EX_NOACTIVATE, host_class.lpszClassName, L"", WS_POPUP, 0, 0, 80, 80, nullptr,
+                                       nullptr, host_class.hInstance, nullptr);
+    ASSERT_NE(host, nullptr);
+    ShowWindow(host, SW_SHOWNOACTIVATE);
+    SetTimer(host, 1, 20, nullptr);
+
+    constexpr int                             kPanels = 6;
+    std::vector<HWND>                         tops;
+    std::vector<std::unique_ptr<SlowPanel>>   panels;
+    std::vector<std::unique_ptr<ChildWindow>> children;
+    bool                                      is_every_panel_on_the_clock = true;
+    for (int i = 0; i < kPanels; ++i)
+    {
+        HWND top = CreateWindowExW(WS_EX_NOACTIVATE, L"STATIC", L"", WS_POPUP, 100 + i * 10, 100 + i * 10, 240, 160,
+                                   nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+        ASSERT_NE(top, nullptr);
+        ShowWindow(top, SW_SHOWNOACTIVATE);
+        tops.push_back(top);
+        panels.push_back(std::make_unique<SlowPanel>());
+        SlowPanel &panel = *panels.back();
+        panel.SetBounds({240, 160});
+        panel.paint_microseconds = 6000;
+        children.push_back(reckless::window::CreateChildWindow(top, panel, 240, 160, 1.0f));
+        ASSERT_NE(children.back(), nullptr);
+        // Whatever the display, a frame near a sixtieth of a second: asked once for its rate, again for the divisor.
+        const FramePacingState first = children.back()->SetFramePacing({FramePacing::kDisplayClock, 1, 1});
+        const int              divisor =
+            first.display_hertz > 0.0 ? std::max(1, static_cast<int>(std::lround(first.display_hertz / 60.0))) : 1;
+        const FramePacingState state = children.back()->SetFramePacing({FramePacing::kDisplayClock, divisor, 1});
+        is_every_panel_on_the_clock  = is_every_panel_on_the_clock && state.pacing == FramePacing::kDisplayClock;
+        children.back()->SetFrameCallback([&panel] { panel.Repaint(); });
+    }
+    if (is_every_panel_on_the_clock)
+    {
+        const ULONGLONG until = GetTickCount64() + 2000;
+        MSG             message{};
+        while (GetTickCount64() < until)
+        {
+            MsgWaitForMultipleObjects(0, nullptr, FALSE, 50, QS_ALLINPUT);
+            while (GetTickCount64() < until && PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+        }
+    }
+    int fewest = panels.front()->paints;
+    int most   = panels.front()->paints;
+    std::printf("[ frame pacing ] Windows, %d panels on one thread, 6 ms a paint, two seconds:", kPanels);
+    for (const auto &panel : panels)
+    {
+        std::printf(" %d", panel->paints);
+        fewest = std::min(fewest, panel->paints);
+        most   = std::max(most, panel->paints);
+    }
+    std::printf("; the host-like window %d timers, %d paints\n", host_like_timers, host_like_paints);
+    std::fflush(stdout);
+    for (auto &child : children)
+    {
+        child->SetFrameCallback(nullptr);
+    }
+    children.clear();
+    for (HWND top : tops)
+    {
+        DestroyWindow(top);
+    }
+    KillTimer(host, 1);
+    DestroyWindow(host);
+    UnregisterClassW(host_class.lpszClassName, host_class.hInstance);
+    if (!is_every_panel_on_the_clock)
+    {
+        GTEST_SKIP() << "no display clock on this machine, so no frame to outrank anything";
+    }
+    if (most == 0)
+    {
+        GTEST_SKIP() << "nothing painted at all: a window station that shows nothing";
+    }
+    EXPECT_GE(fewest, 5) << "every panel goes on being painted";
+    EXPECT_GE(fewest * 2, most) << "every panel has its turn, wherever it is in the z-order";
+    EXPECT_GE(host_like_timers, 5) << "and the host's timer still runs";
+    EXPECT_GE(host_like_paints, 5) << "and so does its paint";
+}
+
+TEST(ChildWindowFramePacing, PanelsThatFitARefreshPaintInOneOrderEveryRefresh)
+{
+    // The frames of one refresh read the queue before any of them invalidates a window, so they all run and the windows
+    // paint in the one order the queue paints them in. Had each frame run as it asked, the first to wake would run and
+    // paint alone, the others standing back for its paint, and a window's picture would land first in one refresh and
+    // last in the next, whichever of the clocks' threads woke first.
+    constexpr int                             kPanels = 4;
+    std::vector<HWND>                         tops;
+    std::vector<std::unique_ptr<SlowPanel>>   panels;
+    std::vector<std::unique_ptr<ChildWindow>> children;
+    std::vector<int>                          painted;
+    bool                                      is_every_panel_on_the_clock = true;
+    for (int i = 0; i < kPanels; ++i)
+    {
+        HWND top = CreateWindowExW(WS_EX_NOACTIVATE, L"STATIC", L"", WS_POPUP, 100 + i * 10, 100 + i * 10, 240, 160,
+                                   nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+        ASSERT_NE(top, nullptr);
+        ShowWindow(top, SW_SHOWNOACTIVATE);
+        tops.push_back(top);
+        panels.push_back(std::make_unique<SlowPanel>());
+        SlowPanel &panel = *panels.back();
+        panel.SetBounds({240, 160});
+        panel.paint_microseconds = 1000;
+        panel.on_painted         = [&painted, i] { painted.push_back(i); };
+        children.push_back(reckless::window::CreateChildWindow(top, panel, 240, 160, 1.0f));
+        ASSERT_NE(children.back(), nullptr);
+        const FramePacingState first = children.back()->SetFramePacing({FramePacing::kDisplayClock, 1, 1});
+        const int              divisor =
+            first.display_hertz > 0.0 ? std::max(1, static_cast<int>(std::lround(first.display_hertz / 60.0))) : 1;
+        const FramePacingState state = children.back()->SetFramePacing({FramePacing::kDisplayClock, divisor, 1});
+        is_every_panel_on_the_clock  = is_every_panel_on_the_clock && state.pacing == FramePacing::kDisplayClock;
+        children.back()->SetFrameCallback([&panel] { panel.Repaint(); });
+    }
+    if (is_every_panel_on_the_clock)
+    {
+        const ULONGLONG until = GetTickCount64() + 2000;
+        MSG             message{};
+        while (GetTickCount64() < until)
+        {
+            MsgWaitForMultipleObjects(0, nullptr, FALSE, 50, QS_ALLINPUT);
+            while (GetTickCount64() < until && PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+        }
+    }
+    // One order a refresh, whichever it is: each paint a whole round after the same panel's.
+    int compared = 0;
+    int the_same = 0;
+    for (std::size_t i = 0; i + kPanels < painted.size(); ++i)
+    {
+        ++compared;
+        the_same += painted[i] == painted[i + kPanels] ? 1 : 0;
+    }
+    std::printf("[ frame pacing ] Windows, %d panels on one thread with room: %d of %d paints a round after the same "
+                "panel's\n",
+                kPanels, the_same, compared);
+    std::fflush(stdout);
+    for (auto &child : children)
+    {
+        child->SetFrameCallback(nullptr);
+    }
+    children.clear();
+    for (HWND top : tops)
+    {
+        DestroyWindow(top);
+    }
+    if (!is_every_panel_on_the_clock)
+    {
+        GTEST_SKIP() << "no display clock on this machine, so no frames to order";
+    }
+    if (compared == 0)
+    {
+        GTEST_SKIP() << "nothing painted at all: a window station that shows nothing";
+    }
+    EXPECT_GE(the_same * 10, compared * 7) << "the panels paint in one order, so a window's picture holds its place";
+}
 #endif
 
 #if !defined(_WIN32) && !defined(__APPLE__)
@@ -866,6 +1345,7 @@ TEST(ChildWindowFramePacing, SaysPlainlyThatThereIsNoDisplayClockOnX11)
     HoldsWhicheverPacingItReached(asked, 4, "Linux, asked for a frame every fourth refresh, 5 ms ahead", 5000);
     EXPECT_EQ(asked.why, FramePacingFallback::kNoDisplayClock) << "which is the honest answer on X11, not a rate";
     EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNoDisplayClock) << "and it says the same again";
+    EXPECT_EQ(child->DisplayModeHertz(), 0.0) << "and names no rate for a product to work a divisor out from";
 
     const FramePacingState back = child->SetFramePacing({});
     EXPECT_EQ(back.why, FramePacingFallback::kNotAsked) << "a default request is a window asking for nothing";
