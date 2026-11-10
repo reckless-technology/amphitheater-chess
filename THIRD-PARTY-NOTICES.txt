@@ -718,6 +718,10 @@ https://github.com/reckless-technology/pawnstar/tree/v2.3.1
 GitHub serves it as one archive:
 https://github.com/reckless-technology/pawnstar/archive/refs/tags/v2.3.1.tar.gz
 
+Pawnstar prints its licence and third-party notices, including the notice for the Leela Chess Zero
+self-play training data its network was trained on, on the UCI command `license`; see also
+https://github.com/reckless-technology/pawnstar/blob/v2.3.1/THIRD-PARTY-NOTICES.md.
+
 That source stays available there, without charge, for as long as this version of Reckless
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
@@ -745,6 +749,10 @@ https://github.com/reckless-technology/trebuchet/tree/v1.1.0
 GitHub serves it as one archive:
 https://github.com/reckless-technology/trebuchet/archive/refs/tags/v1.1.0.tar.gz
 
+Trebuchet prints its licence and third-party notices, including the notice for the Leela Chess Zero
+self-play training data its network was trained on, on the UCI command `license` (or `licence`); see
+also https://github.com/reckless-technology/trebuchet/blob/v1.1.0/THIRD-PARTY-NOTICES.md.
+
 That source stays available there, without charge, for as long as this version of Reckless
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
@@ -770,6 +778,10 @@ https://github.com/reckless-technology/pawnstar-go/tree/v2.3.1
 
 GitHub serves it as one archive:
 https://github.com/reckless-technology/pawnstar-go/archive/refs/tags/v2.3.1.tar.gz
+
+Pawnstar-Go prints its licence and third-party notices, including the notice for the Leela Chess
+Zero self-play training data its network was trained on, on the UCI command `license`; see also
+https://github.com/reckless-technology/pawnstar-go/blob/v2.3.1/THIRD-PARTY-NOTICES.md.
 
 That source stays available there, without charge, for as long as this version of Reckless
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
@@ -797,6 +809,10 @@ https://github.com/reckless-technology/pawnstar-rs/tree/v2.3.1
 GitHub serves it as one archive:
 https://github.com/reckless-technology/pawnstar-rs/archive/refs/tags/v2.3.1.tar.gz
 
+Pawnstar-RS prints its licence and third-party notices, including the notice for the Leela Chess
+Zero self-play training data its network was trained on, on the UCI command `license`; see also
+https://github.com/reckless-technology/pawnstar-rs/blob/v2.3.1/THIRD-PARTY-NOTICES.md.
+
 That source stays available there, without charge, for as long as this version of Reckless
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
@@ -822,6 +838,9 @@ https://github.com/reckless-technology/stoopid-chess/tree/v4.1.0
 
 GitHub serves it as one archive:
 https://github.com/reckless-technology/stoopid-chess/archive/refs/tags/v4.1.0.tar.gz
+
+Stoopid Chess has no network and no UCI licence command; its licence is
+https://github.com/reckless-technology/stoopid-chess/blob/v4.1.0/LICENSE.
 
 That source stays available there, without charge, for as long as this version of Reckless
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
