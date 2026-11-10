@@ -1,6 +1,7 @@
 # Plan: one book toolchain, driving engines over UCI
 
-**Status: approved 2026-10-31 and being built.** Written after a day spent repairing
+**Status: done.** Approved 2026-10-31 and built: `screenbook` is in `amphitheater-cli`, `pawnstar/tools/filter_book.cpp` is
+gone, and v1.1 was released on 2026-10-31 as the gate below allowed; the gate is kept as the record of why. Written after a day spent repairing
 `pawnstar/tools/filter_book.cpp` and finding that the repair was unnecessary in the first place.
 
 **This gates the next Amphitheater release, and clears it.** Jonny, 2026-10-31: *"Let's not do another

@@ -83,7 +83,9 @@ GUI will save with the toolkit's JSON.
   White's side, `MoveNote::WhiteScore` - and `{book}`), `Openings` (EPD, PGN, a Polyglot book walked to a depth), `GameAnalysis` (an engine over every
   position of a game on its own thread; each move judged by the winning chances it cost), `TestSuite` (an EPD suite's
   `bm`/`am` positions, run against an engine on its own thread), `BookMaker` (a Polyglot book from a library of games:
-  a PGN, a folder, a zip archive read by its own `ZipArchive` and `Inflate`),
+  a PGN, a folder, a zip archive read by its own `ZipArchive` and `Inflate`), `BookScreener` (`amphitheater-cli
+  screenbook`: each book move scored by an engine over UCI, a move far below the engine's own choice marked with a
+  trailing `?` in a `chess::TextBook`, replayed by the loaders and never played),
   `Schedule` (circle method), `Statistics` (Elo with a 95 % margin from the trinomial variance, LOS, standings with
   Sonneborn-Berger, crosstable), `Tournament` (worker threads, each with its own engines; events in a queue).
 - **Scores:** an engine's UCI score is from the side to move in the position it searches; everything the host shows
