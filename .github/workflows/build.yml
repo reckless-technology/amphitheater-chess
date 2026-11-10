@@ -255,7 +255,7 @@ jobs:
           # The x86_64 slice runs too, under Rosetta, as release.yml runs it.
           arch -x86_64 build/ci-macos/src/cli/amphitheater-cli --version
       # The app's bundle as the system checks it: signed whole, a plist that names its icon - the icon it names in the
-      # bundle, the host's own black queen (assets/icon/Icon.icns) byte for byte - and asks for nothing the host does
+      # bundle, the host's own icon, the Colosseum sketch (assets/icon/Icon.icns) byte for byte - and asks for nothing the host does
       # not use (no microphone).
       - name: The app's bundle
         run: |

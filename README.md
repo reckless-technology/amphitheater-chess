@@ -7,8 +7,10 @@ reckless-toolkit (a git subtree at `external/reckless-toolkit`), which drives th
 
 Free and open source under the GNU General Public License, version 3 or later: [LICENSE](LICENSE) is the licence, and
 it is what every release carries, as LICENSE.txt.
-Everything in it is Jonny Reckless's own work, the piece set in `assets/pieces/staunton/` for the GUI among it (twelve
-SVGs, the generator that wrote them and a preview); the tests fetch GoogleTest, which no product ships. The window
+Apart from the third-party parts named below and in the notices, it is Jonny Reckless's own work, the Staunton piece set
+in `assets/pieces/staunton/` among it (twelve SVGs, the generator that wrote them and a preview). The other piece set,
+Colin M.L. Burnett's under the BSD licence (`assets/pieces/cburnett/`), is carried and credited in the notices; the
+tests fetch GoogleTest and read the Ethereal engine's perft positions, neither of which any product ships. The window
 links the toolkit's third-party parts (Skia and the libraries it bundles, two typefaces), each under the licence
 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) reproduces. The installers also carry Jonny's five chess engines,
 each a separate GPLv3 program the host only talks to over UCI pipes - aggregation, not linking - with the GPL's text
@@ -21,7 +23,7 @@ and each engine's source (its public repository at the release's tag) in the not
 | `amphitheater_chess` | `src/chess/` | The board and its legal move generator (adapted from pawnstar), FEN (strict and tolerant), SAN and UCI notation, games and the rules that end them, PGN reading and writing, Polyglot opening books, time controls and clocks |
 | `amphitheater_uci` | `src/uci/` | A child process with pipes and reader threads (Windows and POSIX), the UCI protocol parsed and formatted, and the engine session |
 | `amphitheater_match` | `src/match/` | Players, the game runner (clocks, legality, adjudication, books, pondering, PGN with per-move comments), openings, the round-robin schedule, statistics, and tournaments played in parallel |
-| `amphitheater_cli_core`, `amphitheater-cli` | `src/cli/` | The command line: `match`, `tournament`, `perft`, `analyse` |
+| `amphitheater_cli_core`, `amphitheater-cli` | `src/cli/` | The command line: `match`, `tournament`, `perft`, `analyse`, `epd`, `makebook`, `screenbook` |
 | `amphitheater_gui`, `Amphitheater` | `src/app/` | The window on the toolkit: the board, the moves, the game's card, the analysis, the evaluation graph, the engine log, the menus, and the controllers behind them |
 
 The suites are in `tests/` (GoogleTest), with a scriptable fake engine (`tests/fake_engine/`) that the UCI, match and
@@ -93,7 +95,7 @@ stop is started afresh for the next game.
 
 An `Engine` is driven by one thread, its owner. Its process's output is read on two reader threads (standard output
 and standard error) into a thread-safe queue, which the owner drains: `NextEvent` waits up to a timeout, `PollEvent`
-never waits, `Search` blocks until "bestmove", a deadline or the engine's exit. The GUI will poll from its frame
+never waits, `Search` blocks until "bestmove", a deadline or the engine's exit. The window polls from its frame
 callback; a game runner, on its own thread, blocks in `Search`.
 
 A `Tournament` shares its schedule among as many worker threads as its concurrency. Each worker keeps its own engine
@@ -130,7 +132,7 @@ work. To build one target, name it:
 |---|---|
 | `Amphitheater` | the app, the window (needs the toolkit, which is in this repository): the default target |
 | `amphitheater_everything` | every target below |
-| `amphitheater-cli` | the command line: matches, tournaments, perft, analysis, test suites, opening books |
+| `amphitheater-cli` | the command line: matches, tournaments, perft, analysis, test suites, opening books made and screened |
 | `amphitheater_render_main` | the window drawn to a PNG with no display, for the review images in `docs/design/` |
 | `amphitheater_chess_test`, `amphitheater_uci_test`, `amphitheater_match_test`, `amphitheater_cli_test`, `amphitheater_window_test`, `amphitheater_integration_test` | the suites, one per library (below) |
 | `amphitheater_fake_engine` | the scripted engine the suites play against |
@@ -404,6 +406,7 @@ amphitheater-cli perft "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R 
 amphitheater-cli analyse -engine cmd=./engine -fen startpos -moves e2e4 e7e5 -time 10
 amphitheater-cli epd -engine cmd=./engine -file suite.epd -time 0.5
 amphitheater-cli makebook -games ./classical-games -out classical.bin -moves 7 -least 2
+amphitheater-cli screenbook -engine cmd=./engine -book classical.bin -out screened.bin -depth 12 -margin 100
 ```
 
 Engines take `cmd=`, `name=`, `dir=`, `arg=` (repeatable), `option.<name>=<value>`, their own `tc=`, `st=`,
@@ -418,13 +421,33 @@ by default) or to `-depth` on each position, printing a line a position - its nu
 whether it solved it - and the score at the end, `Solved 12 of 20 (60.0 %)`. `makebook` makes an opening book from
 a library of games, as File > Make book from games does: `-games` a PGN file, a zip archive or a folder, `-out` the
 `.bin` to write, `-moves` the moves of each side (7 by default) and `-least` the fewest games a move is kept for (1);
-it prints each file as it reads it and what it made at the end.
+it prints each file as it reads it and what it made at the end. `screenbook` screens a book against an engine's own
+judgement (`match::ScreenBook`, `BookScreener.h`): the engine, over UCI, on one thread and with `ucinewgame` before every
+search, scores each book move on its own at `-depth`, and a move scoring `-margin` centipawns or more below the engine's
+own choice at that position is marked with a trailing `?` - kept in its line, so the engine still has its reply to a move
+it would not play, but replayed by the loaders and never played. A position left with no move it may play is given the
+engine's own choice. It writes over `-book` unless `-out` says otherwise, and `-marks` names a file to write the marks
+to; `--help` has the whole syntax.
 
 Every score the command line writes is from White's side: each PGN move's comment, `{+0.35/18 1.2s}` (White better,
 by the score its mover's engine reported, depth 18, 1.2 seconds), `{-0.35/18 1.2s}` (Black better), `{+M5/20 0.4s}`
 (White mates in 5) or `{-M3/20 0.4s}` (Black mates in 3), and `{book}` for a book move; and `analyse`'s lines,
 `score -0.40` or `score #-2`, with `lowerbound` or `upperbound` after a bound, from White's side too. `-debug` prints
 the engines' lines exactly as they went, their scores their own.
+
+## System requirements
+
+What the installers hold the machine to, from the packaging itself:
+
+| Platform | Needs |
+|---|---|
+| Windows | Windows 10 or later, on an x64-compatible processor (`MinVersion=10.0` and `ArchitecturesAllowed=x64compatible` in `packaging/windows/Amphitheater.iss`) |
+| macOS | macOS 13.3 or later, on an Apple silicon or an Intel Mac (`packaging/macos/distribution.xml.in`; the host is a universal binary). The five bundled engines are arm64 builds, so an Intel Mac has the host and none of them |
+| Linux | 64-bit x86 (`amd64`). The Debian package's `Depends` is read off the binaries by `packaging/linux/make-deb.sh` - the C library and C++ runtime at the versions they ask for, and the libraries they load - and it recommends libcurl, `zenity` or `kdialog` for the file chooser, and `xdg-utils`. The portable zip needs the same libraries |
+
+The Windows and Linux engines also ask something of the processor, set out under "The bundled engines" below: Pawnstar
+and Pawnstar-Go need x86-64-v3 (AVX2), Trebuchet picks a build for the CPU it finds, Pawnstar-RS and Stoopid Chess run on
+any x86-64.
 
 ## Versions
 
@@ -527,8 +550,7 @@ Apple silicon, each binary held to arm64 and x86_64 and to macOS 13.3, the x86_6
 bundle to its signature, the icon its plist names - `assets/icon/Icon.icns` byte for byte - and a plist that asks for
 no microphone), each platform's packages unsigned (above), clang-format 22.1.8, and `CI`, the one job to require.
 Every job starts on a fresh machine and fetches nothing of its own: the toolkit's files are a subtree here,
-so a fork's pull request builds like any other. `.github/actions/cpp` installs what the image lacks, and
-`.github/actions/cpp` installs what the image lacks - Ninja, the X11, FreeType and fontconfig headers and Xvfb from
+so a fork's pull request builds like any other. `.github/actions/cpp` installs what the image lacks - Ninja, the X11, FreeType and fontconfig headers and Xvfb from
 apt on Linux - and Python 3.13 with `tools/requirements.txt`, so the `icon` and `pieces_cburnett` checks run rather
 than skip. FetchContent fetches GoogleTest, Skia's prebuilt libraries and the toolkit's other dependencies afresh into
 each build tree, every one held to its hash. The window suites (label `window`) run under `xvfb-run` on Linux and on the runners' own displays elsewhere.
