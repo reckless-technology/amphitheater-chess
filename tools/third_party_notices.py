@@ -135,6 +135,26 @@ def section(number, title, where, *parts):
     return f"{rule}\n{number}. {title}\nUsed in: {where}\n{rule}\n\n{body}\n"
 
 
+# Where each engine keeps its own licence and data notices, read from its repository at the pinned tag and from the
+# released binary (2026-11-10). A pointer only: each engine's own text is the authority. Check this when a pin moves.
+_LCS_NOTICE = ("prints its licence and third-party notices, including the notice for the Leela Chess Zero self-play "
+               "training data its network was trained on, on the UCI command {command}")
+
+
+def engine_notices_line(engine):
+    repository = f"https://github.com/{engine['repository']}"
+    notices = f"{repository}/blob/{engine['tag']}/THIRD-PARTY-NOTICES.md"
+    kind = {"pawnstar": "license", "pawnstar-go": "license", "pawnstar-rs": "license",
+            "trebuchet": "license", "stoopid-chess": None}
+    if engine["id"] not in kind:
+        sys.exit(f"engine {engine['id']!r} has no notices line: read its repository and add one in engine_notices_line")
+    if kind[engine["id"]] is None:
+        return (f"{engine['name']} has no network and no UCI licence command; its licence is "
+                f"{repository}/blob/{engine['tag']}/LICENSE")
+    command = "`license` (or `licence`)" if engine["id"] == "trebuchet" else "`license`"
+    return f"{engine['name']} {_LCS_NOTICE.format(command=command)}; see also {notices}"
+
+
 def engine_section(engine, gpl_number):
     repository = f"https://github.com/{engine['repository']}"
     source = [f"The corresponding source of this version is the public repository {repository} at the tag "
@@ -158,6 +178,7 @@ def engine_section(engine, gpl_number):
         f"{repository}/releases/tag/{engine['tag']}. It is a separate program: Reckless Amphitheater starts it and "
         "talks to it over the UCI protocol on its standard input and output, and contains none of its code.",
         *source,
+        engine_notices_line(engine) + ".",
         "That source stays available there, without charge, for as long as this version of Reckless Amphitheater is "
         "offered for download. You may also ask for it at hello@recklesstechnology.com.")
 

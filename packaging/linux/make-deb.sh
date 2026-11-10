@@ -80,9 +80,18 @@ License: GPL-3+
 Files: usr/lib/reckless-amphitheater/engines/*
 Copyright: 2009-2026 Jonny Reckless
 License: GPL-3
- The five bundled chess engines, each a separate program under the GNU General Public License version 3, whose
- text and each engine's source are in /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt; on Debian systems
- the licence is also in /usr/share/common-licenses/GPL-3.
+ The bundled chess engines Pawnstar, Pawnstar-Go, Pawnstar-RS and Stoopid Chess, each a separate program under the
+ GNU General Public License version 3, whose text and each engine's source are in
+ /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt; on Debian systems the licence is also in
+ /usr/share/common-licenses/GPL-3. That file also points to each engine's own licence and data notices.
+
+Files: usr/lib/reckless-amphitheater/engines/trebuchet/*
+Copyright: 2026 Jonny Reckless
+License: GPL-3+
+ The bundled chess engine Trebuchet, a separate program under the GNU General Public License version 3 or, at your
+ option, any later version, whose text and source are in
+ /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt; on Debian systems the licence is also in
+ /usr/share/common-licenses/GPL-3. That file also points to Trebuchet's own licence and data notices.
 COPYRIGHT
 chmod 0644 "$pkg/usr/share/doc/reckless-amphitheater/copyright"
 
