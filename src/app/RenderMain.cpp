@@ -256,15 +256,16 @@ int main(int argc, char **argv)
         }
         controller.Command(amphitheater::app::kNewTournament);
     }
-    // Ten games of a double round robin of four: the leader two and a half points clear, one pairing yet to meet.
+    // Invented sample data, not real results. Ten games of a double round robin of four: Trebuchet leads, the two
+    // Pawnstar ports (one engine) finish level, Stoopid Chess is last, and the ports' own pairing is yet to meet.
     using amphitheater::chess::GameResult;
-    const std::vector<std::string> names = {"Pawnstar 2.3.1", "Trebuchet 1.1.0", "Stoopid Chess 5.0.0",
-                                            "Blunderbuss 3"};
+    const std::vector<std::string> names = {"Trebuchet 1.1.0", "Pawnstar 2.3.1", "Pawnstar-Go 2.3.1",
+                                            "Stoopid Chess 5.0.0"};
     const std::vector<amphitheater::match::GameResultEntry> results = {
-        {0, 1, GameResult::kWhiteWins}, {1, 0, GameResult::kDraw},      {0, 2, GameResult::kWhiteWins},
-        {2, 0, GameResult::kDraw},      {1, 2, GameResult::kBlackWins}, {2, 1, GameResult::kWhiteWins},
-        {0, 3, GameResult::kWhiteWins}, {3, 0, GameResult::kBlackWins}, {1, 3, GameResult::kDraw},
-        {3, 1, GameResult::kWhiteWins}};
+        {0, 1, GameResult::kWhiteWins}, {1, 0, GameResult::kDraw},      {0, 2, GameResult::kDraw},
+        {2, 0, GameResult::kBlackWins}, {0, 3, GameResult::kWhiteWins}, {3, 0, GameResult::kBlackWins},
+        {1, 3, GameResult::kWhiteWins}, {3, 1, GameResult::kDraw},      {2, 3, GameResult::kDraw},
+        {3, 2, GameResult::kBlackWins}};
     amphitheater::app::StandingsDialog standings([&] { return std::make_pair(names, results); });
     if (is_standings)
     {
