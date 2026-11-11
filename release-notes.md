@@ -7,9 +7,8 @@ in THIRD-PARTY-NOTICES.txt.
 
 ## What's changed
 
-- Pawnstar, Pawnstar-Go and Pawnstar-RS move from 2.3.0 to 2.3.1, which no longer plays a move it never searched. In a
-  very fast game, a clock that ran out while the engine was still ordering the moves at the start of its search could
-  leave it with nothing finished to play and an arbitrary move chosen; it now finishes a quick first look at every move
-  before the deeper one, so it always has a searched move to play. Pawnstar went from 24 such moves to none, Pawnstar-Go from 57
-  and Pawnstar-RS from 110, in games at one second plus a hundredth of a second.
-- Trebuchet stays at 1.1.0 and Stoopid Chess at 4.1.0, each at its latest release.
+- Stoopid Chess moves from 4.1.0 to 5.0.0. It fixes three search bugs, so its play changes slightly (a repetition found
+  across a null move, the fifty-move draw missed while in check, and the history table capped against the countermove),
+  and it now offers only the Hash option, which is the one setting Amphitheater ever sets, in place of the 33
+  evaluation-tuning options it listed before.
+- Pawnstar, Pawnstar-Go and Pawnstar-RS stay at 2.3.1 and Trebuchet at 1.1.0, each at its latest release.
