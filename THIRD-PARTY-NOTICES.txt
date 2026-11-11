@@ -6,7 +6,7 @@ third-party software below, each part used under its own licence, which this fil
 wherever the licence asks for it.
 
 The installers also carry five chess engines - Pawnstar 2.3.1, Trebuchet 1.1.0, Pawnstar-Go 2.3.1,
-Pawnstar-RS 2.3.1, Stoopid Chess 4.1.0 - each a separate program, licensed under the GNU General
+Pawnstar-RS 2.3.1, Stoopid Chess 5.0.0 - each a separate program, licensed under the GNU General
 Public License version 3 (section 13). Reckless Amphitheater only starts them and talks to them over
 the UCI protocol and contains none of their code. Each engine's section says where its corresponding
 source is.
@@ -24,7 +24,7 @@ Where each part is used
    9. Trebuchet 1.1.0                              the installers
   10. Pawnstar-Go 2.3.1                            the installers
   11. Pawnstar-RS 2.3.1                            the installers
-  12. Stoopid Chess 4.1.0                          the installers
+  12. Stoopid Chess 5.0.0                          the installers
   13. The GNU General Public License               every engine above
 
 ====================================================================================================
@@ -817,30 +817,30 @@ That source stays available there, without charge, for as long as this version o
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
 
 ====================================================================================================
-12. Stoopid Chess 4.1.0, a chess engine
+12. Stoopid Chess 5.0.0, a chess engine
 Used in: the installers, as a separate program beside Reckless Amphitheater
 ====================================================================================================
 
-Stoopid Chess 4.1.0, Copyright (C) 2009-2026 Jonny Reckless, is free software: you can redistribute
+Stoopid Chess 5.0.0, Copyright (C) 2009-2026 Jonny Reckless, is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public License as published by the Free
 Software Foundation, version 3 of the License. It is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE. See the GNU General Public License, section 13, for more details.
 
-The installers carry the executable of its release v4.1.0 unmodified, as published at
-https://github.com/reckless-technology/stoopid-chess/releases/tag/v4.1.0. It is a separate program:
+The installers carry the executable of its release v5.0.0 unmodified, as published at
+https://github.com/reckless-technology/stoopid-chess/releases/tag/v5.0.0. It is a separate program:
 Reckless Amphitheater starts it and talks to it over the UCI protocol on its standard input and
 output, and contains none of its code.
 
 The corresponding source of this version is the public repository
-https://github.com/reckless-technology/stoopid-chess at the tag v4.1.0:
-https://github.com/reckless-technology/stoopid-chess/tree/v4.1.0
+https://github.com/reckless-technology/stoopid-chess at the tag v5.0.0:
+https://github.com/reckless-technology/stoopid-chess/tree/v5.0.0
 
 GitHub serves it as one archive:
-https://github.com/reckless-technology/stoopid-chess/archive/refs/tags/v4.1.0.tar.gz
+https://github.com/reckless-technology/stoopid-chess/archive/refs/tags/v5.0.0.tar.gz
 
 Stoopid Chess has no network and no UCI licence command; its licence is
-https://github.com/reckless-technology/stoopid-chess/blob/v4.1.0/LICENSE.
+https://github.com/reckless-technology/stoopid-chess/blob/v5.0.0/LICENSE.
 
 That source stays available there, without charge, for as long as this version of Reckless
 Amphitheater is offered for download. You may also ask for it at hello@recklesstechnology.com.
