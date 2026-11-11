@@ -236,8 +236,8 @@
       "id": "stoopid-chess",
       "name": "Stoopid Chess",
       "repository": "reckless-technology/stoopid-chess",
-      "tag": "v4.1.0",
-      "version": "4.1.0",
+      "tag": "v5.0.0",
+      "version": "5.0.0",
       "copyright": "Copyright (C) 2009-2026 Jonny Reckless",
       "licence": "GPL-3.0",
       "source_asset_pattern": null,
@@ -252,26 +252,26 @@
         "windows": [
           {
             "asset_pattern": "stoopid-chess-{version}-windows-x86_64.exe",
-            "asset": "stoopid-chess-4.1.0-windows-x86_64.exe",
-            "sha256": "85a88c0e726622f36e8de56929bebedbf006d7c0b2451061dd274ba8ebf6d2fd",
+            "asset": "stoopid-chess-5.0.0-windows-x86_64.exe",
+            "sha256": "1777d0d54e7c2d3aa8a2203e53e3042cab24b51e1e2c5bfedef83dbee307af85",
             "file": "stoopid-chess.exe"
           }
         ],
         "linux": [
           {
             "asset_pattern": "stoopid-chess-{version}-linux-x86_64",
-            "asset": "stoopid-chess-4.1.0-linux-x86_64",
-            "sha256": "bf8fb34bfa1c97c7815867b88a8d3c54d909314dbeb9edcf3033e018ea4e2839",
+            "asset": "stoopid-chess-5.0.0-linux-x86_64",
+            "sha256": "f6df8924237a4ceb534861f611772be55066b3c9fd98013738d831788c904876",
             "file": "stoopid-chess"
           }
         ],
         "macos": [
           {
             "asset_pattern": "stoopid-chess-{version}-macos-arm64.zip",
-            "asset": "stoopid-chess-4.1.0-macos-arm64.zip",
-            "sha256": "1a807940d23506eabb89cd8a41a4962fe6d305b1d936458d4dcf6c957cd6c90b",
+            "asset": "stoopid-chess-5.0.0-macos-arm64.zip",
+            "sha256": "e37b9cc0fe7d66bffb12f495dd7e61567b8cb6d067fa77626b161313b56a7ec1",
             "member_pattern": "stoopid-chess-{version}-macos-arm64",
-            "member": "stoopid-chess-4.1.0-macos-arm64",
+            "member": "stoopid-chess-5.0.0-macos-arm64",
             "file": "stoopid-chess"
           }
         ]

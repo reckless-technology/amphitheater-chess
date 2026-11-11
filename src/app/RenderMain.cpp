@@ -219,7 +219,7 @@ int main(int argc, char **argv)
              {OtherEngine{"C:/Engines/trebuchet/trebuchet.exe", "Trebuchet 1.1.0", ""},
               OtherEngine{"C:/Engines/pawnstar-go/pawnstar-go.exe", "Pawnstar-Go 2.3.1", ""},
               OtherEngine{"C:/Engines/pawnstar-rs/pawnstar-rs.exe", "Pawnstar 2.3.1", "Pawnstar-RS 2.3.1"},
-              OtherEngine{"C:/Engines/stoopid-chess/stoopid-chess.exe", "Stoopid Chess 4.1.0", ""}})
+              OtherEngine{"C:/Engines/stoopid-chess/stoopid-chess.exe", "Stoopid Chess 5.0.0", ""}})
         {
             amphitheater::app::EngineEntry engine;
             engine.config.executable = other.executable;
@@ -247,7 +247,7 @@ int main(int argc, char **argv)
     }
     if (is_tournament)
     {
-        for (const char *name : {"Pawnstar 2.3.1", "Trebuchet 1.1.0", "Stoopid Chess 4.1.0"})
+        for (const char *name : {"Pawnstar 2.3.1", "Trebuchet 1.1.0", "Stoopid Chess 5.0.0"})
         {
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
     }
     // Ten games of a double round robin of four: the leader two and a half points clear, one pairing yet to meet.
     using amphitheater::chess::GameResult;
-    const std::vector<std::string> names = {"Pawnstar 2.3.1", "Trebuchet 1.1.0", "Stoopid Chess 4.1.0",
+    const std::vector<std::string> names = {"Pawnstar 2.3.1", "Trebuchet 1.1.0", "Stoopid Chess 5.0.0",
                                             "Blunderbuss 3"};
     const std::vector<amphitheater::match::GameResultEntry> results = {
         {0, 1, GameResult::kWhiteWins}, {1, 0, GameResult::kDraw},      {0, 2, GameResult::kWhiteWins},
@@ -277,7 +277,7 @@ int main(int argc, char **argv)
                           {"Trebuchet", "1.1.0", "GPL-3.0-or-later"},
                           {"Pawnstar-Go", "2.3.1", "GPL-3.0"},
                           {"Pawnstar-RS", "2.3.1", "GPL-3.0"},
-                          {"Stoopid Chess", "4.1.0", "GPL-3.0"}};
+                          {"Stoopid Chess", "5.0.0", "GPL-3.0"}};
     amphitheater::app::AboutDialog about(about_info);
     if (is_about)
     {
