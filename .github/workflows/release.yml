@@ -16,7 +16,7 @@ name: release
 # organisation's shared storage quota - stands between a build and its release; the last job checks all four are there
 # and pushes the tag. The release stays a draft, which only the repository's collaborators see: the repository is
 # public, so a published release here would be public at once. A release reaches the public only through promote.yml,
-# which copies a finished draft's files and notes to reckless-technology/amphitheater-releases, on Jonny's word.
+# which publishes a finished draft in place, with its fixed-name files and notes, on Jonny's word.
 #
 # A draft with all four packages on it and its tag pushed is finished, and a run for the same version fails rather than
 # replace it. A draft short of either was left by a run that stopped part-way: the next run for that version deletes it

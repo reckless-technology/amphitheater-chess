@@ -188,8 +188,10 @@ actions, verified creators' and a short list of others; any other third-party ac
   secrets are set; Developer ID, notarisation and stapling on macOS), uploads the four packages to a draft release and
   pushes the tag, and never publishes it: the repository is public, so a published release would be public at once,
   while a draft is seen only by collaborators. A draft with its four packages and its tag pushed is finished and never
-  replaced; one short of either is replaced by the next run for that version. `promote.yml` copies a finished draft's
-  files and notes to the public `reckless-technology/amphitheater-releases` - only on Jonny's word - and is the one way
-  a release reaches the public. The signing secrets are the organisation's; `PUBLIC_RELEASES_TOKEN` is this
-  repository's own.
+  replaced; one short of either is replaced by the next run for that version. `promote.yml` publishes a finished
+  draft here in place - the four packages again under fixed names, `SHA256SUMS`, `release-notes.md` as its notes,
+  marked latest unless a newer release is already published - then wakes the website; only on Jonny's word, and the
+  one way a release reaches the public. Releases up to 1.2.7 were copied to `reckless-technology/amphitheater-releases`
+  instead, which is archived, not deleted, so its links still work. The signing secrets and `PUBLIC_RELEASES_TOKEN`
+  (the website's wake alone) are the organisation's.
 - `*.sh` and the hooks stay LF (`.gitattributes`); the piece SVGs are kept byte for byte (`-text`).

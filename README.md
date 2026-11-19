@@ -536,9 +536,11 @@ be public at once. A draft with all four packages on it and its tag pushed is fi
 version fails rather than replace it; a draft short of either, left by a run that stopped part-way, is replaced by the
 next run for that version. The Windows installer is signed whenever the eSigner secrets are set, a dry run's included,
 at two of the account's signings. `promote.yml` (`gh workflow run promote.yml --ref main -f tag=vX.Y.Z`), the one way
-a release reaches the public, copies a finished draft's four files to the public
-`reckless-technology/amphitheater-releases`, under their names and fixed ones, with `SHA256SUMS` and the notes, and
-wakes the website, which writes `updates/amphitheater.json`; it needs the secret `PUBLIC_RELEASES_TOKEN`.
+a release reaches the public, publishes a finished draft here in place: it adds the four packages again under fixed
+names (so `releases/latest/download/<name>` is always the newest) and `SHA256SUMS`, sets `release-notes.md` as the
+notes, marks it latest unless a newer release is already published, and wakes the website, which writes
+`updates/amphitheater.json`; the wake needs the organisation's secret `PUBLIC_RELEASES_TOKEN`. Releases up to 1.2.7
+were copied to `reckless-technology/amphitheater-releases` instead, which is archived, so its links still work.
 
 ## CI
 

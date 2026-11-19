@@ -25,12 +25,12 @@ annotated `vMAJOR.MINOR` tag, so **v1.1 means pushing an annotated `v1.1` tag** 
 installers from nothing, signs and notarises them, and leaves a **draft** with its tag pushed. A draft is as far
 as that goes: the repository is public, so a published release here is public at once. **`promote.yml`
 (`gh workflow run promote.yml --ref main -f tag=v1.1.0`) is the one way a release reaches the public** - it
-copies the draft's four files to `reckless-technology/amphitheater-releases` with `SHA256SUMS` and the notes, and
-wakes the website, which writes `updates/amphitheater.json`.
+publishes the draft in place with fixed-name copies of its four files, `SHA256SUMS` and the notes, and wakes the
+website, which writes `updates/amphitheater.json` (until 1.2.7 it copied them to `amphitheater-releases`, now
+archived).
 
-Note that `v1.0.0` and `v1.0.11` in this repository are **not** pending publications: both are already public
-downstream (1.0.11 promoted 2026-10-25, and the live manifest serves it). They are what `release.yml` leaves
-behind after `promote.yml` has copied a release out. Nothing is being withheld by them.
+Drafts here from before the switch (2026-11-19) were already public as copies in `amphitheater-releases`; promoting
+one now only publishes it here too.
 
 Load the `reckless-releases` and `reckless-app` skills before running any of it.
 
