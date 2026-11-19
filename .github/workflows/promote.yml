@@ -113,17 +113,21 @@ jobs:
           echo "--- the notes ---"
           cat promote-notes.md
       # releases/latest is what the website's downloads and the update manifest follow, so a tag older than this
-      # repository's latest published release is published without taking the mark from it. Drafts are not releases
-      # to /releases/latest, so only what has been promoted counts.
+      # repository's newest published release is published without taking the mark from it. Drafts and pre-releases
+      # never count, so only what has been promoted does.
       - name: Whether it becomes the latest
         id: latest
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2> /dev/null || true)
+          # The newest version published here, from the whole list: a failure to read it fails the step rather than be
+          # taken for "none", which would mark an older tag latest.
+          published=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name')
+          latest=$(printf '%s\n' "$published" | sed '/^$/d' | sort -V | tail -n 1)
           if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "$TAG" | sort -V | tail -n 1)" != "$TAG" ]; then
-            echo "::warning::$TAG is older than the latest release here, $latest: it is published without being marked latest"
+            echo "::warning::$TAG is older than the newest release published here, $latest: it is published without being marked latest"
             echo "flag=--latest=false" >> "$GITHUB_OUTPUT"
           else
             echo "$TAG becomes the latest release (now: ${latest:-none})"
