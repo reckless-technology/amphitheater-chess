@@ -76,7 +76,7 @@ struct BoardRig
         board.on_move = [this](chess::Move move) { moves.push_back(move); };
     }
 
-    /** @return The centre of a square. */
+    /** @return The center of a square. */
     PointF Centre(const char *square) const
     {
         return board.SquareBounds(chess::Square(square)).Centre();
@@ -308,7 +308,7 @@ TEST(EngineLog, LongLinesWrapAtASpaceIndentedUnderTheirText)
     EXPECT_TRUE(model.SetWrapColumns(24));
     EXPECT_EQ(model.RowCount(), 4u);
     EXPECT_EQ(model.CellText(1, 0), "            24 pv e2e4");
-    EXPECT_EQ(model.CellColour(1, 0), model.CellColour(0, 0)) << "a wrapped part in its line's colour";
+    EXPECT_EQ(model.CellColour(1, 0), model.CellColour(0, 0)) << "a wrapped part in its line's color";
     EXPECT_NE(model.CellColour(3, 0), model.CellColour(0, 0));
     EXPECT_FALSE(model.SetWrapColumns(24));
     EXPECT_EQ(model.LineCount(), 2u);

@@ -89,7 +89,7 @@ TextBook ReadTextBook(std::string_view text)
         start = newline + 1;
     }
 
-    // A file ending in a newline - every one of these books does - leaves a final empty line that is an artefact of
+    // A file ending in a newline - every one of these books does - leaves a final empty line that is an artifact of
     // the terminator rather than a line of the book. Dropping it is what makes the round trip exact, since the writer
     // terminates every line it writes.
     if (!book.lines.empty() && book.lines.back().tokens.empty() && book.lines.back().comment.empty())

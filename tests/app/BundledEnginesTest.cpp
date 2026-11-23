@@ -146,15 +146,15 @@ EngineEntry OwnEngine()
 /** @return An entry as the list's file keeps it. */
 json::Value EntryJson(const EngineEntry &entry)
 {
-    EngineCatalogue one;
+    EngineCatalog one;
     one.engines.push_back(entry);
     return one.ToJson();
 }
 
 /** @return The entry of a bundled id, or null. */
-const EngineEntry *Bundled(const EngineCatalogue &catalogue, const std::string &id)
+const EngineEntry *Bundled(const EngineCatalog &catalog, const std::string &id)
 {
-    for (const EngineEntry &entry : catalogue.engines)
+    for (const EngineEntry &entry : catalog.engines)
     {
         if (entry.bundled_id == id)
         {
@@ -173,10 +173,10 @@ TEST(BundledEngines, AFreshListIsSeededWithEveryEngineMarkedBundledAtItsDefaults
     const std::vector<BundledEngine> bundled = ReadBundledEngines(folder, kModernCpu);
     ASSERT_EQ(bundled.size(), 3u);
 
-    EngineCatalogue catalogue;
-    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
-    ASSERT_EQ(catalogue.engines.size(), 3u);
-    const EngineEntry &pawnstar = catalogue.engines[0];
+    EngineCatalog catalog;
+    EXPECT_TRUE(SeedBundledEngines(catalog, bundled));
+    ASSERT_EQ(catalog.engines.size(), 3u);
+    const EngineEntry &pawnstar = catalog.engines[0];
     EXPECT_TRUE(pawnstar.IsBundled());
     EXPECT_EQ(pawnstar.bundled_id, "pawnstar");
     EXPECT_EQ(pawnstar.bundled_version, "1.0.0");
@@ -187,26 +187,26 @@ TEST(BundledEngines, AFreshListIsSeededWithEveryEngineMarkedBundledAtItsDefaults
     EXPECT_EQ(pawnstar.OptionValue("Hash"), "64");
     EXPECT_EQ(pawnstar.declared.size(), 1u);
     EXPECT_EQ(pawnstar.config.executable, Text((folder / "pawnstar" / "pawnstar").lexically_normal()));
-    EXPECT_FALSE(SeedBundledEngines(catalogue, bundled)) << "a second start changes nothing";
-    EXPECT_EQ(catalogue.engines.size(), 3u);
+    EXPECT_FALSE(SeedBundledEngines(catalog, bundled)) << "a second start changes nothing";
+    EXPECT_EQ(catalog.engines.size(), 3u);
 
     // The marks survive the list's file.
-    const auto back = EngineCatalogue::FromJson(catalogue.ToJson());
+    const auto back = EngineCatalog::FromJson(catalog.ToJson());
     ASSERT_TRUE(back.has_value());
-    EXPECT_EQ(back->ToJson(), catalogue.ToJson());
+    EXPECT_EQ(back->ToJson(), catalog.ToJson());
     EXPECT_EQ(back->engines[1].bundled_id, "trebuchet");
-    EXPECT_TRUE(catalogue.ToJson()["engines"].AsArray()->at(0).BoolOr("bundled", false));
+    EXPECT_TRUE(catalog.ToJson()["engines"].AsArray()->at(0).BoolOr("bundled", false));
 }
 
 TEST(BundledEngines, AnUpgradeMovesTheBundledEnginesAndKeepsThePersonsEditsAndEngines)
 {
     const auto root = reckless::test::ScratchPath("amphitheater-bundled-upgrade");
     WriteManifest(root / "old" / "engines", "1.0.0");
-    EngineCatalogue catalogue;
-    catalogue.engines.push_back(OwnEngine());
-    ASSERT_TRUE(SeedBundledEngines(catalogue, ReadBundledEngines(root / "old" / "engines", kModernCpu)));
+    EngineCatalog catalog;
+    catalog.engines.push_back(OwnEngine());
+    ASSERT_TRUE(SeedBundledEngines(catalog, ReadBundledEngines(root / "old" / "engines", kModernCpu)));
     // The person's edits to a bundled engine: its name, an option changed and one cleared, pondering, a book, a depth.
-    EngineEntry &edited = catalogue.engines[1];
+    EngineEntry &edited = catalog.engines[1];
     ASSERT_EQ(edited.bundled_id, "pawnstar");
     edited.config.name = "My Pawnstar";
     edited.SetOption("Hash", "256");
@@ -214,14 +214,14 @@ TEST(BundledEngines, AnUpgradeMovesTheBundledEnginesAndKeepsThePersonsEditsAndEn
     edited.config.does_ponder = true;
     edited.book_path          = "/books/a.bin";
     edited.depth              = 12;
-    edited.is_analysing       = false;
-    const EngineEntry own     = catalogue.engines[0];
+    edited.is_analyzing       = false;
+    const EngineEntry own     = catalog.engines[0];
 
     WriteManifest(root / "new" / "engines", "1.1.0");
-    EXPECT_TRUE(SeedBundledEngines(catalogue, ReadBundledEngines(root / "new" / "engines", kModernCpu)));
-    ASSERT_EQ(catalogue.engines.size(), 4u) << "no engine added twice";
-    EXPECT_EQ(EntryJson(catalogue.engines[0]), EntryJson(own)) << "the person's own engine is untouched";
-    const EngineEntry &moved = catalogue.engines[1];
+    EXPECT_TRUE(SeedBundledEngines(catalog, ReadBundledEngines(root / "new" / "engines", kModernCpu)));
+    ASSERT_EQ(catalog.engines.size(), 4u) << "no engine added twice";
+    EXPECT_EQ(EntryJson(catalog.engines[0]), EntryJson(own)) << "the person's own engine is untouched";
+    const EngineEntry &moved = catalog.engines[1];
     EXPECT_EQ(moved.config.executable, Text((root / "new" / "engines" / "pawnstar" / "pawnstar").lexically_normal()));
     EXPECT_EQ(moved.bundled_version, "1.1.0");
     EXPECT_EQ(moved.engine_name, "Pawnstar 1.1.0");
@@ -232,60 +232,59 @@ TEST(BundledEngines, AnUpgradeMovesTheBundledEnginesAndKeepsThePersonsEditsAndEn
     EXPECT_TRUE(moved.config.does_ponder);
     EXPECT_EQ(moved.book_path, "/books/a.bin");
     EXPECT_EQ(moved.depth, 12);
-    EXPECT_FALSE(moved.is_analysing);
-    EXPECT_EQ(Bundled(catalogue, "trebuchet")->bundled_version, "1.1.0");
-    EXPECT_EQ(Bundled(catalogue, "stoopid-chess")->bundled_version, "1.1.0");
-    EXPECT_EQ(Bundled(catalogue, "stoopid-chess")->engine_name, "Stoopid Chess 1.1.0")
-        << "a rising version's facts too";
+    EXPECT_FALSE(moved.is_analyzing);
+    EXPECT_EQ(Bundled(catalog, "trebuchet")->bundled_version, "1.1.0");
+    EXPECT_EQ(Bundled(catalog, "stoopid-chess")->bundled_version, "1.1.0");
+    EXPECT_EQ(Bundled(catalog, "stoopid-chess")->engine_name, "Stoopid Chess 1.1.0") << "a rising version's facts too";
 }
 
 TEST(BundledEngines, AnEngineThePersonRemovedStaysRemoved)
 {
     const auto folder = reckless::test::ScratchPath("amphitheater-bundled-removed") / "engines";
     WriteManifest(folder, "1.0.0");
-    const auto      bundled = ReadBundledEngines(folder, kModernCpu);
-    EngineCatalogue catalogue;
-    SeedBundledEngines(catalogue, bundled);
-    catalogue.Remove(1);
-    EXPECT_EQ(catalogue.removed_bundled, std::vector<std::string>{"trebuchet"});
-    EXPECT_FALSE(SeedBundledEngines(catalogue, bundled));
-    EXPECT_EQ(Bundled(catalogue, "trebuchet"), nullptr);
-    EXPECT_EQ(EngineCatalogue::FromJson(catalogue.ToJson())->removed_bundled, std::vector<std::string>{"trebuchet"});
-    catalogue.Remove(99); // nothing there: nothing removed
-    EXPECT_EQ(catalogue.engines.size(), 2u);
+    const auto    bundled = ReadBundledEngines(folder, kModernCpu);
+    EngineCatalog catalog;
+    SeedBundledEngines(catalog, bundled);
+    catalog.Remove(1);
+    EXPECT_EQ(catalog.removed_bundled, std::vector<std::string>{"trebuchet"});
+    EXPECT_FALSE(SeedBundledEngines(catalog, bundled));
+    EXPECT_EQ(Bundled(catalog, "trebuchet"), nullptr);
+    EXPECT_EQ(EngineCatalog::FromJson(catalog.ToJson())->removed_bundled, std::vector<std::string>{"trebuchet"});
+    catalog.Remove(99); // nothing there: nothing removed
+    EXPECT_EQ(catalog.engines.size(), 2u);
 }
 
 TEST(BundledEngines, AnEngineTheInstallLacksIsLeftOutAndItsEntryLeftAlone)
 {
     const auto root = reckless::test::ScratchPath("amphitheater-bundled-missing");
     WriteManifest(root / "a" / "engines", "1.0.0");
-    EngineCatalogue catalogue;
-    SeedBundledEngines(catalogue, ReadBundledEngines(root / "a" / "engines", kModernCpu));
-    const std::string before = Bundled(catalogue, "stoopid-chess")->config.executable;
+    EngineCatalog catalog;
+    SeedBundledEngines(catalog, ReadBundledEngines(root / "a" / "engines", kModernCpu));
+    const std::string before = Bundled(catalog, "stoopid-chess")->config.executable;
 
     WriteManifest(root / "b" / "engines", "1.1.0", {"stoopid-chess"});
     const auto bundled = ReadBundledEngines(root / "b" / "engines", kModernCpu);
     ASSERT_EQ(bundled.size(), 2u) << "an engine whose program is not there is not offered";
-    SeedBundledEngines(catalogue, bundled);
-    EXPECT_EQ(catalogue.engines.size(), 3u);
-    EXPECT_EQ(Bundled(catalogue, "stoopid-chess")->config.executable, before);
-    EXPECT_EQ(Bundled(catalogue, "stoopid-chess")->bundled_version, "1.0.0");
-    EXPECT_EQ(Bundled(catalogue, "pawnstar")->bundled_version, "1.1.0");
+    SeedBundledEngines(catalog, bundled);
+    EXPECT_EQ(catalog.engines.size(), 3u);
+    EXPECT_EQ(Bundled(catalog, "stoopid-chess")->config.executable, before);
+    EXPECT_EQ(Bundled(catalog, "stoopid-chess")->bundled_version, "1.0.0");
+    EXPECT_EQ(Bundled(catalog, "pawnstar")->bundled_version, "1.1.0");
 }
 
 TEST(BundledEngines, APersonsOwnEntryForTheBundledProgramIsTakenAsItRatherThanListedTwice)
 {
     const auto folder = reckless::test::ScratchPath("amphitheater-bundled-adopt") / "engines";
     WriteManifest(folder, "1.0.0");
-    EngineCatalogue catalogue;
-    EngineEntry     added;
+    EngineCatalog catalog;
+    EngineEntry   added;
     added.config.executable = Text(folder / "pawnstar" / "pawnstar");
     added.SetOption("Threads", "4");
-    catalogue.engines.push_back(added);
-    SeedBundledEngines(catalogue, ReadBundledEngines(folder, kModernCpu));
-    ASSERT_EQ(catalogue.engines.size(), 3u);
-    EXPECT_EQ(catalogue.engines[0].bundled_id, "pawnstar");
-    EXPECT_EQ(catalogue.engines[0].OptionValue("Threads"), "4") << "its options are the person's";
+    catalog.engines.push_back(added);
+    SeedBundledEngines(catalog, ReadBundledEngines(folder, kModernCpu));
+    ASSERT_EQ(catalog.engines.size(), 3u);
+    EXPECT_EQ(catalog.engines[0].bundled_id, "pawnstar");
+    EXPECT_EQ(catalog.engines[0].OptionValue("Threads"), "4") << "its options are the person's";
 }
 
 TEST(BundledEngines, EachMachineRunsTheBuildItsProcessorTakes)
@@ -364,9 +363,9 @@ TEST(BundledEngines, TheControllerSeedsAndSavesTheListAsItStartsAndNeverWritesOv
     ASSERT_GE(runnable, 1u);
     {
         MainController controller(view, files);
-        EXPECT_EQ(controller.catalogue().engines.size(), runnable);
+        EXPECT_EQ(controller.catalog().engines.size(), runnable);
     }
-    const auto saved = EngineCatalogue::Load(files.engines);
+    const auto saved = EngineCatalog::Load(files.engines);
     ASSERT_TRUE(saved.has_value());
     EXPECT_EQ(saved->engines.size(), runnable);
 
@@ -376,7 +375,7 @@ TEST(BundledEngines, TheControllerSeedsAndSavesTheListAsItStartsAndNeverWritesOv
     }
     {
         MainController controller(view, files);
-        EXPECT_TRUE(controller.catalogue().engines.empty());
+        EXPECT_TRUE(controller.catalog().engines.empty());
     }
     std::ifstream file(files.engines, std::ios::binary);
     EXPECT_EQ(std::string(std::istreambuf_iterator<char>(file), {}), "{ not json");
@@ -386,7 +385,7 @@ TEST(BundledEngines, TheControllerSeedsAndSavesTheListAsItStartsAndNeverWritesOv
     none.engines = root / "other" / "engines.json";
     {
         MainController controller(view, none);
-        EXPECT_TRUE(controller.catalogue().engines.empty());
+        EXPECT_TRUE(controller.catalog().engines.empty());
     }
     EXPECT_FALSE(std::filesystem::exists(none.engines));
 }
@@ -412,7 +411,7 @@ std::string ListSavedBeforeTheRename(const std::string &install, const std::stri
            install +
            "/zenith/x86-64-v3-pext/zenith\", \"options\": [{\"name\": \"Hash\", \"value\": \"256\"}], "
            "\"ponder\": true, \"book\": \"/books/mine.bin\", \"book_depth\": 10, \"depth\": 18, "
-           "\"analyse\": false, \"author\": \"Jonny Reckless\", \"engine_name\": \"Zenith " +
+           "\"analyze\": false, \"author\": \"Jonny Reckless\", \"engine_name\": \"Zenith " +
            seeded_version + "\", \"bundled\": true, \"bundled_id\": \"zenith\", \"bundled_version\": \"" +
            seeded_version +
            "\", \"declared\": [{\"name\": \"Hash\", \"type\": \"spin\", \"default\": \"64\"}]},"
@@ -421,15 +420,15 @@ std::string ListSavedBeforeTheRename(const std::string &install, const std::stri
 }
 
 /** A list from a file's text, which must read. */
-EngineCatalogue ReadList(const std::string &text, const std::filesystem::path &scratch)
+EngineCatalog ReadList(const std::string &text, const std::filesystem::path &scratch)
 {
     std::filesystem::create_directories(scratch);
     const auto file = scratch / "engines.json";
     std::ofstream(file, std::ios::binary | std::ios::trunc) << text;
     std::string error;
-    auto        catalogue = EngineCatalogue::Load(file, &error);
-    EXPECT_TRUE(catalogue.has_value()) << error;
-    return catalogue ? *catalogue : EngineCatalogue{};
+    auto        catalog = EngineCatalog::Load(file, &error);
+    EXPECT_TRUE(catalog.has_value()) << error;
+    return catalog ? *catalog : EngineCatalog{};
 }
 
 } // namespace
@@ -439,14 +438,14 @@ TEST(BundledEngines, AnUpgradeMovesAListSavedUnderTheOldNameToTheNewEngineWithTh
     const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed");
     // The installer took the old engine away: its file is not there, and neither the entry nor a second one names it.
     WriteManifest(root / "new" / "engines", "1.0.0");
-    const auto      bundled   = ReadBundledEngines(root / "new" / "engines", kModernCpu);
-    EngineCatalogue catalogue = ReadList(ListSavedBeforeTheRename((root / "old" / "engines").generic_string()), root);
-    ASSERT_EQ(catalogue.engines.size(), 3u);
+    const auto    bundled = ReadBundledEngines(root / "new" / "engines", kModernCpu);
+    EngineCatalog catalog = ReadList(ListSavedBeforeTheRename((root / "old" / "engines").generic_string()), root);
+    ASSERT_EQ(catalog.engines.size(), 3u);
 
-    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
-    EXPECT_EQ(Bundled(catalogue, "zenith"), nullptr) << "no entry left on the program the installer took away";
-    ASSERT_EQ(catalogue.engines.size(), 4u) << "the engine moved, not listed twice; Stoopid Chess is the one new one";
-    const EngineEntry &moved = catalogue.engines[1];
+    EXPECT_TRUE(SeedBundledEngines(catalog, bundled));
+    EXPECT_EQ(Bundled(catalog, "zenith"), nullptr) << "no entry left on the program the installer took away";
+    ASSERT_EQ(catalog.engines.size(), 4u) << "the engine moved, not listed twice; Stoopid Chess is the one new one";
+    const EngineEntry &moved = catalog.engines[1];
     EXPECT_EQ(moved.bundled_id, "trebuchet") << "in its place in the list";
     EXPECT_EQ(moved.config.name, "Trebuchet");
     EXPECT_EQ(moved.config.executable,
@@ -461,9 +460,9 @@ TEST(BundledEngines, AnUpgradeMovesAListSavedUnderTheOldNameToTheNewEngineWithTh
     EXPECT_EQ(moved.book_path, "/books/mine.bin");
     EXPECT_EQ(moved.book_depth, 10);
     EXPECT_EQ(moved.depth, 18);
-    EXPECT_FALSE(moved.is_analysing);
-    EXPECT_FALSE(SeedBundledEngines(catalogue, bundled)) << "a second start changes nothing";
-    EXPECT_EQ(catalogue.engines.size(), 4u);
+    EXPECT_FALSE(moved.is_analyzing);
+    EXPECT_FALSE(SeedBundledEngines(catalog, bundled)) << "a second start changes nothing";
+    EXPECT_EQ(catalog.engines.size(), 4u);
 }
 
 TEST(BundledEngines, TheVersionNumberRestartingWithTheNewNameIsNoDowngrade)
@@ -474,10 +473,10 @@ TEST(BundledEngines, TheVersionNumberRestartingWithTheNewNameIsNoDowngrade)
     // 3.0.0 from 1.1.0 and 2.1.0 from 1.0.x, both above the new number; and one that happens to equal it.
     for (const std::string seeded : {"3.0.0", "2.1.0", "1.0.0"})
     {
-        EngineCatalogue catalogue =
+        EngineCatalog catalog =
             ReadList(ListSavedBeforeTheRename((root / "old" / "engines").generic_string(), seeded), root);
-        ASSERT_TRUE(SeedBundledEngines(catalogue, bundled));
-        const EngineEntry *moved = Bundled(catalogue, "trebuchet");
+        ASSERT_TRUE(SeedBundledEngines(catalog, bundled));
+        const EngineEntry *moved = Bundled(catalog, "trebuchet");
         ASSERT_NE(moved, nullptr) << seeded;
         EXPECT_EQ(moved->bundled_version, "1.0.0") << seeded;
         EXPECT_EQ(moved->engine_name, "Trebuchet 1.0.0") << seeded;
@@ -488,38 +487,38 @@ TEST(BundledEngines, ANameThePersonGaveAndThePersonsOwnEngineOfTheOldNameStayThr
 {
     const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed-own");
     WriteManifest(root / "new" / "engines", "1.0.0");
-    EngineCatalogue catalogue = ReadList(ListSavedBeforeTheRename((root / "old" / "engines").generic_string()), root);
-    catalogue.engines[1].config.name = "My Zenith";
-    const EngineEntry own            = catalogue.engines[2];
+    EngineCatalog catalog = ReadList(ListSavedBeforeTheRename((root / "old" / "engines").generic_string()), root);
+    catalog.engines[1].config.name = "My Zenith";
+    const EngineEntry own          = catalog.engines[2];
     ASSERT_FALSE(own.IsBundled());
 
-    SeedBundledEngines(catalogue, ReadBundledEngines(root / "new" / "engines", kModernCpu));
-    EXPECT_EQ(catalogue.engines[1].bundled_id, "trebuchet");
-    EXPECT_EQ(catalogue.engines[1].config.name, "My Zenith") << "the person's word for it";
-    EXPECT_EQ(catalogue.engines[1].engine_name, "Trebuchet 1.0.0") << "what the program says of itself";
-    EXPECT_EQ(EntryJson(catalogue.engines[2]), EntryJson(own)) << "a person's own engine is never touched";
+    SeedBundledEngines(catalog, ReadBundledEngines(root / "new" / "engines", kModernCpu));
+    EXPECT_EQ(catalog.engines[1].bundled_id, "trebuchet");
+    EXPECT_EQ(catalog.engines[1].config.name, "My Zenith") << "the person's word for it";
+    EXPECT_EQ(catalog.engines[1].engine_name, "Trebuchet 1.0.0") << "what the program says of itself";
+    EXPECT_EQ(EntryJson(catalog.engines[2]), EntryJson(own)) << "a person's own engine is never touched";
 }
 
 TEST(BundledEngines, AnEngineRemovedUnderTheOldNameStaysRemovedUnderTheNewOne)
 {
     const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed-removed");
     WriteManifest(root / "new" / "engines", "1.0.0");
-    const auto      bundled = ReadBundledEngines(root / "new" / "engines", kModernCpu);
-    EngineCatalogue catalogue;
-    catalogue.removed_bundled = {"pawnstar", "zenith"};
+    const auto    bundled = ReadBundledEngines(root / "new" / "engines", kModernCpu);
+    EngineCatalog catalog;
+    catalog.removed_bundled = {"pawnstar", "zenith"};
 
-    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
-    EXPECT_EQ(catalogue.removed_bundled, (std::vector<std::string>{"pawnstar", "trebuchet"})) << "in its place";
-    EXPECT_EQ(Bundled(catalogue, "trebuchet"), nullptr) << "the person's opt-out holds";
-    EXPECT_EQ(Bundled(catalogue, "pawnstar"), nullptr);
-    EXPECT_EQ(catalogue.engines.size(), 1u) << "Stoopid Chess alone is added";
-    EXPECT_FALSE(SeedBundledEngines(catalogue, bundled)) << "a second start changes nothing";
+    EXPECT_TRUE(SeedBundledEngines(catalog, bundled));
+    EXPECT_EQ(catalog.removed_bundled, (std::vector<std::string>{"pawnstar", "trebuchet"})) << "in its place";
+    EXPECT_EQ(Bundled(catalog, "trebuchet"), nullptr) << "the person's opt-out holds";
+    EXPECT_EQ(Bundled(catalog, "pawnstar"), nullptr);
+    EXPECT_EQ(catalog.engines.size(), 1u) << "Stoopid Chess alone is added";
+    EXPECT_FALSE(SeedBundledEngines(catalog, bundled)) << "a second start changes nothing";
 
     // Both on the list, from running this release before an older one again: one record, not two.
-    catalogue.removed_bundled = {"trebuchet", "zenith"};
-    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
-    EXPECT_EQ(catalogue.removed_bundled, std::vector<std::string>{"trebuchet"});
-    EXPECT_EQ(Bundled(catalogue, "trebuchet"), nullptr);
+    catalog.removed_bundled = {"trebuchet", "zenith"};
+    EXPECT_TRUE(SeedBundledEngines(catalog, bundled));
+    EXPECT_EQ(catalog.removed_bundled, std::vector<std::string>{"trebuchet"});
+    EXPECT_EQ(Bundled(catalog, "trebuchet"), nullptr);
 }
 
 TEST(BundledEngines, AListHoldingTheEngineUnderBothNamesKeepsTheNewOneAlone)
@@ -527,23 +526,23 @@ TEST(BundledEngines, AListHoldingTheEngineUnderBothNamesKeepsTheNewOneAlone)
     // Running this release, then an older one again, which seeds the old name beside the new; then this release.
     const auto root = reckless::test::ScratchPath("amphitheater-bundled-renamed-both");
     WriteManifest(root / "new" / "engines", "1.0.0");
-    const auto      bundled = ReadBundledEngines(root / "new" / "engines", kModernCpu);
-    EngineCatalogue catalogue;
-    SeedBundledEngines(catalogue, bundled);
-    ASSERT_EQ(catalogue.engines.at(1).bundled_id, "trebuchet");
-    catalogue.engines[1].SetOption("Hash", "512");
+    const auto    bundled = ReadBundledEngines(root / "new" / "engines", kModernCpu);
+    EngineCatalog catalog;
+    SeedBundledEngines(catalog, bundled);
+    ASSERT_EQ(catalog.engines.at(1).bundled_id, "trebuchet");
+    catalog.engines[1].SetOption("Hash", "512");
     EngineEntry old;
     old.config.name       = "Zenith";
     old.config.executable = "/old/engines/zenith/x86-64-v2/zenith";
     old.bundled_id        = "zenith";
     old.bundled_version   = "3.0.0";
-    catalogue.engines.push_back(old);
+    catalog.engines.push_back(old);
 
-    EXPECT_TRUE(SeedBundledEngines(catalogue, bundled));
-    EXPECT_EQ(Bundled(catalogue, "zenith"), nullptr);
-    ASSERT_EQ(catalogue.engines.size(), 3u);
-    EXPECT_EQ(Bundled(catalogue, "trebuchet")->OptionValue("Hash"), "512");
-    EXPECT_TRUE(catalogue.removed_bundled.empty()) << "dropped, not removed by the person";
+    EXPECT_TRUE(SeedBundledEngines(catalog, bundled));
+    EXPECT_EQ(Bundled(catalog, "zenith"), nullptr);
+    ASSERT_EQ(catalog.engines.size(), 3u);
+    EXPECT_EQ(Bundled(catalog, "trebuchet")->OptionValue("Hash"), "512");
+    EXPECT_TRUE(catalog.removed_bundled.empty()) << "dropped, not removed by the person";
 }
 
 TEST(BundledEngines, TheControllerBringsASavedListAndLayoutThroughTheRenameAsItStarts)
@@ -566,12 +565,12 @@ TEST(BundledEngines, TheControllerBringsASavedListAndLayoutThroughTheRenameAsItS
     MainView view(Pieces());
     {
         MainController controller(view, files);
-        ASSERT_NE(Bundled(controller.catalogue(), "trebuchet"), nullptr);
-        EXPECT_EQ(Bundled(controller.catalogue(), "zenith"), nullptr);
+        ASSERT_NE(Bundled(controller.catalog(), "trebuchet"), nullptr);
+        EXPECT_EQ(Bundled(controller.catalog(), "zenith"), nullptr);
         EXPECT_EQ(controller.book_path(), kBuiltInBook);
         EXPECT_EQ(view.book_label().detail(), "Trebuchet's, built in");
     }
-    const auto saved = EngineCatalogue::Load(files.engines);
+    const auto saved = EngineCatalog::Load(files.engines);
     ASSERT_TRUE(saved.has_value());
     ASSERT_NE(Bundled(*saved, "trebuchet"), nullptr) << "written back, so the next start has nothing to do";
     EXPECT_EQ(Bundled(*saved, "trebuchet")->config.name, "Trebuchet");
@@ -582,10 +581,10 @@ TEST(BundledEngines, TheManagerShowsABundledEngineAsSuchAndRemovesItForGood)
 {
     const auto folder = reckless::test::ScratchPath("amphitheater-bundled-manager") / "engines";
     WriteManifest(folder, "1.0.0");
-    EngineCatalogue catalogue;
-    catalogue.engines.push_back(OwnEngine());
-    SeedBundledEngines(catalogue, ReadBundledEngines(folder, kModernCpu));
-    EngineManagerDialog dialog{catalogue};
+    EngineCatalog catalog;
+    catalog.engines.push_back(OwnEngine());
+    SeedBundledEngines(catalog, ReadBundledEngines(folder, kModernCpu));
+    EngineManagerDialog dialog{catalog};
     dialog.SetBounds({0, 0, 1380, 1120});
     dialog.Select(1);
     EXPECT_NE(dialog.about().find("bundled with the host 1.0.0"), std::string::npos) << dialog.about();
@@ -593,8 +592,8 @@ TEST(BundledEngines, TheManagerShowsABundledEngineAsSuchAndRemovesItForGood)
     EXPECT_EQ(dialog.about().find("bundled"), std::string::npos) << "the person's own is not";
     dialog.Select(1);
     dialog.RemoveSelected();
-    EXPECT_EQ(dialog.catalogue().engines.size(), 3u);
-    EXPECT_EQ(dialog.catalogue().removed_bundled, std::vector<std::string>{"pawnstar"});
+    EXPECT_EQ(dialog.catalog().engines.size(), 3u);
+    EXPECT_EQ(dialog.catalog().removed_bundled, std::vector<std::string>{"pawnstar"});
 }
 
 } // namespace amphitheater::app

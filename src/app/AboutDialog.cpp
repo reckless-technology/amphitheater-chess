@@ -27,7 +27,7 @@ constexpr int   kTermsGap     = 18;     ///< Between the mark and the terms unde
 constexpr int   kSectionGap   = 16;     ///< Above the engines' section, and above the notices.
 constexpr int   kLabelHeight  = 28;     ///< The engines' section's label.
 constexpr int   kNoticeHeight = 24;     ///< The notices' note: a line.
-constexpr float kLicenceLeft  = 240.0f; ///< The engines' licences, from the content's left.
+constexpr float kLicenseLeft  = 240.0f; ///< The engines' licenses, from the content's left.
 constexpr int   kCardWidth    = 640;    ///< The card's width.
 constexpr int   kTitleBand    = 48;     ///< The card's title band (DialogFrame's).
 constexpr int   kFooterBand   = 58;     ///< The card's button band (DialogFrame's).
@@ -35,7 +35,7 @@ constexpr int   kFooterBand   = 58;     ///< The card's button band (DialogFrame
 constexpr const char *kName      = "Reckless Amphitheater";
 constexpr const char *kCopyright = "Copyright 2026 Jonny Reckless. Reckless Technology.";
 constexpr const char *kTerms = "Free software under the GNU General Public License, version 3 or later (LICENSE.txt).";
-constexpr const char *kEngineNote = "Each engine is a separate program the host runs over UCI, under its own licence.";
+constexpr const char *kEngineNote = "Each engine is a separate program the host runs over UCI, under its own license.";
 constexpr const char *kNotices =
     "Third-party notices, the engines' among them, are in THIRD-PARTY-NOTICES.txt, installed beside the app.";
 
@@ -82,7 +82,7 @@ std::string NameAndVersion(const AboutEngine &engine)
 
 } // namespace
 
-std::string LicenceName(const std::string &spdx)
+std::string LicenseName(const std::string &spdx)
 {
     if (spdx == "GPL-3.0" || spdx == "GPL-3.0-only")
     {
@@ -171,8 +171,8 @@ std::vector<std::string> AboutDialog::EngineLines() const
     std::vector<std::string> lines;
     for (const AboutEngine &engine : info_.engines)
     {
-        const std::string licence = LicenceName(engine.licence);
-        lines.push_back(licence.empty() ? NameAndVersion(engine) : NameAndVersion(engine) + " (" + licence + ")");
+        const std::string license = LicenseName(engine.license);
+        lines.push_back(license.empty() ? NameAndVersion(engine) : NameAndVersion(engine) + " (" + license + ")");
     }
     return lines;
 }
@@ -255,9 +255,9 @@ void AboutDialog::Paint(reckless::gfx::Canvas &c)
             const RectF row{left, y, right - left, static_cast<float>(kLine)};
             c.SetFont(fonts::Small().WithHeight(17.0f));
             c.SetColor(theme::kInk);
-            c.DrawText(NameAndVersion(engine), row.WithWidth(kLicenceLeft), Justify::kCentredLeft, true);
+            c.DrawText(NameAndVersion(engine), row.WithWidth(kLicenseLeft), Justify::kCentredLeft, true);
             c.SetColor(theme::kMuted);
-            c.DrawText(LicenceName(engine.licence), row.WithTrimmedLeft(kLicenceLeft), Justify::kCentredLeft, true);
+            c.DrawText(LicenseName(engine.license), row.WithTrimmedLeft(kLicenseLeft), Justify::kCentredLeft, true);
             y += kLine;
         }
         c.SetFont(fonts::Small());

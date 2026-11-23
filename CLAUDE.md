@@ -8,7 +8,7 @@ model, the command line, the tests).
 
 **Licence:** free and open source under the GNU General Public License, version 3 or later (`LICENSE`, the FSF's own
 text; every release carries it as `LICENSE.txt`). The five engines it installs are separate programs under their own GPL
-licences, named in the About card. The window links the toolkit, free software under the GPL too; its third-party parts
+licenses, named in the About card. The window links the toolkit, free software under the GPL too; its third-party parts
 are in `THIRD-PARTY-NOTICES.txt`, written by `tools/third_party_notices.py <build-dir>` (CTest `notices` checks it). The
 installers carry Jonny's five GPLv3 chess engines as separate programs - aggregation, never linking: the host only talks
 to them over UCI pipes and no engine code may come into this tree - and the notices give each one's version, copyright,
@@ -41,7 +41,7 @@ originals in `source/` (BSD, `source/LICENSE.txt`, credited in the notices; svge
 `gen_pieces.py` beside it (`preview.png` shows it). Regenerate rather than edit by hand. Each is a 100 x 100
 viewBox using only `<path>` with the commands M, L, Q, C and Z (absolute), `<circle>`, one `<linearGradient>` in
 `<defs>` (x1/y1/x2/y2 in the object's bounding box, two `<stop>`s with `stop-color`), and the presentation attributes
-`fill` (a colour, `none` or `url(#id)`), `stroke`, `stroke-width`, `stroke-linejoin`, `stroke-linecap` and
+`fill` (a color, `none` or `url(#id)`), `stroke`, `stroke-width`, `stroke-linejoin`, `stroke-linecap` and
 `stroke-opacity`: the subset the toolkit's SVG reader must draw for the GUI.
 
 **The app's icon** is Jonny's pencil sketch of the Colosseum (`assets/art/amphitheater-colosseum.jpg`), unaltered, on a
@@ -63,7 +63,7 @@ GUI will save with the toolkit's JSON.
   `Attacks.h`, `CastlingRights.h`, `Pins.h`, `StackList.h`, `ChessTypes.h` are **adapted from pawnstar** (commit
   `c41099798db594ae2c379cba94d917c9c28d9c04`, each header says so): the board, the legal move generator, copy-make,
   magic attacks and Zobrist keys. pawnstar is GPLv3 with Jonny its sole copyright holder, so its code may go out under
-  either licence this product chooses; nothing from any other engine is copied. The departures are listed in
+  either license this product chooses; nothing from any other engine is copied. The departures are listed in
   `Position.h`: a validating FEN reader (strict and tolerant, `Result` errors), int counters, castling advancing the
   halfmove clock, `RepetitionKey` (en passant only when the capture is legal), no null move. Classical chess only. On
   top, the host's own: `Notation` (SAN and UCI), `Game` (rules outcomes: mate, stalemate, insufficient material,
@@ -106,30 +106,30 @@ GUI will save with the toolkit's JSON.
   (`Menus.h`, the toolkit's `MenuBar` with its shortcuts, handed to the platform's `SetMenuBar`) whenever what it can
   do changes. A game on the board is a
   `PlaySession`: `GameRunner` on its own thread, the person a `CallbackPlayer` waiting on a condition variable for the
-  board's move (or the deadline, or the stop - `GameRunner` abandons a cancelled game whose side answers with no move),
+  board's move (or the deadline, or the stop - `GameRunner` abandons a canceled game whose side answers with no move),
   its progress and the engines' lines polled by the controller once a frame; a stopped session finishes its thread in
   the background (`retiring_`) so the window never waits on an engine's move. `SearchTracker` follows an engine's
-  search from the lines it exchanges. `AnalysisSession` owns the analysing engines: started on worker threads
+  search from the lines it exchanges. `AnalysisSession` owns the analyzing engines: started on worker threads
   (`std::async`), handed to the window's thread, polled with `PollEvent` once a frame, quit by `EngineReaper` on worker
   threads; a new position is a "stop" and, once "bestmove" comes, "position" and "go infinite". A match or a
   tournament is a `CompetitionSession` over `match::Tournament` with `does_report_moves` on; its dialog
   (`CompetitionDialog`) writes amphitheater-cli's arguments and reads them with `cli::ParseTournamentArguments`, so the
   window and the command line never disagree on an option - add an option to the command line, and to the dialog as an
   argument. `PositionEditor` is Edit > Set up position over `chess::BoardSetup`; `GameAnalysisDialog` is Game >
-  Analyse the game, which writes `[%eval]` comments, NAGs and the engine's lines into the tree; `TestSuiteDialog` is
+  Analyze the game, which writes `[%eval]` comments, NAGs and the engine's lines into the tree; `TestSuiteDialog` is
   Engines > Test suite (`amphitheater-cli epd` on the command line); `BookPanel` is File > Open book's list of a
   Polyglot or PGN book's moves under the card, drawn faintly on the board too, Trebuchet's own book built in with 1.d4
   added (`assets/books`, `make_book.py` writes it; regenerate rather than edit); `MakeBookDialog` is File > Make book from games (`amphitheater-cli makebook` on the command
-  line). `EngineCatalogue` is the engine list
+  line). `EngineCatalog` is the engine list
   (`reckless-technology/amphitheater/engines.json` in the user's settings folder); `WindowSizes` the View menu's window
   sizes - the toolkit's (`AppWindowSizes.h`), held by `AppRoot::SetFixedZoom` - kept in `window.json` beside it;
   `LayoutSettings` the engine log's height
   and whether it shows (its header, `LogHeader`, folds it and drags it), the pieces and the book open, kept in
   `layout.json`. `Theme.h` holds the
-  mockup's colours and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
+  mockup's colors and the fonts; `Commands.h` the menu and plate commands; `Showcase.cpp` the mockup's state, which
   the render tool and the suite draw. Files here never take a toolkit header's name (`View.h`, `Menu.h`, `Window.h`):
   they are included as `"app/BoardView.h"` from outside the directory.
-- `tests/`: one GoogleTest binary per library, the fake engine (`tests/fake_engine/FakeEngine.cpp`, its behaviours
+- `tests/`: one GoogleTest binary per library, the fake engine (`tests/fake_engine/FakeEngine.cpp`, its behaviors
   scripted by arguments), `tests/data/` (pawnstar's perft EPD, assorted PGN), the integration suite (a real engine via
   `AMPHITHEATER_TEST_ENGINE`, skipped otherwise; CI's Linux job sets it to a pinned Pawnstar release and fails if either test is skipped).
 
@@ -159,12 +159,12 @@ set a machine up (VS Code: "setup environment"; `-Check` / `--check` only report
   PascalCase functions, `snake_case_` members, `kPascalCase` constants, `#pragma once`. Doxygen-style `/** */`
   comments on declarations (`///<` for members), `@param`/`@return` included. The adapted pawnstar headers keep
   pawnstar's own comment style and public members.
-- **Docs** describe the code as it is (no history, no changelog voice), in British spelling. No product is a clone or
+- **Docs** describe the code as it is (no history, no changelog voice), in American spelling. No product is a clone or
   a model of a third-party product, or presented as one. Naming third parties in comparative or reference terms is
   fine: credits and citations, the source of data, test positions or assets, programs it was compared with, and the
   tools and dependencies. So the perft suite's source is credited and the command line is compared with other match
   runners, but Reckless Amphitheater is never described as a clone of another GUI or match runner.
-- **Tests:** every new behaviour gets a test; engine behaviours go into the fake engine as a scripted argument.
+- **Tests:** every new behavior gets a test; engine behaviors go into the fake engine as a scripted argument.
   Timing-based tests use generous bounds: the CI runners are shared machines.
 - MSVC builds use the static runtime in every configuration (the GUI's prebuilt Skia will need it); macOS floor 13.3.
 
@@ -175,7 +175,7 @@ Every job runs on a GitHub-hosted runner, free for a public repository, its imag
 `.github/actions/cpp` installs what the image lacks (apt's Ninja, X11, FreeType, fontconfig and Xvfb on Linux) and
 Python 3.13 with `tools/requirements.txt`, and FetchContent fetches every pin afresh into each build tree. `build.yml`: Linux gcc, Linux sanitizers, Linux coverage
 (gcovr 8.3, `--fail-under-line 90` on `src/`), Windows MSVC, macOS universal (lipo and minos checks), clang-format,
-and `CI`, the aggregate to require. Documentation-only changes build nothing. The organisation allows GitHub's own
+and `CI`, the aggregate to require. Documentation-only changes build nothing. The organization allows GitHub's own
 actions, verified creators' and a short list of others; any other third-party action fails the run.
 
 - Every commit is authored and committed as `Jonny Reckless <jonny@recklesstechnology.com>`, checked by `.githooks/`
@@ -185,7 +185,7 @@ actions, verified creators' and a short list of others; any other third-party ac
 - Work on a branch and open a pull request; `main` holds only what built and passed.
 - `build.yml` also makes every package unsigned and holds it to its stage; `release.yml` (a pushed `vMAJOR.MINOR`, or
   by hand on `main`, `-f dry_run=true` to release nothing) builds from nothing, signs (eSigner on Windows whenever its
-  secrets are set; Developer ID, notarisation and stapling on macOS), uploads the four packages to a draft release and
+  secrets are set; Developer ID, notarization and stapling on macOS), uploads the four packages to a draft release and
   pushes the tag, and never publishes it: the repository is public, so a published release would be public at once,
   while a draft is seen only by collaborators. A draft with its four packages and its tag pushed is finished and never
   replaced; one short of either is replaced by the next run for that version. `promote.yml` publishes a finished
@@ -193,5 +193,5 @@ actions, verified creators' and a short list of others; any other third-party ac
   marked latest unless a newer release is already published - then wakes the website; only on Jonny's word, and the
   one way a release reaches the public. Releases up to 1.2.7 were copied to `reckless-technology/amphitheater-releases`
   instead, which is archived, not deleted, so its links still work. The signing secrets and `PUBLIC_RELEASES_TOKEN`
-  (the website's wake alone) are the organisation's.
+  (the website's wake alone) are the organization's.
 - `*.sh` and the hooks stay LF (`.gitattributes`); the piece SVGs are kept byte for byte (`-text`).

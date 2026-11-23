@@ -25,7 +25,7 @@ MainView::MainView(const PieceSet &pieces)
         int         width;
         bool        is_toggle;
     } plates[] = {{kFirst, "|<", 46, false}, {kBack, "<", 40, false},    {kForward, ">", 40, false},
-                  {kLast, ">|", 46, false},  {kFlip, "Flip", 64, false}, {kAnalyse, "Analyse", 108, true}};
+                  {kLast, ">|", 46, false},  {kFlip, "Flip", 64, false}, {kAnalyze, "Analyze", 108, true}};
 
     for (const auto &plate : plates)
     {
@@ -39,7 +39,7 @@ MainView::MainView(const PieceSet &pieces)
     nav_[2].button->tooltip = "Forward a move (Right).";
     nav_[3].button->tooltip = "The last move (End).";
     nav_[4].button->tooltip = "Turn the board round (F).";
-    nav_[5].button->tooltip = "The selected engines analyse the position shown.";
+    nav_[5].button->tooltip = "The selected engines analyze the position shown.";
 
     AddChild(top_strip_);
     AddChild(board_);
@@ -114,7 +114,7 @@ MainView::MainView(const PieceSet &pieces)
             on_select_ply(ply);
         }
     };
-    analysis_.SetEmptyText("No engine is analysing. Choose engines under Engines, then press Analyse.");
+    analysis_.SetEmptyText("No engine is analyzing. Choose engines under Engines, then press Analyze.");
     black_.is_white = false;
     SetBounds({kDesignWidth, kDesignHeight});
 }
@@ -213,11 +213,11 @@ void MainView::SetAnalysis(std::vector<EngineBlock> blocks)
     analysis_.SetBlocks(std::move(blocks));
 }
 
-void MainView::SetAnalysing(bool is_analysing)
+void MainView::SetAnalyzing(bool is_analyzing)
 {
-    if (reckless::view::Button *plate = Plate(kAnalyse))
+    if (reckless::view::Button *plate = Plate(kAnalyze))
     {
-        plate->SetOn(is_analysing);
+        plate->SetOn(is_analyzing);
     }
 }
 

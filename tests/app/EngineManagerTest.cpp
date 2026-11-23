@@ -3,7 +3,7 @@
 // handshake named, the list saved as JSON and read back, and the controller writing it where it keeps it.
 
 #include "app/Commands.h"
-#include "app/EngineCatalogue.h"
+#include "app/EngineCatalog.h"
 #include "app/EngineManagerDialog.h"
 #include "app/Faces.h"
 #include "app/MainController.h"
@@ -61,15 +61,15 @@ uci::EngineOption Option(const char *line)
 
 TEST(EngineManager, AnEngineAddedByItsProgramIsNamedAndItsOptionsReadByItsHandshake)
 {
-    EngineManagerDialog dialog{EngineCatalogue{}};
+    EngineManagerDialog dialog{EngineCatalog{}};
     dialog.SetBounds({0, 0, 1380, 1120});
     EXPECT_EQ(dialog.selected(), -1);
     dialog.AddEngine(AMPHITHEATER_FAKE_ENGINE);
     EXPECT_TRUE(dialog.IsDetecting());
     ASSERT_TRUE(AwaitHandshake(dialog));
-    ASSERT_EQ(dialog.catalogue().engines.size(), 1u);
+    ASSERT_EQ(dialog.catalog().engines.size(), 1u);
     EXPECT_EQ(dialog.selected(), 0);
-    const EngineEntry &entry = dialog.catalogue().engines.front();
+    const EngineEntry &entry = dialog.catalog().engines.front();
     EXPECT_FALSE(entry.engine_name.empty());
     EXPECT_FALSE(entry.declared.empty());
     EXPECT_NE(dialog.note().find("options read"), std::string::npos);
@@ -77,14 +77,14 @@ TEST(EngineManager, AnEngineAddedByItsProgramIsNamedAndItsOptionsReadByItsHandsh
 
     dialog.AddEngine("no-such-engine-anywhere");
     ASSERT_TRUE(AwaitHandshake(dialog));
-    EXPECT_EQ(dialog.catalogue().engines.size(), 1u) << "a program that does not answer is not added";
+    EXPECT_EQ(dialog.catalog().engines.size(), 1u) << "a program that does not answer is not added";
     EXPECT_NE(dialog.note().find("did not answer"), std::string::npos);
 }
 
 TEST(EngineManager, EveryOptionTypeIsEditedAsItsControlAndSavedWithTheLimitsAndTheBook)
 {
-    EngineCatalogue catalogue;
-    EngineEntry     entry;
+    EngineCatalog catalog;
+    EngineEntry   entry;
     entry.config.executable = "engine";
     entry.engine_name       = "Engine 1.0";
     entry.declared          = {Option("option name Hash type spin default 16 min 1 max 1024"),
@@ -93,8 +93,8 @@ TEST(EngineManager, EveryOptionTypeIsEditedAsItsControlAndSavedWithTheLimitsAndT
                                Option("option name Clear Hash type button"),
                                Option("option name SyzygyPath type string default <empty>"),
                                Option("option name Ponder type check default false")};
-    catalogue.engines.push_back(entry);
-    EngineManagerDialog dialog(catalogue);
+    catalog.engines.push_back(entry);
+    EngineManagerDialog dialog(catalog);
     dialog.SetBounds({0, 0, 1380, 1120});
     ASSERT_EQ(dialog.selected(), 0);
     EXPECT_EQ(dialog.Row("Ponder"), nullptr) << "pondering is the box above the options";
@@ -122,11 +122,11 @@ TEST(EngineManager, EveryOptionTypeIsEditedAsItsControlAndSavedWithTheLimitsAndT
     dialog.depth_field().SetText("12");
     dialog.book_depth_field().SetText("8");
     dialog.ponder().Toggle();
-    dialog.analyse().Toggle();
+    dialog.analyze().Toggle();
     dialog.SetBook("book.bin");
 
-    EngineCatalogue saved;
-    dialog.on_save = [&](const EngineCatalogue &edited) { saved = edited; };
+    EngineCatalog saved;
+    dialog.on_save = [&](const EngineCatalog &edited) { saved = edited; };
     dialog.Save();
     ASSERT_EQ(saved.engines.size(), 1u);
     const EngineEntry &out = saved.engines.front();
@@ -139,7 +139,7 @@ TEST(EngineManager, EveryOptionTypeIsEditedAsItsControlAndSavedWithTheLimitsAndT
     EXPECT_EQ(out.book_depth, 8);
     EXPECT_EQ(out.book_path, "book.bin");
     EXPECT_TRUE(out.config.does_ponder);
-    EXPECT_FALSE(out.is_analysing);
+    EXPECT_FALSE(out.is_analyzing);
     EXPECT_EQ(out.Summary(), "Hash 256 MB, depth 12, ponder, book");
 
     dialog.Row("Own Book")->check()->Toggle();
@@ -163,8 +163,8 @@ TEST(EngineManager, TheControllerWritesTheListWhereItKeepsIt)
     dialog->Save();
     controller.Frame(0.0);
     EXPECT_EQ(controller.dialog(), nullptr);
-    ASSERT_EQ(controller.catalogue().engines.size(), 1u);
-    const auto loaded = EngineCatalogue::Load(file);
+    ASSERT_EQ(controller.catalog().engines.size(), 1u);
+    const auto loaded = EngineCatalog::Load(file);
     ASSERT_TRUE(loaded.has_value());
     EXPECT_EQ(loaded->engines.size(), 1u);
     EXPECT_TRUE(controller.Menus().has_engines);

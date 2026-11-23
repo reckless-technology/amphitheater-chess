@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The macOS installer held to the stage it was made from, with nothing installed and no root: expanded whole, each part
 # at its version and identifier, its payload exactly the staged files byte for byte at their places, the app not
-# relocatable, the distribution's floor and licence; every bundled engine started from its place in the expanded app
+# relocatable, the distribution's floor and license; every bundled engine started from its place in the expanded app
 # and held to answer uci with uciok (tools/bundled_engines.py smoke); the uninstaller whole, the host's, and its script
 # run on the payloads laid out as a stand-in for / - taking off the host and leaving another product's app beside it;
 # and with --signed, the product's signature a Developer ID Installer's and the app's, every engine's, the tool's and
@@ -23,7 +23,7 @@ fail() { echo "::error::test-installer.sh: $*" >&2; exit 1; }
 pkgutil --expand-full "$pkg" "$work/x" > /dev/null
 distribution="$work/x/Distribution"
 grep -q '<os-version min="13.3"/>' "$distribution" || fail "the distribution does not hold the floor 13.3"
-grep -q '<license file="LICENSE.txt"/>' "$distribution" || fail "the distribution shows no licence"
+grep -q '<license file="LICENSE.txt"/>' "$distribution" || fail "the distribution shows no license"
 for part in app cli uninstaller; do
     info="$work/x/$part.pkg/PackageInfo"
     [ -f "$info" ] || fail "no $part.pkg in the product"

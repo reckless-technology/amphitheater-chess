@@ -51,7 +51,7 @@ struct Rig
         EngineEntry fake;
         fake.config.executable = AMPHITHEATER_FAKE_ENGINE;
         fake.config.name       = "Fake";
-        controller.catalogue().engines.push_back(fake);
+        controller.catalog().engines.push_back(fake);
         const auto folder = reckless::test::ScratchPath("amphitheater-suite");
         std::filesystem::create_directories(folder);
         suite = folder / "suite.epd";
@@ -162,7 +162,7 @@ TEST(TestSuiteWindow, TheEnginesMenuOffersATestSuiteOnceAnEngineIsConfigured)
     EXPECT_FALSE(item()->enabled);
     EngineEntry fake;
     fake.config.executable = AMPHITHEATER_FAKE_ENGINE;
-    controller.catalogue().engines.push_back(fake);
+    controller.catalog().engines.push_back(fake);
     controller.Frame(0.0);
     EXPECT_TRUE(item()->enabled);
 }

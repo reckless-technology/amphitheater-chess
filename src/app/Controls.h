@@ -128,7 +128,7 @@ class Caption final : public reckless::view::View
         return text_;
     }
 
-    /** @param is_error Whether it is an error's: in the error colour. */
+    /** @param is_error Whether it is an error's: in the error color. */
     void SetError(bool is_error);
 
     /**
@@ -140,7 +140,7 @@ class Caption final : public reckless::view::View
   private:
     std::string text_;             ///< The text.
     bool        is_muted_ = false; ///< In the muted ink.
-    bool        is_error_ = false; ///< In the error colour.
+    bool        is_error_ = false; ///< In the error color.
 };
 
 /**
@@ -150,7 +150,7 @@ class Caption final : public reckless::view::View
  */
 std::optional<double> ParseDecimal(const std::string &text);
 
-/** @return A line of text's look in the window: the panel's colour, the ink, the accent round it while typed into. */
+/** @return A line of text's look in the window: the panel's color, the ink, the accent round it while typed into. */
 reckless::view::TextField::Style FieldStyle();
 
 /** @return A button in the window's look. */

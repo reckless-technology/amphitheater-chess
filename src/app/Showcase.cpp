@@ -78,7 +78,7 @@ void ShowSample(MainView &view)
                              {"20/31", "-0.19", -1, "13...Ne8 14.f4 a5 15.f5 Bc4 16.Nf4 a4 17.Nd2", true},
                              {"19/30", "-0.22", -1, "13...a5 14.f4 a4 15.Nd2 Nb6 16.f5 Bc4", true}};
     view.SetAnalysis({pawnstar, trebuchet});
-    view.SetAnalysing(true);
+    view.SetAnalyzing(true);
 
     // Each engine's own scores at its own moves, from White's side, after the book's six plies: Pawnstar a little more
     // pleased with White than Trebuchet is.

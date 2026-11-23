@@ -5,13 +5,13 @@ the rules of chess, UCI engines as child processes, games, matches and tournamen
 command-line match and tournament runner on that core, and the window, `Amphitheater`, drawn with Skia on
 reckless-toolkit (a git subtree at `external/reckless-toolkit`), which drives the same libraries.
 
-Free and open source under the GNU General Public License, version 3 or later: [LICENSE](LICENSE) is the licence, and
+Free and open source under the GNU General Public License, version 3 or later: [LICENSE](LICENSE) is the license, and
 it is what every release carries, as LICENSE.txt.
 Apart from the third-party parts named below and in the notices, it is Jonny Reckless's own work, the Staunton piece set
 in `assets/pieces/staunton/` among it (twelve SVGs, the generator that wrote them and a preview). The other piece set,
-Colin M.L. Burnett's under the BSD licence (`assets/pieces/cburnett/`), is carried and credited in the notices; the
+Colin M.L. Burnett's under the BSD license (`assets/pieces/cburnett/`), is carried and credited in the notices; the
 tests fetch GoogleTest and read the Ethereal engine's perft positions, neither of which any product ships. The window
-links the toolkit's third-party parts (Skia and the libraries it bundles, two typefaces), each under the licence
+links the toolkit's third-party parts (Skia and the libraries it bundles, two typefaces), each under the license
 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) reproduces. The installers also carry Jonny's five chess engines,
 each a separate GPLv3 program the host only talks to over UCI pipes - aggregation, not linking - with the GPL's text
 and each engine's source (its public repository at the release's tag) in the notices.
@@ -23,7 +23,7 @@ and each engine's source (its public repository at the release's tag) in the not
 | `amphitheater_chess` | `src/chess/` | The board and its legal move generator (adapted from pawnstar), FEN (strict and tolerant), SAN and UCI notation, games and the rules that end them, PGN reading and writing, Polyglot opening books, time controls and clocks |
 | `amphitheater_uci` | `src/uci/` | A child process with pipes and reader threads (Windows and POSIX), the UCI protocol parsed and formatted, and the engine session |
 | `amphitheater_match` | `src/match/` | Players, the game runner (clocks, legality, adjudication, books, pondering, PGN with per-move comments), openings, the round-robin schedule, statistics, and tournaments played in parallel |
-| `amphitheater_cli_core`, `amphitheater-cli` | `src/cli/` | The command line: `match`, `tournament`, `perft`, `analyse`, `epd`, `makebook`, `screenbook` |
+| `amphitheater_cli_core`, `amphitheater-cli` | `src/cli/` | The command line: `match`, `tournament`, `perft`, `analyze`, `epd`, `makebook`, `screenbook` |
 | `amphitheater_gui`, `Amphitheater` | `src/app/` | The window on the toolkit: the board, the moves, the game's card, the analysis, the evaluation graph, the engine log, the menus, and the controllers behind them |
 
 The suites are in `tests/` (GoogleTest), with a scriptable fake engine (`tests/fake_engine/`) that the UCI, match and
@@ -39,7 +39,7 @@ counts it, and a repetition key that counts an en passant square only when the c
 
 Its proof is pawnstar's perft suite, `tests/data/standard-perft.epd` (the Ethereal engine's standard.epd): 128
 positions, every one to the deepest depth within a node budget (a million nodes a position in a debug build, twenty
-million optimised), and the start position to depth 6 (119,060,324) in an optimised build. Every legal move of
+million optimized), and the start position to depth 6 (119,060,324) in an optimized build. Every legal move of
 those positions and their children round-trips through SAN and UCI notation.
 
 ### Opening books
@@ -51,7 +51,7 @@ stands beside the pawn that made the double step, legal capture or not; castling
 rook. A book chooses at random by weight (seeded with `std::mt19937_64`, so a match plays the same again) or the
 heaviest move. A book serves two ways: as an engine's own book, whose moves the host plays for it while the book has
 one and the game is shorter than its depth (`book=`, `bookdepth=`), and as a match's opening source, walked from the
-starting position to a number of plies, one line for each pair of colour-swapped games. Book moves are unclocked and
+starting position to a number of plies, one line for each pair of color-swapped games. Book moves are unclocked and
 carry a `{book}` comment in the PGN.
 
 The window opens a book a third way, to read: File > Open book lists the book's moves for the position shown under
@@ -193,7 +193,7 @@ layout's least and the tooltips), its child window on Skia and its views. The la
 the menu bar; the board, as large as the height above the foot allows, its squares whole pixels (80 at the 1380 x 1120
 design size); beside it two narrow columns - the moves, a number and two moves in SAN, down the whole height, and the
 players' column, a player's strip level with the board's top and the other level with its bottom (the running clock
-lit amber), the plates |< < > >| Flip Analyse over the lower one and the game's card between, its values wrapped to its
+lit amber), the plates |< < > >| Flip Analyze over the lower one and the game's card between, its values wrapped to its
 width; across the foot, at the full width, the analysis, the evaluation graph and the engine log in Monaspace Xenon,
 its long lines wrapped to its width at a space and indented under their text; the status bar. A larger window gives
 the board the room first and the columns what width it leaves; under 1240 x 1000 design pixels the whole layout is
@@ -230,7 +230,7 @@ when its engine has said at most -score of its own position.
 
 The board draws its pieces from SVGs carried inside the binary, with the toolkit's SVG reader, at whatever size the
 squares are. Two sets are carried (`PieceSet.h`): Colin M.L. Burnett's, the default - the drawings Wikimedia Commons
-offers under the BSD licence, among others, written in the reader's SVG by
+offers under the BSD license, among others, written in the reader's SVG by
 `assets/pieces/cburnett/convert_pieces.py` from the originals beside it and credited in `THIRD-PARTY-NOTICES.txt` - and
 Jonny's own Staunton set. View > Pieces chooses between them, and the choice is kept in `layout.json` beside the
 engine log's. The board takes a person's moves by click or by drag, marks the legal targets and offers a picker for a
@@ -238,7 +238,7 @@ promotion.
 
 The app's icon is Jonny's pencil sketch of the Colosseum with its red Rt roundel
 (`assets/art/amphitheater-colosseum.jpg`, 2048 pixels square), unaltered - neither cropped nor retouched - on a rounded
-square with a hairline light-grey edge. `tools/make_icon.py` renders it at every size the platforms carry, each size
+square with a hairline light-gray edge. `tools/make_icon.py` renders it at every size the platforms carry, each size
 resampled once from the full-resolution artwork by a Lanczos filter, never one picture stepped down through the sizes
 and never sharpened, the square's shape, edge and shadow drawn by resvg's wheel, with Pillow (`tools/requirements.txt`,
 pinned) into `assets/icon/`, which is committed, so the build needs no Python: `Icon.ico` (16 to 256) in the Windows
@@ -267,7 +267,7 @@ A launch's check (`--smoke`) makes none, and `RECKLESS_UPDATE_CHECK=off` - every
 
 Help > About (`AboutDialog`) shows the app's mark - its icon, from the 256-pixel render the binary carries - its name
 and version, the copyright, the terms (free software under the GPL, in `LICENSE.txt`), the engines the install carries with their
-versions and licences (read from `bundled.json`, every engine whose program is there; none in a build tree), where the
+versions and licenses (read from `bundled.json`, every engine whose program is there; none in a build tree), where the
 third-party notices are, and recklesstechnology.com as a link to the person's browser. Close, Escape and Return close
 it. On a Mac the app menu's own About item opens the same window (`MenuBar::about_id`).
 
@@ -293,23 +293,23 @@ variation; Game > Delete variation takes it off and shows the line it left, at t
 back takes the line's last move off. A game opened from a file shows its main line with its variations under it, and
 File > Save PGN writes every line, the comments and NAGs in their places.
 
-Analyse (the plate, or Engines > Analyse) runs the engines marked for analysis in the engine list - every configured
+Analyze (the plate, or Engines > Analyze) runs the engines marked for analysis in the engine list - every configured
 engine where none is marked - in infinite mode on the position the board shows, with three lines each where an engine
 offers MultiPV (`AnalysisSession`). Each engine is started on a worker thread - its process, its handshake, MultiPV and
-UCI_AnalyseMode - then handed to the window's thread, which polls its events once a frame and never waits: stepping to
+UCI_AnalyzeMode - then handed to the window's thread, which polls its events once a frame and never waits: stepping to
 another position stops the search under way and starts the next when its "bestmove" comes. The panel shows each
 engine's block, the board the first engine's best move as an amber arrow, and the graph a series for each engine, its
-score for each position analysed. Engines are quit on worker threads too (`EngineReaper`), so the window never waits on
+score for each position analyzed. Engines are quit on worker threads too (`EngineReaper`), so the window never waits on
 one.
 
-An engine's block, in a game or under Analyse, shows the engine's lines under its name, its chip and its figures. An
+An engine's block, in a game or under Analyze, shows the engine's lines under its name, its chip and its figures. An
 engine that gives several lines at once (MultiPV) shows each one's latest, the best first; one that gives a line at a
 time - every bundled engine - shows its newest line lit and, under it and dimmed, the best line it gave at each depth
 before, so the block shows how its thought has gone (`SearchTracker`, which keeps the last six depths). The panel shares
 its rows alike among the blocks, as many whole lines each as its height leaves after their headers: five for one engine
 alone, two each for the two engines of a game.
 
-Game > Analyse the game goes over the line shown with one engine (`match::GameAnalyser`, on a thread of its own): every
+Game > Analyze the game goes over the line shown with one engine (`match::GameAnalyzer`, on a thread of its own): every
 position in turn, for the seconds a move or the depth chosen, a position the game ends in scored by the rules. Each
 position's score is written on the move that led to it as the [%eval] command a PGN comment carries - so the graph
 draws it, Save PGN keeps it and the file opened again shows it - and each move is judged by what it cost its mover in
@@ -317,7 +317,7 @@ winning chances, on the curve lichess publishes (2 / (1 + e^(-0.00368208 cp)) - 
 inaccuracy, marked ?!, more than 0.2 a mistake (?) and more than 0.3 a blunder (??), the glyph shown beside the move in
 the moves list. Where a move was a mistake or a blunder and the engine would have played another, its line, eight
 plies at most, is added as a variation with its score. The status bar counts the positions done, and then what the
-analysis found; Game > Stop the game analysis ends it after the position under way. Analyse stops while it runs, and a
+analysis found; Game > Stop the game analysis ends it after the position under way. Analyze stops while it runs, and a
 game opened or played in its place sets it aside.
 
 Engines > Test suite opens an EPD test suite (`match::TestSuite`): each line a position with the move it asks for,
@@ -330,7 +330,7 @@ pressed twice is shown on the board.
 The evaluation graph (`EvalGraph`, its data in `Evaluations.h`) draws each engine's scores as a series of its own, all
 from White's side on one scale with the zero line: in a game between engines White's engine's score at each of its
 moves and Black's at each of its, so the two interleave ply by ply, the first in amber and the second in blue, a legend
-naming each in its colour; a game against a person shows the engine's series alone, Analyse one series per analysing
+naming each in its color; a game against a person shows the engine's series alone, Analyze one series per analyzing
 engine (in the order amber, blue, violet, green), and a game opened from a PGN the series its comments give - the
 host's own comments a series per side, named by the White and Black tags, or `[%eval]` commands one series of the whole
 game. The scale is one pawn, or the largest score's whole pawns up to ten; a mate is held at the scale's edge and marked
@@ -341,7 +341,7 @@ other's positions.
 
 Engines > Manage engines keeps the engine list: Add... chooses a program and runs its handshake on a worker thread,
 which fills the engine's name, author and every option it declares; Detect runs it again. The selected engine's
-editor sets the name to show, the program's arguments, pondering, whether Analyse runs it, a depth limit for its
+editor sets the name to show, the program's arguments, pondering, whether Analyze runs it, a depth limit for its
 games, its own Polyglot book and the book's depth, and each declared option as a control of its kind - a check box,
 a spin's line held to its range, a combo's list, a button pressed at every start, a string's line - a value back at
 its default no longer configured. The list is JSON, `reckless-technology/amphitheater/engines.json` in the user's settings
@@ -403,7 +403,7 @@ amphitheater-cli match -engine cmd=./a book=book.bin bookdepth=16 ponder -engine
                    -games 2 -rounds 20 -repeat -openings file=book.bin format=polyglot plies=8
 amphitheater-cli perft startpos 6
 amphitheater-cli perft "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1" 4 -divide
-amphitheater-cli analyse -engine cmd=./engine -fen startpos -moves e2e4 e7e5 -time 10
+amphitheater-cli analyze -engine cmd=./engine -fen startpos -moves e2e4 e7e5 -time 10
 amphitheater-cli epd -engine cmd=./engine -file suite.epd -time 0.5
 amphitheater-cli makebook -games ./classical-games -out classical.bin -moves 7 -least 2
 amphitheater-cli screenbook -engine cmd=./engine -book classical.bin -out screened.bin -depth 12 -margin 100
@@ -431,7 +431,7 @@ to; `--help` has the whole syntax.
 
 Every score the command line writes is from White's side: each PGN move's comment, `{+0.35/18 1.2s}` (White better,
 by the score its mover's engine reported, depth 18, 1.2 seconds), `{-0.35/18 1.2s}` (Black better), `{+M5/20 0.4s}`
-(White mates in 5) or `{-M3/20 0.4s}` (Black mates in 3), and `{book}` for a book move; and `analyse`'s lines,
+(White mates in 5) or `{-M3/20 0.4s}` (Black mates in 3), and `{book}` for a book move; and `analyze`'s lines,
 `score -0.40` or `score #-2`, with `lowerbound` or `upperbound` after a bound, from White's side too. `-debug` prints
 the engines' lines exactly as they went, their scores their own.
 
@@ -471,7 +471,7 @@ folders on the PATH, so a developer's toolchain cannot hide a missing runtime; o
 must be the system's. Every pinned release meets that: each Windows engine links its compiler's runtime statically
 and imports Windows' own DLLs alone. Should a release need a library it does not carry, the pins can put one beside
 it as a companion (an engine's `companions`, by platform: the archive it comes from with its hash, the file's own hash
-and its licence, which the notices then reproduce), and a release refuses an engine that still lacks one; a pull
+and its license, which the notices then reproduce), and a release refuses an engine that still lacks one; a pull
 request's run leaves such an engine out with a warning (`--leave-out-unfit`) so the rest of the packaging is still
 proven.
 
@@ -490,7 +490,7 @@ They lie in a folder named `engines`, one folder per engine with `bundled.json` 
 Windows (`{app}\engines\<engine>\`), inside the bundle on macOS (`Amphitheater.app/Contents/Resources/engines/`),
 under `/usr/lib/reckless-amphitheater/engines/` from the Debian package (whose host is in `/opt/reckless-technology/bin`),
 and beside the binary in the portable Linux zip. The manifest, which `packaging/stage.py` writes as it lays the engines
-out, gives each engine's name, version, licence, seeded options, the options its handshake declared when it was packaged, and
+out, gives each engine's name, version, license, seeded options, the options its handshake declared when it was packaged, and
 its builds in order, each with what it asks of the CPU; every staged engine answers its handshake before the stage
 ends. A build tree's host carries no engines and seeds nothing.
 
@@ -524,12 +524,12 @@ and removes it like any other, for good.
 | Platform | Package | Made and checked by |
 |---|---|---|
 | Windows | `reckless-amphitheater-<v>-win64-setup.exe`: Inno Setup, per user by default (the dialog offers Program Files), under `Reckless Technology\Amphitheater`, the engines in `engines\`, signed through SSL.com eSigner | `packaging/windows/make-installer.ps1`; `test-installer.ps1` installs a test build of it, checks every file and engine at its place, upgrades over an earlier release's engine and uninstalls, leaving a sibling product's folder alone |
-| macOS | `reckless-amphitheater-<v>-macos.pkg`: the app in `/Applications/Reckless Technology`, `amphitheater-cli` in `/usr/local/bin`, the documents in `/Library/Documentation/Reckless Amphitheater`, an uninstaller beside the app; every engine, the app and the tool signed with the Developer ID and the hardened runtime from the inside out (`packaging/macos/sign.sh`), the package notarised and stapled | `packaging/macos/make-installer.sh`; `test-installer.sh` expands it, holds it to the stage, starts every engine from its place in it, and runs the uninstaller's script on a stand-in for `/` |
+| macOS | `reckless-amphitheater-<v>-macos.pkg`: the app in `/Applications/Reckless Technology`, `amphitheater-cli` in `/usr/local/bin`, the documents in `/Library/Documentation/Reckless Amphitheater`, an uninstaller beside the app; every engine, the app and the tool signed with the Developer ID and the hardened runtime from the inside out (`packaging/macos/sign.sh`), the package notarized and stapled | `packaging/macos/make-installer.sh`; `test-installer.sh` expands it, holds it to the stage, starts every engine from its place in it, and runs the uninstaller's script on a stand-in for `/` |
 | Linux | `reckless-amphitheater-<v>-linux-amd64.deb` and the portable `reckless-amphitheater-<v>-linux-x64.zip` | `packaging/linux/make-deb.sh` and `test-deb.sh`; `make-zip.sh`, which unzips what it made and starts every engine from there |
 
 `.github/workflows/build.yml` makes all of them unsigned on every pull request that changes code. `release.yml` makes
 them from nothing on a pushed `vMAJOR.MINOR` tag, or by hand on `main` (`gh workflow run release.yml --ref main`;
-`-f dry_run=true` builds, tests, signs, notarises and packages and publishes nothing, on any branch, as 0.0.0 with no
+`-f dry_run=true` builds, tests, signs, notarizes and packages and publishes nothing, on any branch, as 0.0.0 with no
 tag), uploads them onto a draft with `release-notes.md` as its notes and pushes the version's tag. The release stays
 a draft, which only the repository's collaborators see: the repository is public, so a published release here would
 be public at once. A draft with all four packages on it and its tag pushed is finished, and a later run for the same
@@ -539,7 +539,7 @@ at two of the account's signings. `promote.yml` (`gh workflow run promote.yml --
 a release reaches the public, publishes a finished draft here in place: it adds the four packages again under fixed
 names (so `releases/latest/download/<name>` is always the newest) and `SHA256SUMS`, sets `release-notes.md` as the
 notes, marks it latest unless a newer release is already published, and wakes the website, which writes
-`updates/amphitheater.json`; the wake needs the organisation's secret `PUBLIC_RELEASES_TOKEN`. Releases up to 1.2.7
+`updates/amphitheater.json`; the wake needs the organization's secret `PUBLIC_RELEASES_TOKEN`. Releases up to 1.2.7
 were copied to `reckless-technology/amphitheater-releases` instead, which is archived, so its links still work.
 
 ## CI

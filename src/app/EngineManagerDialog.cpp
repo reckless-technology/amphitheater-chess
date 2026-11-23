@@ -234,12 +234,12 @@ bool ScrollPane::MouseWheel(const reckless::view::MouseEvent &e)
 
 std::size_t EngineManagerDialog::EnginesModel::RowCount() const
 {
-    return catalogue_.engines.size();
+    return catalog_.engines.size();
 }
 
 std::string EngineManagerDialog::EnginesModel::CellText(std::size_t row, std::size_t column) const
 {
-    const EngineEntry &entry = catalogue_.engines[row];
+    const EngineEntry &entry = catalog_.engines[row];
     if (column == 0)
     {
         return entry.DisplayName();
@@ -263,11 +263,11 @@ reckless::view::ListView::Style EnginesStyle()
 
 } // namespace
 
-EngineManagerDialog::EngineManagerDialog(EngineCatalogue catalogue)
-    : DialogFrame("Engines", 980, 660), catalogue_(std::move(catalogue)), model_(catalogue_), list_(EnginesStyle()),
+EngineManagerDialog::EngineManagerDialog(EngineCatalog catalog)
+    : DialogFrame("Engines", 980, 660), catalog_(std::move(catalog)), model_(catalog_), list_(EnginesStyle()),
       program_({}, true), author_({}, true), name_label_("Name"), name_(FieldStyle()), args_label_("Arguments"),
       arguments_(FieldStyle()), ponder_("Ponder: think on the opponent's time"),
-      analyse_("Analyse: one of the engines Analyse runs"), depth_label_("Depth limit"), depth_(FieldStyle()),
+      analyze_("Analyze: one of the engines Analyze runs"), depth_label_("Depth limit"), depth_(FieldStyle()),
       book_label_("Own book"), book_({}, true), book_depth_label_("Book depth"), book_depth_(FieldStyle()),
       options_label_("Options"), note_({}, true)
 {
@@ -315,10 +315,10 @@ EngineManagerDialog::EngineManagerDialog(EngineCatalogue catalogue)
             entry->config.does_ponder = is_on;
         }
     };
-    analyse_.on_change = [this](bool is_on) {
+    analyze_.on_change = [this](bool is_on) {
         if (EngineEntry *entry = Selected())
         {
-            entry->is_analysing = is_on;
+            entry->is_analyzing = is_on;
         }
     };
     for (reckless::view::View *view : std::initializer_list<reckless::view::View *>{&list_,
@@ -332,7 +332,7 @@ EngineManagerDialog::EngineManagerDialog(EngineCatalogue catalogue)
                                                                                     &args_label_,
                                                                                     &arguments_,
                                                                                     &ponder_,
-                                                                                    &analyse_,
+                                                                                    &analyze_,
                                                                                     &depth_label_,
                                                                                     &depth_,
                                                                                     &book_label_,
@@ -362,13 +362,13 @@ EngineManagerDialog::EngineManagerDialog(EngineCatalogue catalogue)
         }
     };
     list_.RowsChanged();
-    Select(catalogue_.engines.empty() ? -1 : 0);
+    Select(catalog_.engines.empty() ? -1 : 0);
 }
 
 EngineEntry *EngineManagerDialog::Selected()
 {
-    return selected_ >= 0 && selected_ < static_cast<int>(catalogue_.engines.size())
-               ? &catalogue_.engines[static_cast<std::size_t>(selected_)]
+    return selected_ >= 0 && selected_ < static_cast<int>(catalog_.engines.size())
+               ? &catalog_.engines[static_cast<std::size_t>(selected_)]
                : nullptr;
 }
 
@@ -396,7 +396,7 @@ void EngineManagerDialog::LayOutContent(reckless::gfx::RectI area)
     arguments_.SetBounds({x + label, y, w - label, 32});
     y += 40;
     ponder_.SetBounds({x, y, w / 2, 30});
-    analyse_.SetBounds({x + w / 2, y, w / 2, 30});
+    analyze_.SetBounds({x + w / 2, y, w / 2, 30});
     y += 38;
     depth_label_.SetBounds({x, y, label, 32});
     depth_.SetBounds({x + label, y, 90, 32});
@@ -416,7 +416,7 @@ void EngineManagerDialog::LayOutContent(reckless::gfx::RectI area)
 
 void EngineManagerDialog::Select(int index)
 {
-    selected_ = index >= 0 && index < static_cast<int>(catalogue_.engines.size()) ? index : -1;
+    selected_ = index >= 0 && index < static_cast<int>(catalog_.engines.size()) ? index : -1;
     if (selected_ >= 0)
     {
         list_.Select(static_cast<std::size_t>(selected_));
@@ -430,14 +430,14 @@ void EngineManagerDialog::ShowSelected()
     rows_.clear();
     EngineEntry *entry = Selected();
     for (reckless::view::View *view : std::initializer_list<reckless::view::View *>{
-             &name_, &arguments_, &ponder_, &analyse_, &depth_, &book_depth_, choose_book_.get(), clear_book_.get(),
+             &name_, &arguments_, &ponder_, &analyze_, &depth_, &book_depth_, choose_book_.get(), clear_book_.get(),
              remove_.get(), detect_.get()})
     {
         view->SetEnabled(entry != nullptr);
     }
     if (entry == nullptr)
     {
-        program_.SetText(catalogue_.engines.empty() ? "No engine yet: Add... chooses one's program." : "");
+        program_.SetText(catalog_.engines.empty() ? "No engine yet: Add... chooses one's program." : "");
         author_.SetText({});
         name_.SetText({});
         arguments_.SetText({});
@@ -457,7 +457,7 @@ void EngineManagerDialog::ShowSelected()
     name_.SetText(entry->config.name.empty() ? entry->engine_name : entry->config.name);
     arguments_.SetText(JoinArguments(entry->config.arguments));
     ponder_.SetChecked(entry->config.does_ponder);
-    analyse_.SetChecked(entry->is_analysing);
+    analyze_.SetChecked(entry->is_analyzing);
     depth_.SetText(entry->depth ? std::to_string(*entry->depth) : std::string());
     book_.SetText(entry->book_path.empty() ? "none" : entry->book_path);
     book_depth_.SetText(entry->book_depth > 0 ? std::to_string(entry->book_depth) : std::string());
@@ -568,9 +568,9 @@ void EngineManagerDialog::RemoveSelected()
     {
         return;
     }
-    catalogue_.Remove(static_cast<std::size_t>(selected_)); // a bundled one is not seeded again
+    catalog_.Remove(static_cast<std::size_t>(selected_)); // a bundled one is not seeded again
     list_.RowsChanged();
-    Select(std::min(selected_, static_cast<int>(catalogue_.engines.size()) - 1));
+    Select(std::min(selected_, static_cast<int>(catalog_.engines.size()) - 1));
 }
 
 void EngineManagerDialog::Frame()
@@ -588,17 +588,17 @@ void EngineManagerDialog::Frame()
         return;
     }
     EngineEntry *entry = nullptr;
-    if (detecting_ && *detecting_ < static_cast<int>(catalogue_.engines.size()))
+    if (detecting_ && *detecting_ < static_cast<int>(catalog_.engines.size()))
     {
-        entry = &catalogue_.engines[static_cast<std::size_t>(*detecting_)];
+        entry = &catalog_.engines[static_cast<std::size_t>(*detecting_)];
     }
     else
     {
         EngineEntry added;
         added.config.executable = adding_path_;
-        catalogue_.engines.push_back(added);
-        entry      = &catalogue_.engines.back();
-        detecting_ = static_cast<int>(catalogue_.engines.size()) - 1;
+        catalog_.engines.push_back(added);
+        entry      = &catalog_.engines.back();
+        detecting_ = static_cast<int>(catalog_.engines.size()) - 1;
     }
     entry->engine_name = result.name;
     entry->author      = result.author;
@@ -618,7 +618,7 @@ void EngineManagerDialog::Save()
     TakeLines();
     if (on_save)
     {
-        on_save(catalogue_);
+        on_save(catalog_);
     }
 }
 

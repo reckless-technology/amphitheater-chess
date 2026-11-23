@@ -98,9 +98,9 @@ std::unique_ptr<uci::Engine> AnalysisSession::StartEngine(EngineEntry entry, int
     {
         static_cast<void>(engine->SetOption("MultiPV", std::to_string(multipv)));
     }
-    if (engine->FindOption("UCI_AnalyseMode") != nullptr && !IsConfigured(entry, "UCI_AnalyseMode"))
+    if (engine->FindOption("UCI_AnalyzeMode") != nullptr && !IsConfigured(entry, "UCI_AnalyzeMode"))
     {
-        static_cast<void>(engine->SetOption("UCI_AnalyseMode", "true"));
+        static_cast<void>(engine->SetOption("UCI_AnalyzeMode", "true"));
     }
     if (!engine->WaitReady())
     {
@@ -114,24 +114,24 @@ AnalysisSession::AnalysisSession(const std::vector<EngineEntry> &engines, int mu
 {
     for (const EngineEntry &entry : engines)
     {
-        auto analyser = std::make_unique<Analyser>(entry);
-        analyser->starting =
+        auto analyzer = std::make_unique<Analyzer>(entry);
+        analyzer->starting =
             std::async(std::launch::async, &AnalysisSession::StartEngine, entry, multipv, log_lock_, log_);
-        analysers_.push_back(std::move(analyser));
+        analyzers_.push_back(std::move(analyzer));
     }
 }
 
 AnalysisSession::~AnalysisSession()
 {
-    for (auto &analyser : analysers_)
+    for (auto &analyzer : analyzers_)
     {
-        if (analyser->engine)
+        if (analyzer->engine)
         {
-            reaper_.Quit(std::move(analyser->engine));
+            reaper_.Quit(std::move(analyzer->engine));
         }
-        else if (analyser->starting.valid())
+        else if (analyzer->starting.valid())
         {
-            reaper_.QuitWhenStarted(std::move(analyser->starting));
+            reaper_.QuitWhenStarted(std::move(analyzer->starting));
         }
     }
 }
@@ -157,9 +157,9 @@ void AnalysisSession::SetPosition(const chess::Game &game, int ply)
 void AnalysisSession::Poll(TimePoint now)
 {
     static_cast<void>(now);
-    for (auto &analyser : analysers_)
+    for (auto &analyzer : analyzers_)
     {
-        Analyser &a = *analyser;
+        Analyzer &a = *analyzer;
         if (a.starting.valid() && a.starting.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
         {
             a.engine = a.starting.get();
@@ -220,11 +220,11 @@ void AnalysisSession::Poll(TimePoint now)
     }
     for (const AnalysisLogLine &line : lines)
     {
-        for (auto &analyser : analysers_)
+        for (auto &analyzer : analyzers_)
         {
-            if (analyser->tracker.name() == line.engine)
+            if (analyzer->tracker.name() == line.engine)
             {
-                analyser->tracker.Feed(line.direction == uci::LineDirection::kToEngine, line.text, line.at);
+                analyzer->tracker.Feed(line.direction == uci::LineDirection::kToEngine, line.text, line.at);
             }
         }
         drained_.push_back(line);
@@ -241,11 +241,11 @@ std::vector<AnalysisLogLine> AnalysisSession::DrainLog()
 std::vector<const SearchTracker *> AnalysisSession::Trackers() const
 {
     std::vector<const SearchTracker *> trackers;
-    for (const auto &analyser : analysers_)
+    for (const auto &analyzer : analyzers_)
     {
-        if (analyser->failure.empty())
+        if (analyzer->failure.empty())
         {
-            trackers.push_back(&analyser->tracker);
+            trackers.push_back(&analyzer->tracker);
         }
     }
     return trackers;
@@ -254,11 +254,11 @@ std::vector<const SearchTracker *> AnalysisSession::Trackers() const
 std::vector<std::string> AnalysisSession::Failures() const
 {
     std::vector<std::string> failures;
-    for (const auto &analyser : analysers_)
+    for (const auto &analyzer : analyzers_)
     {
-        if (!analyser->failure.empty())
+        if (!analyzer->failure.empty())
         {
-            failures.push_back(analyser->entry.DisplayName() + ": " + analyser->failure);
+            failures.push_back(analyzer->entry.DisplayName() + ": " + analyzer->failure);
         }
     }
     return failures;
@@ -267,9 +267,9 @@ std::vector<std::string> AnalysisSession::Failures() const
 std::vector<std::string> AnalysisSession::Names() const
 {
     std::vector<std::string> names;
-    for (const auto &analyser : analysers_)
+    for (const auto &analyzer : analyzers_)
     {
-        names.push_back(analyser->entry.DisplayName());
+        names.push_back(analyzer->entry.DisplayName());
     }
     return names;
 }

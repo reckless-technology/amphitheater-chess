@@ -5,7 +5,7 @@
 /// reader (cli::ParseTournamentArguments), so the window and the command line agree on every option and its checks.
 
 #include "Controls.h"
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 #include "cli/Cli.h"
 
 #include <functional>
@@ -31,7 +31,7 @@ class CompetitionDialog final : public DialogFrame
     CompetitionDialog(bool is_tournament, const std::vector<EngineEntry> &engines);
 
     std::function<void(const cli::TournamentOptions &options)> on_start; ///< Start pressed, the options sound.
-    std::function<void()>                                      on_close; ///< Cancelled.
+    std::function<void()>                                      on_close; ///< Canceled.
 
     /** @return The command line's arguments the dialog stands for, after the subcommand. */
     std::vector<std::string> Arguments() const;

@@ -7,7 +7,7 @@
 set theTitle to "Uninstall Reckless Amphitheater"
 set theList to "• Reckless Amphitheater, with the chess engines it carries, and this uninstaller in /Applications/Reckless Technology" & return & ¬
 	"• amphitheater-cli in /usr/local/bin" & return & ¬
-	"• its licence and notices in /Library/Documentation"
+	"• its license and notices in /Library/Documentation"
 display dialog "This removes Reckless Amphitheater from this Mac:" & return & return & theList & return & return & ¬
 	"The other Reckless products, and the games you saved, are kept." with title theTitle ¬
 	buttons {"Cancel", "Uninstall"} default button "Cancel" cancel button "Cancel" with icon caution
@@ -27,7 +27,7 @@ try
 	-- An empty environment: nothing a shell of the person's set reaches the script root runs.
 	set removed to do shell script "/usr/bin/env -i /bin/bash " & theScript with administrator privileges
 on error errorText number errorNumber
-	if errorNumber is -128 then return -- the password asked for and cancelled: nothing was touched
+	if errorNumber is -128 then return -- the password asked for and canceled: nothing was touched
 	display dialog "Reckless Amphitheater could not be removed: " & errorText with title theTitle buttons {"OK"} default button "OK" with icon stop
 	return
 end try

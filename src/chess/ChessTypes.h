@@ -1,9 +1,9 @@
 #pragma once
-/// @file ChessTypes.h Pieces and colours.
+/// @file ChessTypes.h Pieces and colors.
 ///
-/// Adapted from pawnstar's src/constants.h (commit c41099798db594ae2c379cba94d917c9c28d9c04): the piece and colour
-/// enumerations and the move-list capacity, without the search's constants. Pieces carry no colour; the colour of
-/// the piece on a square is read from the position's per-colour bitboards.
+/// Adapted from pawnstar's src/constants.h (commit c41099798db594ae2c379cba94d917c9c28d9c04): the piece and color
+/// enumerations and the move-list capacity, without the search's constants. Pieces carry no color; the color of
+/// the piece on a square is read from the position's per-color bitboards.
 
 #include <cstdint>
 

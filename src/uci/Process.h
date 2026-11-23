@@ -89,7 +89,7 @@ class ChildProcess
     /** @return Whether the child is still running. */
     bool IsRunning();
 
-    /** @return The child's exit code once it has exited (on POSIX, 128 plus the signal for a signalled child). */
+    /** @return The child's exit code once it has exited (on POSIX, 128 plus the signal for a signaled child). */
     std::optional<int> ExitCode();
 
     /**

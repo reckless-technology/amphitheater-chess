@@ -1,4 +1,4 @@
-// Game > Analyse the game: the dialog's choice read and refused, the analysis over the line shown writing each score as
+// Game > Analyze the game: the dialog's choice read and refused, the analysis over the line shown writing each score as
 // an [%eval] command on the move that led to the position, a move that threw a game away marked ?? with the engine's
 // line beside it, the graph and the status bar following it, the menu items, and a stop.
 
@@ -71,13 +71,13 @@ struct Rig
     bool Finish()
     {
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-        while (controller.IsAnalysingGame() && std::chrono::steady_clock::now() < deadline)
+        while (controller.IsAnalyzingGame() && std::chrono::steady_clock::now() < deadline)
         {
             controller.Frame(0.016);
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
         controller.Frame(0.016);
-        return !controller.IsAnalysingGame();
+        return !controller.IsAnalyzingGame();
     }
 
     /**
@@ -112,7 +112,7 @@ struct Rig
 };
 
 /**
- * The choice to analyse with the fake engine, quickly.
+ * The choice to analyze with the fake engine, quickly.
  * @param arguments Its arguments.
  * @return The choice.
  */
@@ -160,17 +160,17 @@ TEST(GameAnalysisWindow, AMoveThatThrowsTheGameAwayIsMarkedWithTheEnginesLineBes
 {
     Rig rig;
     rig.controller.Frame(0.0);
-    EXPECT_FALSE(rig.Item(kAnalyseGame)->enabled) << "no engine configured";
-    rig.controller.catalogue().engines = {Fake({})};
+    EXPECT_FALSE(rig.Item(kAnalyzeGame)->enabled) << "no engine configured";
+    rig.controller.catalog().engines = {Fake({})};
     rig.controller.Frame(0.0);
-    EXPECT_TRUE(rig.Item(kAnalyseGame)->enabled);
+    EXPECT_TRUE(rig.Item(kAnalyzeGame)->enabled);
 
     // The engine's own scores, each from the side to move: +0.30, -0.30, +0.40, then +3.00 for Black after 2.Qh5.
     rig.controller.StartGameAnalysis(Quick({"--scores", "30,-30,40,300"}));
-    EXPECT_TRUE(rig.controller.IsAnalysingGame());
+    EXPECT_TRUE(rig.controller.IsAnalyzingGame());
     rig.controller.Frame(0.0);
     EXPECT_TRUE(rig.Item(kStopGameAnalysis)->enabled);
-    EXPECT_NE(rig.Status().find("Analysing the game with Fake"), std::string::npos) << rig.Status();
+    EXPECT_NE(rig.Status().find("Analyzing the game with Fake"), std::string::npos) << rig.Status();
     ASSERT_TRUE(rig.Finish());
 
     const chess::GameTree &tree = rig.controller.tree();
@@ -182,7 +182,7 @@ TEST(GameAnalysisWindow, AMoveThatThrowsTheGameAwayIsMarkedWithTheEnginesLineBes
     EXPECT_EQ(tree.node(line[2]).nags, std::vector<int>{4}) << "a blunder";
     EXPECT_TRUE(tree.node(line[0]).nags.empty()) << "a good move unmarked";
     EXPECT_EQ(rig.view.moves().model().CellText(1, 1), "Qh5??") << "the glyph in the moves list";
-    EXPECT_NE(rig.Status().find("Game analysed by Fake: 1 blunder, 0 mistakes, 0 inaccuracies"), std::string::npos)
+    EXPECT_NE(rig.Status().find("Game analyzed by Fake: 1 blunder, 0 mistakes, 0 inaccuracies"), std::string::npos)
         << rig.Status();
 
     // The engine's line beside the blunder, from the position before it.
@@ -217,7 +217,7 @@ TEST(GameAnalysisWindow, MarksAndLinesAreLeftOutWhenNotAskedForAndAStopEndsIt)
     rig.controller.StartGameAnalysis(slow);
     rig.controller.Command(kStopGameAnalysis);
     ASSERT_TRUE(rig.Finish());
-    EXPECT_NE(rig.Status().find("Game analysed by Fake"), std::string::npos) << rig.Status();
+    EXPECT_NE(rig.Status().find("Game analyzed by Fake"), std::string::npos) << rig.Status();
 }
 
 TEST(GameAnalysisWindow, AnEvalCommandReadsBackAsThePointItWasWrittenFrom)

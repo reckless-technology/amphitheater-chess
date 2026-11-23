@@ -30,7 +30,7 @@ EvalGraph::EvalGraph()
     cursor = reckless::view::Cursor::kPointingHand;
 }
 
-reckless::gfx::Color EvalGraph::SeriesColour(std::size_t index)
+reckless::gfx::Color EvalGraph::SeriesColor(std::size_t index)
 {
     switch (index % 4)
     {
@@ -144,8 +144,8 @@ void EvalGraph::Paint(reckless::gfx::Canvas &c)
     const float fill_alpha = series_.size() > 1 ? 0.09f : 0.18f;
     for (std::size_t which = 0; which < series_.size(); ++which)
     {
-        const EvalSeries          &one    = series_[which];
-        const reckless::gfx::Color colour = SeriesColour(which);
+        const EvalSeries          &one   = series_[which];
+        const reckless::gfx::Color color = SeriesColor(which);
         reckless::gfx::Path        line;
         reckless::gfx::Path        fill;
         bool                       started = false;
@@ -176,9 +176,9 @@ void EvalGraph::Paint(reckless::gfx::Canvas &c)
         }
         fill.LineTo(last_x, y_of(0.0));
         fill.Close();
-        c.SetColor(colour.WithAlpha(fill_alpha));
+        c.SetColor(color.WithAlpha(fill_alpha));
         c.FillPath(fill);
-        c.SetColor(colour);
+        c.SetColor(color);
         c.StrokePath(line, reckless::gfx::Stroke(2.0f, reckless::gfx::Stroke::Join::kCurved,
                                                  reckless::gfx::Stroke::Cap::kRounded));
         // A mate is held at the scale's edge and marked there by a small triangle pointing off the scale.
@@ -213,13 +213,13 @@ void EvalGraph::Paint(reckless::gfx::Canvas &c)
                 const PointF mark{x_of(index), y_of(one.points[index]->pawns)};
                 c.SetColor(theme::kPanel);
                 c.FillEllipse(RectF{mark.x - 6.0f, mark.y - 6.0f, 12.0f, 12.0f});
-                c.SetColor(SeriesColour(which));
+                c.SetColor(SeriesColor(which));
                 c.FillEllipse(RectF{mark.x - 4.5f, mark.y - 4.5f, 9.0f, 9.0f});
             }
         }
     }
 
-    // The legend: each series' name in its colour, after a stroke of it, along the top.
+    // The legend: each series' name in its color, after a stroke of it, along the top.
     if (HasLegend())
     {
         const auto  font  = fonts::Small().WithHeight(14.0f);
@@ -228,9 +228,9 @@ void EvalGraph::Paint(reckless::gfx::Canvas &c)
         c.SetFont(font);
         for (std::size_t which = 0; which < series_.size(); ++which)
         {
-            const reckless::gfx::Color colour = SeriesColour(which);
+            const reckless::gfx::Color color  = SeriesColor(which);
             const float                middle = 6.0f + kLegendHeight / 2.0f;
-            c.SetColor(colour);
+            c.SetColor(color);
             c.DrawLine(PointF{x, middle}, PointF{x + 14.0f, middle}, 2.5f);
             const float room = std::min(share - 34.0f, c.TextWidth(font, series_[which].name) + 2.0f);
             c.DrawText(series_[which].name, RectF{x + 19.0f, 6.0f, std::max(0.0f, room), kLegendHeight},

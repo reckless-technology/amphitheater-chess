@@ -24,7 +24,7 @@ std::vector<std::vector<std::pair<int, int>>> CirclePairings(int engines)
         {
             int first  = circle[board];
             int second = circle[size - 1 - board];
-            // The fixed engine alternates colours by round; on every other board the left of the circle has white.
+            // The fixed engine alternates colors by round; on every other board the left of the circle has white.
             // A rotating engine spends as many rounds on the left as on the right, so with its one game against the
             // fixed engine its whites and blacks differ by at most one.
             const bool is_swapped = board == 0 && round % 2 == 1;
@@ -65,7 +65,7 @@ std::vector<ScheduledGame> MakeSchedule(const ScheduleSettings &settings)
                 {
                     for (int game = 0; game < settings.games_per_encounter; ++game)
                     {
-                        // Within an encounter colours alternate game by game; an encounter of an odd number of
+                        // Within an encounter colors alternate game by game; an encounter of an odd number of
                         // games starts the other way round in the next round, so a long match stays balanced.
                         const bool    is_reversed = (game + pass + round * settings.games_per_encounter) % 2 == 1;
                         ScheduledGame scheduled;

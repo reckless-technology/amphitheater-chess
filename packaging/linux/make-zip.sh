@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The portable Linux archive of a staged release (packaging/stage.py linux): the stage whole in one folder,
 # reckless-amphitheater-<version>-linux-x64/ - the window, amphitheater-cli, the bundled engines in engines/ beside them, where
-# the host looks for them first (src/app/BundledEngines.h), the licence and the notices - zipped with every file's mode
+# the host looks for them first (src/app/BundledEngines.h), the license and the notices - zipped with every file's mode
 # kept (zip -ry), so the binaries stay executable once unzipped. Then the archive is held to the stage: unzipped into a
 # folder of its own, every file the staged one byte for byte with its execute bits, and every engine started from its
 # place there and held to answer uci with uciok (tools/bundled_engines.py smoke).

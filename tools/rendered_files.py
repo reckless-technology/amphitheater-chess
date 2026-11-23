@@ -2,7 +2,7 @@
 
 A committed file passes the check when its bytes are the rendered file's, or - for a PNG, an .ico or an .icns - when
 every picture in it has the rendered picture's size and mode and its pixels agree: no channel value more than
-PIXEL_LIMIT apart, and at most PIXEL_SHARE of them more than PIXEL_TOLERANCE apart. A compressor or a rasteriser
+PIXEL_LIMIT apart, and at most PIXEL_SHARE of them more than PIXEL_TOLERANCE apart. A compressor or a rasterizer
 rounding differently on another platform moves a few values by a step; a change of composition moves many by more.
 """
 

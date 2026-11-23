@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The product package's distribution (packaging/macos/make-installer.sh fills in the version): the licence, macOS 13.3
+<!-- The product package's distribution (packaging/macos/make-installer.sh fills in the version): the license, macOS 13.3
      and later on either kind of Mac, and the three parts every install takes. -->
 <installer-gui-script minSpecVersion="2">
     <title>Reckless Amphitheater @VERSION@</title>

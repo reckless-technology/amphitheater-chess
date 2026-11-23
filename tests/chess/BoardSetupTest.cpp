@@ -78,7 +78,7 @@ TEST(BoardSetup, CastlingRightsAreHeldToTheKingAndTheRookOnTheirSquares)
     setup.SetCastling(kBlack, false, true);
     EXPECT_FALSE(setup.castling(kBlack, false)) << "never given where the pieces do not allow it";
     setup.Put(Square{"e8"}, {kWhite, kKing});
-    EXPECT_FALSE(setup.CanCastle(kBlack, true)) << "a king of the other colour is no king of Black's";
+    EXPECT_FALSE(setup.CanCastle(kBlack, true)) << "a king of the other color is no king of Black's";
 }
 
 TEST(BoardSetup, EnPassantSquaresAreBehindAPawnThatCouldHaveJustMadeADoubleStep)

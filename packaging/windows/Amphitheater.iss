@@ -2,7 +2,7 @@
 ; with Inno Setup 6:
 ;   ISCC /DAmphitheaterVersion=<MAJOR.MINOR.BUILD> /DStageDir=<dist> /DOutputDir=<out> packaging\windows\Amphitheater.iss
 ; The window and its command-line tool, the five bundled chess engines under engines\<engine>\ with their manifest, the
-; licence and the notices, a Start-menu entry and an uninstaller. A per-user install by default (no administrator asked,
+; license and the notices, a Start-menu entry and an uninstaller. A per-user install by default (no administrator asked,
 ; under the user's Programs folder: Reckless Technology\Amphitheater there); the dialog offers a machine-wide one, under
 ; Program Files\Reckless Technology\Amphitheater, beside the suite's other products. The uninstaller takes away what the
 ; installer put there and nothing else: the person's engine list and settings in their own folder are theirs, and the

@@ -1,7 +1,7 @@
 #pragma once
 /// @file AboutDialog.h Help > About Reckless Amphitheater: the app's mark - its icon, Jonny's sketch of the Colosseum
 /// on a rounded square - its name and version, the copyright, the terms it is used on, the engines the install carries
-/// with their versions and licences, where the third-party notices are, and the website as a link to the person's
+/// with their versions and licenses, where the third-party notices are, and the website as a link to the person's
 /// browser.
 
 #include "Controls.h"
@@ -20,7 +20,7 @@ struct AboutEngine
 {
     std::string name;    ///< Its name ("Pawnstar").
     std::string version; ///< Its release's version ("1.2.0").
-    std::string licence; ///< Its licence's SPDX id ("GPL-3.0"); empty where the manifest names none.
+    std::string license; ///< Its license's SPDX id ("GPL-3.0"); empty where the manifest names none.
 };
 
 /** What the About window says. */
@@ -31,12 +31,12 @@ struct AboutInfo
 };
 
 /**
- * A licence as a person reads it.
+ * A license as a person reads it.
  * @param spdx Its SPDX id: "GPL-3.0" and "GPL-3.0-or-later" are named for the GPL's version; any other is shown as it
  *             is.
  * @return "GPLv3", "GPLv3 or later", or the id itself.
  */
-std::string LicenceName(const std::string &spdx);
+std::string LicenseName(const std::string &spdx);
 
 /** A line of text in the accent that does something when it is clicked: the About window's website. */
 class LinkLabel final : public reckless::view::View

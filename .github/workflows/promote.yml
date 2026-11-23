@@ -24,7 +24,7 @@ name: promote
 #
 # The job runs on a GitHub-hosted runner, ubuntu-24.04, a fresh machine each run. Everything here is done with the
 # workflow's token, which sees, uploads to and publishes a draft only with Contents write. The wake alone needs the
-# organisation's secret PUBLIC_RELEASES_TOKEN (Contents write on reckless-technology/website, which a repository_dispatch
+# organization's secret PUBLIC_RELEASES_TOKEN (Contents write on reckless-technology/website, which a repository_dispatch
 # needs); it is checked before anything is uploaded. A tag already published is refused. An attempt that failed
 # part-way leaves the draft a draft, perhaps with some of the fixed-name files on it: the next attempt uploads them
 # again over those (--clobber), so nothing needs clearing by hand.

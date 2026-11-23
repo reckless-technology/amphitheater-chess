@@ -1,4 +1,4 @@
-// amphitheater_fake_engine: a UCI engine for the tests, whose behaviour its arguments script.
+// amphitheater_fake_engine: a UCI engine for the tests, whose behavior its arguments script.
 //
 //   --name NAME            the name it gives (id name)
 //   --think MS             how long each search takes, unless stopped (default 0)

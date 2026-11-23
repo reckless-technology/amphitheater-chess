@@ -1,11 +1,11 @@
 #pragma once
-/// @file GameAnalysisDialog.h Game > Analyse the game: the engine that goes over every position of the line shown, how
+/// @file GameAnalysisDialog.h Game > Analyze the game: the engine that goes over every position of the line shown, how
 /// long it thinks on each - seconds or a depth - whether each move it judges to have cost its mover is marked (?! an
 /// inaccuracy, ? a mistake, ?? a blunder), and whether the engine's best line is added as a variation where a move was
 /// a mistake or a blunder.
 
 #include "Controls.h"
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 #include "match/GameAnalysis.h"
 
 #include "TextField.h"
@@ -31,11 +31,11 @@ struct GameAnalysisChoice
 class GameAnalysisDialog final : public DialogFrame
 {
   public:
-    /** @param engines The configured engines, offered to analyse with; at least one. */
+    /** @param engines The configured engines, offered to analyze with; at least one. */
     explicit GameAnalysisDialog(const std::vector<EngineEntry> &engines);
 
-    std::function<void(const GameAnalysisChoice &choice)> on_start; ///< Analyse pressed, the choice sound.
-    std::function<void()>                                 on_close; ///< Cancelled.
+    std::function<void(const GameAnalysisChoice &choice)> on_start; ///< Analyze pressed, the choice sound.
+    std::function<void()>                                 on_close; ///< Canceled.
 
     /**
      * The choice as it stands, when it is sound.
@@ -44,7 +44,7 @@ class GameAnalysisDialog final : public DialogFrame
      */
     std::optional<GameAnalysisChoice> Choice(std::string *error = nullptr) const;
 
-    /** Analyse pressed: the choice handed on when it is sound, else the reason shown. */
+    /** Analyze pressed: the choice handed on when it is sound, else the reason shown. */
     void Start();
 
     /** @return The engine's list. */

@@ -42,7 +42,7 @@ class GamePickerDialog final : public DialogFrame
     GamePickerDialog(std::vector<chess::PgnGame> games, const std::string &file_name, std::size_t skipped);
 
     std::function<void(const chess::PgnGame &game)> on_open;  ///< A game picked.
-    std::function<void()>                           on_close; ///< Cancelled.
+    std::function<void()>                           on_close; ///< Canceled.
 
     /** @return The games. */
     const std::vector<chess::PgnGame> &games() const

@@ -21,7 +21,7 @@ namespace
 using reckless::gfx::Justify;
 using reckless::gfx::RectF;
 
-/** The rounded card every strip and card is drawn on: the panel's colour inside a rule. */
+/** The rounded card every strip and card is drawn on: the panel's color inside a rule. */
 void DrawCard(reckless::gfx::Canvas &c, RectF bounds, float radius)
 {
     c.SetColor(theme::kPanel);
@@ -122,10 +122,10 @@ void LogHeader::Paint(reckless::gfx::Canvas &c)
     if (is_open_)
     {
         // The grip: two short rules in the middle of the row, where a drag takes the log's top edge.
-        const float centre = bounds.CentreX();
+        const float center = bounds.CentreX();
         c.SetColor(is_dragging_ ? theme::kAmber : theme::kRule);
-        c.DrawLine({centre - 14.0f, y - 2.0f}, {centre + 14.0f, y - 2.0f}, 1.0f);
-        c.DrawLine({centre - 14.0f, y + 2.0f}, {centre + 14.0f, y + 2.0f}, 1.0f);
+        c.DrawLine({center - 14.0f, y - 2.0f}, {center + 14.0f, y - 2.0f}, 1.0f);
+        c.DrawLine({center - 14.0f, y + 2.0f}, {center + 14.0f, y + 2.0f}, 1.0f);
     }
 }
 

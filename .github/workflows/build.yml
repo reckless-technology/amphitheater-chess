@@ -1,13 +1,13 @@
 name: build
 
 # The check on every push to main, every pull request and on demand, sized to the change: documentation alone
-# (Markdown, the licences, the ignore file, the editor settings, the hooks) builds nothing; anything else builds the
+# (Markdown, the licenses, the ignore file, the editor settings, the hooks) builds nothing; anything else builds the
 # host and runs every suite on the three platforms - Linux with gcc (and again under AddressSanitizer and
 # UndefinedBehaviorSanitizer), Windows with MSVC, macOS universal - measures coverage, and makes each platform's
 # packages unsigned as release.yml makes them (the Linux zip and Debian package, the Windows installer installed and
 # taken away, the macOS package), each held to its stage with every bundled engine answering from its place in it; the
 # formatting is checked whatever changed. The last job, "CI", is the one check to require: green when every job the run
-# needed passed or was not needed, red when any failed or was cancelled.
+# needed passed or was not needed, red when any failed or was canceled.
 #
 # Every job runs on a GitHub-hosted runner (free for a public repository), its image pinned by version rather than
 # -latest: ubuntu-24.04, windows-2025 (Visual Studio's MSVC, PowerShell 7 and Git's bash) and macos-15 (Apple silicon,
@@ -65,7 +65,7 @@ jobs:
           if [ -n "$base" ] && [ "$base" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$base" 2>/dev/null; then
             changed=$(git diff --name-only "$base" "$GITHUB_SHA")
             echo "changed files:"; echo "$changed"
-            # Documentation never reaches a compiler: Markdown, the licences, the ignore file, the editor settings,
+            # Documentation never reaches a compiler: Markdown, the licenses, the ignore file, the editor settings,
             # the hooks.
             if ! echo "$changed" | grep -qvE '[.]md$|^LICENSE$|^[.]gitignore$|^[.]vscode/|^[.]githooks/'; then
               cpp=false
@@ -306,7 +306,7 @@ jobs:
       # The macOS installer, unsigned, from this tree: the stage (each bundled engine downloaded by its pin, held to its
       # hash and answering its handshake, the app signed again ad hoc round them), the package made and held to the
       # stage with every engine started from its place in it (packaging/macos/test-installer.sh); then dropped.
-      # release.yml signs, notarises and staples the real one.
+      # release.yml signs, notarizes and staples the real one.
       - name: Package (the stage and the installer)
         run: |
           set -euo pipefail
@@ -351,7 +351,7 @@ jobs:
         run: |
           echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
           if echo "$RESULTS" | jq -e '[.[] | .result] | any(. == "failure" or . == "cancelled")' > /dev/null; then
-            echo "A job failed or was cancelled." >&2
+            echo "A job failed or was canceled." >&2
             exit 1
           fi
           echo "Green."

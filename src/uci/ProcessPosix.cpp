@@ -22,7 +22,7 @@ namespace amphitheater::uci
 namespace
 {
 
-/** Serialises making pipes and spawning, so no child started here inherits another's pipe before it is marked. */
+/** Serializes making pipes and spawning, so no child started here inherits another's pipe before it is marked. */
 std::mutex spawn_mutex;
 
 /**
@@ -75,7 +75,7 @@ struct ChildProcess::Platform
     pid_t              pid     = -1;       ///< The child's process id (and its process group's).
     int                input   = -1;       ///< The write end of its standard input.
     int                wake[2] = {-1, -1}; ///< A pipe whose write wakes the readers from their poll, to give up.
-    std::mutex         mutex;              ///< Serialises writes, the close of input, and reaping.
+    std::mutex         mutex;              ///< Serializes writes, the close of input, and reaping.
     std::optional<int> exit_code;          ///< The exit code once reaped.
     std::thread        output_reader;      ///< Reads standard output.
     std::thread        error_reader;       ///< Reads standard error.

@@ -1,6 +1,6 @@
 #pragma once
 /// @file EngineLog.h The engine log: every line exchanged with the engines, in the monospaced face - what the host
-/// wrote in the accent, what an engine wrote in the log's ink, an engine's errors in the error colour - kept to its
+/// wrote in the accent, what an engine wrote in the log's ink, an engine's errors in the error color - kept to its
 /// last few thousand lines, each wrapped to the log's width, and following the newest while it is scrolled to the
 /// bottom.
 

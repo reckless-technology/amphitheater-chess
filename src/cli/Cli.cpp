@@ -601,9 +601,9 @@ int RunEpd(const std::vector<std::string> &arguments, std::ostream &out, std::os
     return 0;
 }
 
-int RunAnalyse(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err)
+int RunAnalyze(const std::vector<std::string> &arguments, std::ostream &out, std::ostream &err)
 {
-    const auto options = ParseAnalyseArguments(arguments);
+    const auto options = ParseAnalyzeArguments(arguments);
     if (!options)
     {
         err << "amphitheater-cli: " << options.ErrorMessage() << '\n';
@@ -743,7 +743,7 @@ Usage:
   amphitheater-cli match      -engine <keys> -engine <keys> [options]
   amphitheater-cli tournament -engine <keys> -engine <keys> [-engine <keys>...] [options]
   amphitheater-cli perft      <startpos|FEN> <depth> [-divide]
-  amphitheater-cli analyse    -engine <keys> [-fen <startpos|FEN>] [-moves <uci>...] [-time <s>] [-depth <n>]
+  amphitheater-cli analyze    -engine <keys> [-fen <startpos|FEN>] [-moves <uci>...] [-time <s>] [-depth <n>]
                           [-multipv <n>]
   amphitheater-cli epd        -engine <keys> -file <suite.epd> [-time <s>] [-depth <n>]
                           a test suite: each position's bm or am against the engine's move (1 s each by default)
@@ -772,14 +772,14 @@ Match and tournament options:
   -tc <control>         time control: [moves/]time[+increment], times in seconds or m:ss,
                         sessions separated by commas: 40/60+0.6, 10+0.1, 40/120,20/60,15+30
   -st <s>               a fixed time per move     -depth <n>   a depth limit     -nodes <n>   a node limit
-  -games <n>            games per encounter, colours alternating (default 1)
+  -games <n>            games per encounter, colors alternating (default 1)
   -rounds <n>           rounds: cycles of every engine meeting every other (default 1)
-  -double               play every cycle twice, colours reversed (a double round robin)
-  -repeat               play each opening twice in a row, colours swapped
+  -double               play every cycle twice, colors reversed (a double round robin)
+  -repeat               play each opening twice in a row, colors swapped
   -concurrency <n>      games played at once (default 1)
   -openings file=<f> format=epd|pgn|polyglot [order=sequential|random] [plies=<n>] [start=<n>]
                         a Polyglot book (.bin) is walked from the start, weighted at random, to plies (8),
-                        one line for each pair of colour-swapped games
+                        one line for each pair of color-swapped games
   -srand <n>            the seed for random opening order and book moves (default 1)
   -pgnout <file>        append every finished game to a PGN file
   -resign movecount=<n> score=<cp> [twosided=true]
@@ -790,7 +790,7 @@ Match and tournament options:
   -event <name>         PGN's Event     -site <name>   PGN's Site
   -debug                print every line exchanged with the engines on standard error
 
-Scores are from White's side (+ White is better, - Black is): analyse's lines and the PGN comments ({+0.35/18 1.2s},
+Scores are from White's side (+ White is better, - Black is): analyze's lines and the PGN comments ({+0.35/18 1.2s},
 {-M3/20 0.4s}) alike, whichever side the engine plays or the position has to move.
 )";
 }
@@ -1117,9 +1117,9 @@ Result<TournamentOptions> ParseTournamentArguments(const std::vector<std::string
     return options;
 }
 
-Result<AnalyseOptions> ParseAnalyseArguments(const std::vector<std::string> &arguments)
+Result<AnalyzeOptions> ParseAnalyzeArguments(const std::vector<std::string> &arguments)
 {
-    AnalyseOptions options;
+    AnalyzeOptions options;
     bool           has_engine = false;
     ArgumentReader reader(arguments);
     while (!reader.AtEnd())
@@ -1200,7 +1200,7 @@ Result<AnalyseOptions> ParseAnalyseArguments(const std::vector<std::string> &arg
     }
     if (!has_engine)
     {
-        return Error{"analyse needs -engine cmd=<program>"};
+        return Error{"analyze needs -engine cmd=<program>"};
     }
     return options;
 }
@@ -1584,9 +1584,9 @@ int RunCli(const std::vector<std::string> &arguments, std::ostream &out, std::os
     {
         return RunTournament(rest, command == "match", out, err, stop);
     }
-    if (command == "analyse" || command == "analyze")
+    if (command == "analyze" || command == "analyze")
     {
-        return RunAnalyse(rest, out, err);
+        return RunAnalyze(rest, out, err);
     }
     if (command == "epd")
     {

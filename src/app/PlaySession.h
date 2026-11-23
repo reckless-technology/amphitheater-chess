@@ -3,7 +3,7 @@
 /// (EnginePlayer) or the person at the window (a CallbackPlayer whose chooser waits for the board's move), its progress
 /// and the engines' lines handed to the window, which polls them once a frame.
 
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 #include "chess/Game.h"
 #include "chess/TimeControl.h"
 #include "match/GameRunner.h"

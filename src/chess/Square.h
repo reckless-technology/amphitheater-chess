@@ -16,7 +16,7 @@ namespace amphitheater::chess
 class Square
 {
   public:
-    /** An uninitialised square, so arrays of squares cost nothing to make. */
+    /** An uninitialized square, so arrays of squares cost nothing to make. */
     constexpr Square()
     {
     }

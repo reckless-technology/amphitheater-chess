@@ -1,6 +1,6 @@
 // Help > About: chosen from the menu bar it opens over the window with the app's name and version, closes on Escape,
 // Return and its button, opens the website through the platform, and lists the engines the install carries - every one
-// whose program is there, whatever the processor, with its version and licence - or none for a build tree's host.
+// whose program is there, whatever the processor, with its version and license - or none for a build tree's host.
 
 #include "app/AboutDialog.h"
 #include "app/Commands.h"
@@ -73,7 +73,7 @@ void WriteManifest(const std::filesystem::path &folder)
         const char *id;
         const char *name;
         const char *version;
-        const char *licence;
+        const char *license;
         const char *requires_level;
         bool        is_there;
     };
@@ -88,7 +88,7 @@ void WriteManifest(const std::filesystem::path &folder)
         engine.Set("id", spec.id);
         engine.Set("name", spec.name);
         engine.Set("version", spec.version);
-        engine.Set("licence", spec.licence);
+        engine.Set("licence", spec.license);
         engine.Set("options", json::Value::MakeArray());
         engine.Set("declared", json::Value::MakeArray());
         json::Value builds = json::Value::MakeArray();
@@ -176,7 +176,7 @@ TEST(About, HelpAboutOpensOverTheWindowWithTheNameAndVersionAndClosesOnEscape)
     EXPECT_EQ(controller.dialog(), nullptr);
 }
 
-TEST(About, TheEnginesTheInstallCarriesAreListedWithTheirVersionsAndLicences)
+TEST(About, TheEnginesTheInstallCarriesAreListedWithTheirVersionsAndLicenses)
 {
     const std::filesystem::path folder = reckless::test::ScratchPath("amphitheater-about") / "engines";
     WriteManifest(folder);
@@ -203,15 +203,15 @@ TEST(About, TheEnginesTheInstallCarriesAreListedWithTheirVersionsAndLicences)
     EXPECT_TRUE(about->CardBounds().Contains(about->link().bounds()));
 }
 
-TEST(About, ALicenceIsNamedForTheGplsVersionOrShownAsItIs)
+TEST(About, ALicenseIsNamedForTheGplsVersionOrShownAsItIs)
 {
-    EXPECT_EQ(LicenceName("GPL-3.0"), "GPLv3");
-    EXPECT_EQ(LicenceName("GPL-3.0-only"), "GPLv3");
-    EXPECT_EQ(LicenceName("GPL-3.0-or-later"), "GPLv3 or later");
-    EXPECT_EQ(LicenceName("MIT"), "MIT");
-    EXPECT_EQ(LicenceName(""), "");
+    EXPECT_EQ(LicenseName("GPL-3.0"), "GPLv3");
+    EXPECT_EQ(LicenseName("GPL-3.0-only"), "GPLv3");
+    EXPECT_EQ(LicenseName("GPL-3.0-or-later"), "GPLv3 or later");
+    EXPECT_EQ(LicenseName("MIT"), "MIT");
+    EXPECT_EQ(LicenseName(""), "");
     AboutDialog about(AboutInfo{"1.2.3", {{"Toy", "0.1.0", ""}}});
-    EXPECT_EQ(about.EngineLines(), std::vector<std::string>{"Toy 0.1.0"}) << "no licence named, none shown";
+    EXPECT_EQ(about.EngineLines(), std::vector<std::string>{"Toy 0.1.0"}) << "no license named, none shown";
 }
 
 TEST(About, ItsMarkIsTheAppsIconCarriedInTheBinary)

@@ -1,5 +1,5 @@
 #pragma once
-/// @file Theme.h The window's colours and fonts: one dark look, the approved mockup's tokens
+/// @file Theme.h The window's colors and fonts: one dark look, the approved mockup's tokens
 /// (docs/design/main-window-mockup.html), Noto Serif for the interface and Monaspace Xenon for engine output and FEN.
 
 #include "AppTheme.h"
@@ -19,7 +19,7 @@ namespace amphitheater::app::theme
 
 using reckless::gfx::Color;
 
-inline constexpr Color kWindow{0xff29282cu};     ///< The window's colour, behind the columns.
+inline constexpr Color kWindow{0xff29282cu};     ///< The window's color, behind the columns.
 inline constexpr Color kPanel{0xff1b1a1du};      ///< A card, a list, a strip: one step darker.
 inline constexpr Color kRow{0xff222125u};        ///< Every other row of a list.
 inline constexpr Color kRule{0xff3b3936u};       ///< The rules and the frames round a card.
@@ -32,7 +32,7 @@ inline constexpr Color kSelect{0xff5d4423u};     ///< The move shown, the best l
 inline constexpr Color kPlus{0xff86c9a2u};       ///< A score for White.
 inline constexpr Color kMinus{0xffe2705fu};      ///< A score for Black, an error.
 inline constexpr Color kSeriesBlue{0xff5bb3dcu}; ///< The evaluation graph's second series, cool beside the amber.
-inline constexpr Color kSeriesViolet{0xffb996e2u}; ///< Its third series (a third analysing engine).
+inline constexpr Color kSeriesViolet{0xffb996e2u}; ///< Its third series (a third analyzing engine).
 inline constexpr Color kLightSquare{0xffecdab8u};  ///< The light squares.
 inline constexpr Color kDarkSquare{0xff9d7553u};   ///< The dark squares.
 inline constexpr Color kBoardEdge{0xff121113u};    ///< The board's frame, a stopped clock's face, the log's background.
@@ -44,13 +44,13 @@ inline constexpr Color kBlackSide{0xff141210u};    ///< Black's side dot.
 inline constexpr Color kLastMoveLight{0xffe8c285u}; ///< The last move on a light square: the accent at 42 %.
 inline constexpr Color kLastMoveDark{0xffcd9444u};  ///< On a dark square: at 70 %, where 42 % barely shows.
 
-/** @return The window's colours as the toolkit's app shell and its widgets take them. */
+/** @return The window's colors as the toolkit's app shell and its widgets take them. */
 inline reckless::app::Theme Shell()
 {
     return {kWindow, kRule, kPanel, kRow, kInk, kMuted, kFaint, kAmber, kAmberDim, kPlus, kMinus};
 }
 
-/** @return The series' palette for the lists and text views: rows on the panel colour, in the ink, lit in amber. */
+/** @return The series' palette for the lists and text views: rows on the panel color, in the ink, lit in amber. */
 inline reckless::look::Palette Lists()
 {
     return Shell().Palette();
@@ -129,7 +129,7 @@ namespace amphitheater::app::theme
 {
 
 /**
- * The window's buttons: the series' button plate in the window's colours (look::DrawButtonPlate), with a toggle's lamp
+ * The window's buttons: the series' button plate in the window's colors (look::DrawButtonPlate), with a toggle's lamp
  * at its left (look::DrawPlateLamp), and its caption in the interface's face at the size the mockup sets it.
  * @return The painter.
  */
@@ -158,7 +158,7 @@ namespace amphitheater::app::theme
 {
 
 /**
- * The drawn menu bar (Linux's, and a window drawn to an image): the panel's colour under the interface's face, the
+ * The drawn menu bar (Linux's, and a window drawn to an image): the panel's color under the interface's face, the
  * menu whose title is open lit as a selected row, its drop-downs the series' menus.
  * @return The bar's look.
  */

@@ -52,7 +52,7 @@ option(AMPHITHEATER_COVERAGE "Instrument the host's own code for coverage (gcc, 
 option(AMPHITHEATER_ASAN "Build everything with AddressSanitizer (and UndefinedBehaviorSanitizer on gcc and clang)" OFF)
 
 # The sanitizers on every target, GoogleTest's included, so a container passed between them is checked on both sides.
-# MSVC's AddressSanitizer has no undefined-behaviour checker and wants no incremental link.
+# MSVC's AddressSanitizer has no undefined-behavior checker and wants no incremental link.
 if(AMPHITHEATER_ASAN)
     if(AMPHITHEATER_MSVC_FRONTEND)
         add_compile_options(/fsanitize=address)

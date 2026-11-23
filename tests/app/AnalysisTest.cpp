@@ -1,4 +1,4 @@
-// Analyse, through the controller as the window drives it, against the fake engine: the engines started off the
+// Analyze, through the controller as the window drives it, against the fake engine: the engines started off the
 // window's thread, their lines and their best move's arrow for the position shown, the search moved on as the person
 // steps through the game, the graph filled in, an engine that will not start named, and the analysis stopped.
 
@@ -78,15 +78,15 @@ struct Rig
 TEST(Analysis, TheEnginesThinkAboutThePositionShownAndFollowItThroughTheGame)
 {
     Rig rig;
-    rig.controller.catalogue().engines = {Fake({"--score", "35"}, "Fake")};
+    rig.controller.catalog().engines = {Fake({"--score", "35"}, "Fake")};
     chess::Game game;
     game.PlaySan("e4");
     game.PlaySan("e5");
     rig.controller.ShowGame(game, {});
     rig.controller.ShowPly(0);
-    rig.controller.Command(kAnalyse);
+    rig.controller.Command(kAnalyze);
     ASSERT_NE(rig.controller.analysis(), nullptr);
-    EXPECT_TRUE(rig.view.Plate(kAnalyse)->on());
+    EXPECT_TRUE(rig.view.Plate(kAnalyze)->on());
     ASSERT_TRUE(rig.FramesUntil([&] { return rig.BestScore() == "+0.35"; }));
     EXPECT_EQ(rig.view.analysis().blocks().front().name, "Fake");
     EXPECT_EQ(rig.view.board().arrows().size(), 1u) << "the best move's arrow on the position shown";
@@ -99,16 +99,16 @@ TEST(Analysis, TheEnginesThinkAboutThePositionShownAndFollowItThroughTheGame)
     EXPECT_EQ(graph.series()[0].name, "Fake");
     EXPECT_DOUBLE_EQ(graph.series()[0].points[0]->pawns, -0.35) << "Black to move, +0.35 for Black: White's -0.35";
 
-    rig.controller.Command(kAnalyse);
+    rig.controller.Command(kAnalyze);
     EXPECT_EQ(rig.controller.analysis(), nullptr);
-    EXPECT_FALSE(rig.view.Plate(kAnalyse)->on());
+    EXPECT_FALSE(rig.view.Plate(kAnalyze)->on());
     EXPECT_TRUE(rig.view.analysis().blocks().empty());
 }
 
-TEST(Analysis, EachAnalysingEngineHasASeriesOfItsOwnFromWhitesSide)
+TEST(Analysis, EachAnalyzingEngineHasASeriesOfItsOwnFromWhitesSide)
 {
     Rig rig;
-    rig.controller.catalogue().engines = {Fake({"--score", "35"}, "Alpha"), Fake({"--score", "-50"}, "Beta")};
+    rig.controller.catalog().engines = {Fake({"--score", "35"}, "Alpha"), Fake({"--score", "-50"}, "Beta")};
     chess::Game game;
     for (const char *san : {"e4", "e5", "Nf3"})
     {
@@ -116,7 +116,7 @@ TEST(Analysis, EachAnalysingEngineHasASeriesOfItsOwnFromWhitesSide)
     }
     rig.controller.ShowGame(game, {});
     rig.controller.ShowPly(1);
-    rig.controller.Command(kAnalyse);
+    rig.controller.Command(kAnalyze);
     const auto &graph  = rig.view.graph();
     const auto  has_at = [&](std::size_t ply) {
         return graph.series().size() == 2 && graph.series()[0].points.size() > ply &&
@@ -134,38 +134,38 @@ TEST(Analysis, EachAnalysingEngineHasASeriesOfItsOwnFromWhitesSide)
     EXPECT_DOUBLE_EQ(graph.series()[0].points[1]->pawns, 0.35) << "White to move: unchanged";
     EXPECT_DOUBLE_EQ(graph.series()[1].points[1]->pawns, -0.50);
     EXPECT_EQ(graph.caption(), "1...e5  +0.35") << "the first engine's word in the caption";
-    EXPECT_TRUE(graph.series()[0].points[0]) << "what was analysed before stays";
-    rig.controller.Command(kAnalyse);
+    EXPECT_TRUE(graph.series()[0].points[0]) << "what was analyzed before stays";
+    rig.controller.Command(kAnalyze);
 }
 
 TEST(Analysis, TheSeriesFollowTheEnginesOrderWhicheverAnswersFirst)
 {
-    // Alpha slow to start, so Beta's score comes first: the graph still lists Alpha first, in the first colour.
+    // Alpha slow to start, so Beta's score comes first: the graph still lists Alpha first, in the first color.
     Rig rig;
-    rig.controller.catalogue().engines = {Fake({"--score", "35", "--slow-start", "500"}, "Alpha"),
-                                          Fake({"--score", "-50"}, "Beta")};
+    rig.controller.catalog().engines = {Fake({"--score", "35", "--slow-start", "500"}, "Alpha"),
+                                        Fake({"--score", "-50"}, "Beta")};
     chess::Game game;
     ASSERT_TRUE(game.PlaySan("e4"));
     rig.controller.ShowGame(game, {});
     rig.controller.ShowPly(1);
-    rig.controller.Command(kAnalyse);
+    rig.controller.Command(kAnalyze);
     const auto &graph = rig.view.graph();
     ASSERT_TRUE(rig.FramesUntil([&] { return !graph.series().empty() && graph.series()[0].points[0]; }));
     ASSERT_TRUE(rig.FramesUntil(
         [&] { return graph.series().size() == 2 && graph.series()[0].points[0] && graph.series()[1].points[0]; }));
     EXPECT_EQ(graph.series()[0].name, "Alpha");
     EXPECT_EQ(graph.series()[1].name, "Beta");
-    rig.controller.Command(kAnalyse);
+    rig.controller.Command(kAnalyze);
 }
 
-TEST(Analysis, AnEngineThatWillNotStartIsNamedAndTheRestAnalyse)
+TEST(Analysis, AnEngineThatWillNotStartIsNamedAndTheRestAnalyze)
 {
     Rig         rig;
     EngineEntry missing;
-    missing.config.executable          = "no-such-engine-anywhere";
-    missing.config.name                = "Missing";
-    rig.controller.catalogue().engines = {missing, Fake({}, "Fake")};
-    rig.controller.SetAnalysing(true);
+    missing.config.executable        = "no-such-engine-anywhere";
+    missing.config.name              = "Missing";
+    rig.controller.catalog().engines = {missing, Fake({}, "Fake")};
+    rig.controller.SetAnalyzing(true);
     ASSERT_TRUE(rig.FramesUntil([&] {
         for (const std::string &item : rig.view.status().items())
         {
@@ -179,18 +179,18 @@ TEST(Analysis, AnEngineThatWillNotStartIsNamedAndTheRestAnalyse)
     EXPECT_EQ(rig.view.analysis().blocks().size(), 1u);
 }
 
-TEST(Analysis, OnlyTheEnginesMarkedForItAnalyseAndWithNoneConfiguredItSaysSo)
+TEST(Analysis, OnlyTheEnginesMarkedForItAnalyzeAndWithNoneConfiguredItSaysSo)
 {
     Rig rig;
-    rig.controller.SetAnalysing(true);
+    rig.controller.SetAnalyzing(true);
     EXPECT_EQ(rig.controller.analysis(), nullptr);
     EXPECT_NE(rig.controller.last_error().find("No engine"), std::string::npos);
 
-    EngineEntry marked                 = Fake({}, "Marked");
-    EngineEntry unmarked               = Fake({}, "Unmarked");
-    unmarked.is_analysing              = false;
-    rig.controller.catalogue().engines = {unmarked, marked};
-    rig.controller.SetAnalysing(true);
+    EngineEntry marked               = Fake({}, "Marked");
+    EngineEntry unmarked             = Fake({}, "Unmarked");
+    unmarked.is_analyzing            = false;
+    rig.controller.catalog().engines = {unmarked, marked};
+    rig.controller.SetAnalyzing(true);
     ASSERT_NE(rig.controller.analysis(), nullptr);
     EXPECT_EQ(rig.controller.analysis()->Names(), std::vector<std::string>{"Marked"});
 }

@@ -132,7 +132,7 @@ struct ChildProcess::Platform
     HANDLE      job     = nullptr; ///< The job object that kills it when closed.
     HANDLE      input   = nullptr; ///< The write end of its standard input.
     DWORD       id      = 0;       ///< Its process id.
-    std::mutex  input_mutex;       ///< Serialises writes and the close of input.
+    std::mutex  input_mutex;       ///< Serializes writes and the close of input.
     std::thread output_reader;     ///< Reads standard output.
     std::thread error_reader;      ///< Reads standard error.
 };
@@ -298,7 +298,7 @@ ChildProcess::~ChildProcess()
 void ChildProcess::JoinReaders()
 {
     // The readers end when the pipes do: when the child and everything in its job have gone. A grandchild outside
-    // the job could hold a pipe open, so after a grace period the blocked reads are cancelled.
+    // the job could hold a pipe open, so after a grace period the blocked reads are canceled.
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
     while (!output_.IsClosed() && std::chrono::steady_clock::now() < deadline)
     {

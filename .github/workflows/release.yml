@@ -13,7 +13,7 @@ name: release
 #
 # IR Capture's release is the model, step for step, but for its end. verify opens the release as a draft before
 # anything is built and each package job uploads its files straight onto it, so no workflow artifact - the
-# organisation's shared storage quota - stands between a build and its release; the last job checks all four are there
+# organization's shared storage quota - stands between a build and its release; the last job checks all four are there
 # and pushes the tag. The release stays a draft, which only the repository's collaborators see: the repository is
 # public, so a published release here would be public at once. A release reaches the public only through promote.yml,
 # which publishes a finished draft in place, with its fixed-name files and notes, on Jonny's word.
@@ -31,12 +31,12 @@ name: release
 # downloaded by its pin and refused on a hash that differs), each a separate GPLv3 program; THIRD-PARTY-NOTICES.txt
 # says where each one's source is. Each package is held to its stage with every engine started from its place in it.
 #
-# Signing, with the organisation's secrets: on Windows the installer and its uninstaller through SSL.com's eSigner
+# Signing, with the organization's secrets: on Windows the installer and its uninstaller through SSL.com's eSigner
 # (CodeSignTool by hash, the toolkit's tools/esigner-sign.ps1; the account checked before the build, which spends no
 # signing), whenever the eSigner secrets are set - a dry run's too, so a dry run proves the signature a release will
 # carry, at two of the account's signings; the engines keep their own releases' signatures. On macOS every bundled
 # engine, the app and the tool with the Developer ID Application identity and the hardened runtime, from the inside out
-# (packaging/macos/sign.sh), the installer with the Developer ID Installer identity, notarised by Apple and stapled (the
+# (packaging/macos/sign.sh), the installer with the Developer ID Installer identity, notarized by Apple and stapled (the
 # toolkit's tools/sign-mac.sh on a keychain of the job's own), in a dry run as in a release.
 on:
   push:
@@ -366,7 +366,7 @@ jobs:
 
   # macOS, universal, for 13.3 on, in a tree built from nothing on the Apple silicon runner: every suite natively, both
   # slices and the floor held (Rosetta runs the x86_64 slice), the engines, the app and the tool signed, the installer
-  # signed, notarised, stapled and held to the stage with every engine answering from its place in it.
+  # signed, notarized, stapled and held to the stage with every engine answering from its place in it.
   macos:
     name: Package macOS
     needs: verify
@@ -442,7 +442,7 @@ jobs:
           fi
           export RECKLESS_APPLICATION_IDENTITY
           packaging/macos/make-installer.sh build/release-dist "$VERSION" "build/release-out/reckless-amphitheater-$VERSION-macos.pkg"
-      - name: Notarise the installer
+      - name: Notarize the installer
         env:
           MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """What a release ships, staged from a release build tree into a folder of its own: the window and the command-line
 tool as the build made them, the bundled engines (tools/bundled_engines.py stage: each pinned release's binary, held to
-its hash, and the manifest the host seeds a person's engine list from), the licence and the third-party
+its hash, and the manifest the host seeds a person's engine list from), the license and the third-party
 notices. Everything after it - the archive, the installers, the signing - reads the stage, never the build tree.
 
     python3 -I packaging/stage.py <build-dir> <dist-dir> linux|macos|windows [--cache DIR] [--leave-out-unfit]

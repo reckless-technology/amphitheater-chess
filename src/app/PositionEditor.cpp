@@ -237,7 +237,7 @@ void PiecePalette::Paint(reckless::gfx::Canvas &c)
         for (const chess::Piece piece : kPaletteOrder)
         {
             const RectF bounds = CellBounds({color, piece});
-            // On a light square's colour, so Black's pieces show as well as White's.
+            // On a light square's color, so Black's pieces show as well as White's.
             c.SetColor(theme::kLightSquare);
             c.FillRoundedRect(bounds.Reduced(2.0f), 4.0f);
             pieces_.Draw(c, color, piece, bounds.Reduced(4.0f));

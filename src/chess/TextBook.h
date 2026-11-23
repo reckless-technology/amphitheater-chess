@@ -100,7 +100,7 @@ struct TextBookIndex
     struct Entry
     {
         std::vector<Move> selectable;   ///< Moves the engine may choose here.
-        std::vector<Move> questionable; ///< Moves it recognises and replays but never chooses.
+        std::vector<Move> questionable; ///< Moves it recognizes and replays but never chooses.
     };
 
     std::map<std::uint64_t, Entry> positions;    ///< Keyed as PolyglotKey keys a position.

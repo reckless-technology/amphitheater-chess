@@ -86,8 +86,8 @@ void AnalysisPanel::Paint(reckless::gfx::Canvas &c)
             const auto  chip_font = fonts::Small().WithHeight(15.0f);
             const float chip_w    = c.TextWidth(chip_font, block.state) + 18.0f;
             const RectF chip{chip_right + 14.0f, y + (header.height() - 22.0f) / 2.0f, chip_w, 22.0f};
-            const auto  colour = block.is_thinking ? theme::kAmber : theme::kMuted;
-            c.SetColor(colour);
+            const auto  color = block.is_thinking ? theme::kAmber : theme::kMuted;
+            c.SetColor(color);
             c.DrawRoundedRect(chip, 11.0f, 1.0f);
             c.SetFont(chip_font);
             c.DrawText(block.state, chip, Justify::kCentred, false);

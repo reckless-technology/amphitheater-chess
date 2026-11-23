@@ -39,7 +39,7 @@ class SectionLabel final : public reckless::view::View
     }
 
     /**
-     * The label at the left, centred down.
+     * The label at the left, centered down.
      * @param c The canvas.
      */
     void Paint(reckless::gfx::Canvas &c) override;
@@ -115,12 +115,12 @@ class LogHeader final : public reckless::view::View
 /** What a player's strip shows. */
 struct PlayerStripState
 {
-    bool        is_white = true;    ///< The side: its dot's colour.
+    bool        is_white = true;    ///< The side: its dot's color.
     std::string name;               ///< The engine's name, or the person's.
     std::string details;            ///< "White · engine · Threads 1, Hash 64 MB, ponder".
     std::string clock;              ///< The clock's face, "4:11.6"; empty for no clock.
     bool        is_running = false; ///< Whether this side's clock runs: its face lit amber.
-    bool        has_lost   = false; ///< Whether the game ended against this side: its face in the error colour.
+    bool        has_lost   = false; ///< Whether the game ended against this side: its face in the error color.
 };
 
 /** A player's strip above or below the board: the side's dot, the name and the details, and the clock. */

@@ -3,7 +3,7 @@
 /// the time control, and where the game starts.
 
 #include "Controls.h"
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 #include "PlaySession.h"
 
 #include <functional>
@@ -35,7 +35,7 @@ class NewGameDialog final : public DialogFrame
     NewGameDialog(const std::vector<EngineEntry> &engines, bool can_start_from_shown);
 
     std::function<void(const PlaySettings &settings, bool from_shown)> on_start; ///< Start pressed, settings sound.
-    std::function<void()>                                              on_close; ///< Cancelled.
+    std::function<void()>                                              on_close; ///< Canceled.
 
     /**
      * The settings as they stand, when they are sound.

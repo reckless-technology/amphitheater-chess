@@ -8,10 +8,10 @@ form the platforms carry it. The results are committed, so a build needs no Pyth
 Two compositions on a 1024-unit canvas:
 
     Windows and Linux: the artwork filling a square with modestly rounded corners (9 % of the side) across the canvas.
-    macOS: Apple's icon grid - an 824-unit rounded square centred in the canvas at the standard corner radius (185.4),
+    macOS: Apple's icon grid - an 824-unit rounded square centered in the canvas at the standard corner radius (185.4),
            under the subtle drop shadow Apple's template carries, the artwork filling it.
 
-On both the square has a hairline light-grey edge (#D0D0D0, 1/128 of the canvas, and never under one device pixel) so
+On both the square has a hairline light-gray edge (#D0D0D0, 1/128 of the canvas, and never under one device pixel) so
 it keeps its shape on a white background. Every size, 16 to 1024, shows the whole artwork: each is resampled straight
 from the 2048-pixel source to its own pixels by Pillow's Lanczos filter - never one bitmap stepped down through the
 sizes, and never sharpened or cropped. The square's shape, its edge and the shadow are drawn as SVG by resvg (the

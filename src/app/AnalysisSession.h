@@ -1,11 +1,11 @@
 #pragma once
-/// @file AnalysisSession.h Analyse: the selected engines thinking without end ("go infinite") about the position the
+/// @file AnalysisSession.h Analyze: the selected engines thinking without end ("go infinite") about the position the
 /// board shows, the search moved to each new position as the person steps through the game. Each engine is started -
-/// its handshake, MultiPV and UCI_AnalyseMode - on a worker thread, then handed to the window's thread, which owns it
+/// its handshake, MultiPV and UCI_AnalyzeMode - on a worker thread, then handed to the window's thread, which owns it
 /// from then on and polls its events once a frame without ever waiting: a new position stops the search under way and
 /// starts the next when its "bestmove" comes. Engines are quit on worker threads too, so the window never waits.
 
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 #include "SearchTracker.h"
 #include "chess/Game.h"
 #include "uci/Engine.h"
@@ -22,7 +22,7 @@
 namespace amphitheater::app
 {
 
-/** A line an analysing engine exchanged. */
+/** A line an analyzing engine exchanged. */
 struct AnalysisLogLine
 {
     std::string                           engine;    ///< The engine's name.
@@ -69,7 +69,7 @@ class EngineReaper
     std::vector<std::future<void>> quitting_; ///< The quits under way.
 };
 
-/** The engines analysing the position shown. */
+/** The engines analyzing the position shown. */
 class AnalysisSession
 {
   public:
@@ -90,7 +90,7 @@ class AnalysisSession
     AnalysisSession &operator=(const AnalysisSession &) = delete;
 
     /**
-     * The position to analyse: the game's position at a ply, sent with the moves that led to it so an engine sees
+     * The position to analyze: the game's position at a ply, sent with the moves that led to it so an engine sees
      * its repetitions.
      * @param game The game.
      * @param ply The position, from 0.
@@ -118,10 +118,10 @@ class AnalysisSession
 
   private:
     /** One engine and its state. */
-    struct Analyser
+    struct Analyzer
     {
         /** @param engine The engine; its search followed under its name. */
-        explicit Analyser(EngineEntry engine) : entry(std::move(engine)), tracker(entry.DisplayName())
+        explicit Analyzer(EngineEntry engine) : entry(std::move(engine)), tracker(entry.DisplayName())
         {
         }
 
@@ -147,7 +147,7 @@ class AnalysisSession
                                                     std::shared_ptr<std::vector<AnalysisLogLine>> log);
 
     EngineReaper                                 &reaper_;      ///< Where engines go to be quit.
-    std::vector<std::unique_ptr<Analyser>>        analysers_;   ///< The engines.
+    std::vector<std::unique_ptr<Analyzer>>        analyzers_;   ///< The engines.
     std::shared_ptr<std::mutex>                   log_lock_;    ///< Guards the log.
     std::shared_ptr<std::vector<AnalysisLogLine>> log_;         ///< Lines not yet drained.
     std::vector<AnalysisLogLine>                  drained_;     ///< Lines fed to the trackers, for DrainLog.

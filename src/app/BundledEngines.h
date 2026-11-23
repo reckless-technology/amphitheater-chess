@@ -4,7 +4,7 @@
 ///
 /// The installer lays them out under a folder named engines (in the install folder on Windows and in the portable
 /// Linux archive, in the bundle's Contents/Resources on macOS, /usr/lib/reckless-amphitheater/engines from the Debian
-/// package), with bundled.json beside them: each engine's id, name, version and licence, the defaults it is seeded
+/// package), with bundled.json beside them: each engine's id, name, version and license, the defaults it is seeded
 /// with, the options its handshake declared when it was packaged, and its builds in order of preference, each with what
 /// it asks of the CPU (tools/bundled_engines.py writes it). At every start the host reads it and seeds the engine list
 /// (SeedBundledEngines): an engine new to the list is added with the manifest's defaults, marked bundled; one the list
@@ -12,7 +12,7 @@
 /// id and name where the engine has been renamed; one the person removed stays removed; the person's own engines are
 /// never touched.
 
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 
 #include <filesystem>
 #include <string>
@@ -47,7 +47,7 @@ struct BundledEngine
     std::string                                      id;          ///< Its id, the folder it lies in ("pawnstar").
     std::string                                      name;        ///< The name the list shows ("Pawnstar").
     std::string                                      version;     ///< Its release's version ("1.0.0").
-    std::string                                      licence;     ///< Its licence's SPDX id ("GPL-3.0").
+    std::string                                      license;     ///< Its license's SPDX id ("GPL-3.0").
     std::string                                      engine_name; ///< The name its handshake gave when packaged.
     std::string                                      author;      ///< The author its handshake gave.
     std::vector<std::pair<std::string, std::string>> options;     ///< The UCI options it is seeded with, in order.
@@ -90,10 +90,10 @@ std::vector<BundledEngine> ReadBundledEngines(const std::filesystem::path &folde
  *  - any other bundled engine is added at the list's end with the manifest's name and options, marked bundled;
  *  - every other engine of the list - the person's own, and a bundled one this install no longer carries - is left as
  *    it is.
- * @param catalogue The list.
+ * @param catalog The list.
  * @param bundled The engines this install carries (ReadBundledEngines).
  * @return Whether the list changed, so it is to be saved.
  */
-bool SeedBundledEngines(EngineCatalogue &catalogue, const std::vector<BundledEngine> &bundled);
+bool SeedBundledEngines(EngineCatalog &catalog, const std::vector<BundledEngine> &bundled);
 
 } // namespace amphitheater::app

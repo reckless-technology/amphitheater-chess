@@ -198,7 +198,7 @@ std::optional<reckless::gfx::Color> EngineLogModel::CellColour(std::size_t row, 
 namespace
 {
 
-/** @return The log's look: the monospaced face on the darkest colour, no stripes, no header. */
+/** @return The log's look: the monospaced face on the darkest color, no stripes, no header. */
 reckless::view::ListView::Style LogStyle()
 {
     auto style          = reckless::panel::ListViewStyle(theme::Lists(), fonts::Log());

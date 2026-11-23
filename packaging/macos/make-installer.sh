@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The macOS installer of a staged release (packaging/stage.py macos, signed by packaging/macos/sign.sh for a release):
-# a product package made with pkgbuild and productbuild - the licence shown, then three parts every install takes:
+# a product package made with pkgbuild and productbuild - the license shown, then three parts every install takes:
 #
 #   Amphitheater.app     /Applications/Reckless Technology, beside the suite's other apps, the five bundled engines
 #                           inside it (Contents/Resources/engines/<engine>/); not relocatable, so Installer never follows
@@ -9,7 +9,7 @@
 #   LICENSE.txt, THIRD-PARTY-NOTICES.txt   /Library/Documentation/Reckless Amphitheater
 #
 # and the uninstaller beside the app. Signed with the Developer ID Installer identity RECKLESS_INSTALLER_IDENTITY names,
-# in RECKLESS_SIGNING_KEYCHAIN where that is set; else unsigned, for a pull request's run or a try by hand. Notarisation
+# in RECKLESS_SIGNING_KEYCHAIN where that is set; else unsigned, for a pull request's run or a try by hand. Notarization
 # is the toolkit's tools/sign-mac.sh notarize, after it.
 #
 #   packaging/macos/make-installer.sh <dist-dir> <version> <out.pkg>
@@ -47,7 +47,7 @@ pkgbuild --root "$work/cli-root" --install-location / --identifier "$id.cli" --v
 # The uninstaller, a part of its own, in /Applications/Reckless Technology beside the app (uninstall.applescript,
 # uninstall.sh in its Resources): an AppleScript app made here with osacompile, versioned and identified as the host's,
 # and signed as the app is - with the Developer ID Application identity RECKLESS_APPLICATION_IDENTITY names, the
-# hardened runtime and a secure timestamp, where the release signs; ad hoc elsewhere - so Apple's notarisation of the
+# hardened runtime and a secure timestamp, where the release signs; ad hoc elsewhere - so Apple's notarization of the
 # package covers it too. Its own part, so the other products' installers and uninstallers, which share the folder,
 # never count it as theirs.
 mkdir -p "$work/uninstaller-root/Reckless Technology"
@@ -82,7 +82,7 @@ plutil -replace 0.BundleIsVersionChecked -bool NO "$work/uninstaller.plist"
 pkgbuild --root "$work/uninstaller-root" --component-plist "$work/uninstaller.plist" --install-location /Applications \
     --identifier "$id.uninstaller" --version "$version" "$work/uninstaller.pkg" > /dev/null
 
-# The product: the licence, the floor, the three parts taken whole.
+# The product: the license, the floor, the three parts taken whole.
 mkdir -p "$work/resources"
 cp "$dist/LICENSE.txt" "$work/resources/LICENSE.txt"
 sed -e "s/@VERSION@/$version/g" "$here/distribution.xml.in" > "$work/distribution.xml"

@@ -73,8 +73,8 @@ Files: *
 Copyright: 2026 Jonny Reckless
 License: GPL-3+
  Free software under the GNU General Public License version 3 or later, in
- /usr/share/doc/reckless-amphitheater/LICENSE.txt; on Debian systems the licence is also in
- /usr/share/common-licenses/GPL-3. The third-party parts it contains are used under the licences
+ /usr/share/doc/reckless-amphitheater/LICENSE.txt; on Debian systems the license is also in
+ /usr/share/common-licenses/GPL-3. The third-party parts it contains are used under the licenses
  /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt reproduces.
 
 Files: usr/lib/reckless-amphitheater/engines/*
@@ -82,16 +82,16 @@ Copyright: 2009-2026 Jonny Reckless
 License: GPL-3
  The bundled chess engines Pawnstar, Pawnstar-Go, Pawnstar-RS and Stoopid Chess, each a separate program under the
  GNU General Public License version 3, whose text and each engine's source are in
- /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt; on Debian systems the licence is also in
- /usr/share/common-licenses/GPL-3. That file also points to each engine's own licence and data notices.
+ /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt; on Debian systems the license is also in
+ /usr/share/common-licenses/GPL-3. That file also points to each engine's own license and data notices.
 
 Files: usr/lib/reckless-amphitheater/engines/trebuchet/*
 Copyright: 2026 Jonny Reckless
 License: GPL-3+
  The bundled chess engine Trebuchet, a separate program under the GNU General Public License version 3 or, at your
  option, any later version, whose text and source are in
- /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt; on Debian systems the licence is also in
- /usr/share/common-licenses/GPL-3. That file also points to Trebuchet's own licence and data notices.
+ /usr/share/doc/reckless-amphitheater/THIRD-PARTY-NOTICES.txt; on Debian systems the license is also in
+ /usr/share/common-licenses/GPL-3. That file also points to Trebuchet's own license and data notices.
 COPYRIGHT
 chmod 0644 "$pkg/usr/share/doc/reckless-amphitheater/copyright"
 
@@ -150,7 +150,7 @@ Section: games
 Priority: optional
 Homepage: https://recklesstechnology.com
 Description: chess GUI and UCI engine host
- Reckless Amphitheater plays chess against UCI engines, analyses positions with several
+ Reckless Amphitheater plays chess against UCI engines, analyzes positions with several
  engines at once, and runs matches and tournaments between engines, with clocks,
  opening books, adjudication, pondering and PGN. amphitheater-cli runs the same matches
  and tournaments from the command line. Five chess engines come with it, each a

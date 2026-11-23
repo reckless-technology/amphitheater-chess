@@ -5,7 +5,7 @@
 /// its program and runs its handshake on a worker thread, which fills its name, its author and its options.
 
 #include "Controls.h"
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 
 #include "ListView.h"
 
@@ -149,16 +149,16 @@ class ScrollPane final : public reckless::view::View
 class EngineManagerDialog final : public DialogFrame
 {
   public:
-    /** @param catalogue The engines as configured; the dialog edits a copy. */
-    explicit EngineManagerDialog(EngineCatalogue catalogue);
+    /** @param catalog The engines as configured; the dialog edits a copy. */
+    explicit EngineManagerDialog(EngineCatalog catalog);
 
-    std::function<void(const EngineCatalogue &catalogue)> on_save;  ///< Save pressed: the engines as edited.
-    std::function<void()>                                 on_close; ///< Cancelled.
+    std::function<void(const EngineCatalog &catalog)> on_save;  ///< Save pressed: the engines as edited.
+    std::function<void()>                             on_close; ///< Canceled.
 
     /** @return The engines as edited. */
-    const EngineCatalogue &catalogue() const
+    const EngineCatalog &catalog() const
     {
-        return catalogue_;
+        return catalog_;
     }
 
     /** @return The engine selected, or -1. */
@@ -224,9 +224,9 @@ class EngineManagerDialog final : public DialogFrame
     }
 
     /** @return The analysis box. */
-    CheckBox &analyse()
+    CheckBox &analyze()
     {
-        return analyse_;
+        return analyze_;
     }
 
     /**
@@ -261,8 +261,8 @@ class EngineManagerDialog final : public DialogFrame
     class EnginesModel final : public reckless::view::ListModel
     {
       public:
-        /** @param catalogue The engines; outlives the model. */
-        explicit EnginesModel(const EngineCatalogue &catalogue) : catalogue_(catalogue)
+        /** @param catalog The engines; outlives the model. */
+        explicit EnginesModel(const EngineCatalog &catalog) : catalog_(catalog)
         {
         }
 
@@ -270,7 +270,7 @@ class EngineManagerDialog final : public DialogFrame
         std::string CellText(std::size_t row, std::size_t column) const override;
 
       private:
-        const EngineCatalogue &catalogue_; ///< The engines.
+        const EngineCatalog &catalog_; ///< The engines.
     };
 
     /** The editor brought to the selected engine. */
@@ -282,7 +282,7 @@ class EngineManagerDialog final : public DialogFrame
     /** @return The selected engine, or null. */
     EngineEntry *Selected();
 
-    EngineCatalogue                         catalogue_;        ///< The engines as edited.
+    EngineCatalog                           catalog_;          ///< The engines as edited.
     EnginesModel                            model_;            ///< The list's rows.
     reckless::view::ListView                list_;             ///< The engines.
     std::unique_ptr<reckless::view::Button> add_;              ///< Add...
@@ -295,7 +295,7 @@ class EngineManagerDialog final : public DialogFrame
     Caption                                 args_label_;       ///< "Arguments".
     reckless::view::TextField               arguments_;        ///< The program's arguments.
     CheckBox                                ponder_;           ///< Ponder.
-    CheckBox                                analyse_;          ///< Use for analysis.
+    CheckBox                                analyze_;          ///< Use for analysis.
     Caption                                 depth_label_;      ///< "Depth limit".
     reckless::view::TextField               depth_;            ///< The depth limit.
     Caption                                 book_label_;       ///< "Book".

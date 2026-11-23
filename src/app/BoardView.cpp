@@ -28,7 +28,7 @@ constexpr chess::Piece kPromotionOrder[] = {chess::kQueen, chess::kKnight, chess
 
 reckless::gfx::Color SquareFill(chess::Square square, bool is_last_move)
 {
-    // Each shade lit in its own colour: one wash of the accent over both leaves a dark square looking unlit.
+    // Each shade lit in its own color: one wash of the accent over both leaves a dark square looking unlit.
     const bool is_dark = (square.File() + square.Rank()) % 2 == 0;
     if (is_last_move)
     {
@@ -313,7 +313,7 @@ void BoardView::DrawArrow(reckless::gfx::Canvas &c, const BoardArrow &arrow) con
     const float  half  = size * 0.26f; // half the head's width
     const float  shaft = size * 0.17f; // the shaft's width
     const PointF neck{to.x - ux * head, to.y - uy * head};
-    c.SetColor(arrow.colour);
+    c.SetColor(arrow.color);
     reckless::gfx::Path line;
     line.MoveTo(from);
     line.LineTo(neck);

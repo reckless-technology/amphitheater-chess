@@ -241,7 +241,7 @@ elseif ($env:GITHUB_ACTIONS -eq 'true') {
 else { Install-VisualStudio (@($vsCore) + $lacking | Select-Object -Unique) }
 
 # uv, which installs clang-format and gcovr. Its executables go to ~/.local/bin, spelled out from USERPROFILE so a
-# profile redirected for a test run is honoured whatever uv takes the home folder to be.
+# profile redirected for a test run is honored whatever uv takes the home folder to be.
 $env:UV_TOOL_BIN_DIR = $localBin
 $script:uv = $null
 $uvExe = Join-Path $localBin 'uv.exe'
@@ -255,7 +255,7 @@ else {
   $uvInstaller = Join-Path $scratch 'uv-installer.ps1'
   Get-VerifiedFile "https://astral.sh/uv/$UvVersion/install.ps1" $UvInstallerSha256 $uvInstaller
   # The installer runs in a process of its own with the install directory spelled out, so a profile redirected through
-  # USERPROFILE is honoured; this script puts the directory on the PATH itself.
+  # USERPROFILE is honored; this script puts the directory on the PATH itself.
   $env:UV_INSTALL_DIR = $localBin
   $env:UV_NO_MODIFY_PATH = '1'
   $shell = (Get-Process -Id $PID).Path

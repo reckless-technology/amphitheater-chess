@@ -58,7 +58,7 @@ class Position
   public:
     // State variables, public as pawnstar has them: Pins reads them.
     std::array<Bitboard, 7> pieces_;                ///< Bitboards indexed by Piece (index 0 = occupied squares).
-    std::array<Bitboard, 2> colors_;                ///< Per-colour bitboards indexed by Color.
+    std::array<Bitboard, 2> colors_;                ///< Per-color bitboards indexed by Color.
     std::array<Piece, 64>   squares_;               ///< The piece on each square, for fast lookup.
     Bitboard                checkers_;              ///< The squares of the pieces checking the side to move.
     zobrist_t               hash_;                  ///< Zobrist hash, maintained incrementally.
@@ -102,9 +102,9 @@ class Position
     constexpr Bitboard OccupiedSquares() const;
 
     /**
-     * The pieces of one colour attacking a square.
+     * The pieces of one color attacking a square.
      * @param location The square.
-     * @param color The attacking colour.
+     * @param color The attacking color.
      * @return The attackers' squares.
      */
     constexpr Bitboard AttacksTo(Square location, Color color) const;
@@ -116,9 +116,9 @@ class Position
     constexpr MoveList GenerateLegalCaptures() const;
 
     /**
-     * Whether a colour attacks a square.
+     * Whether a color attacks a square.
      * @param s The square.
-     * @param c The attacking colour.
+     * @param c The attacking color.
      * @return Whether any of its pieces attacks the square.
      */
     constexpr bool IsAttacked(Square s, Color c) const;
@@ -143,9 +143,9 @@ class Position
     }
 
     /**
-     * The colour of the piece on a square.
+     * The color of the piece on a square.
      * @param square An occupied square.
-     * @return Its piece's colour.
+     * @return Its piece's color.
      */
     Color ColorOn(Square square) const
     {
@@ -153,9 +153,9 @@ class Position
     }
 
     /**
-     * The squares of one colour's pieces of one kind.
+     * The squares of one color's pieces of one kind.
      * @param piece The kind.
-     * @param color The colour.
+     * @param color The color.
      * @return The squares.
      */
     Bitboard Pieces(Piece piece, Color color) const
@@ -205,7 +205,7 @@ class Position
 
     /**
      * Whether neither side can mate by any series of legal moves: king against king, king and one minor piece
-     * against king, or kings and bishops alone with every bishop on squares of one colour.
+     * against king, or kings and bishops alone with every bishop on squares of one color.
      * @return Whether the position is drawn for want of material.
      */
     bool HasInsufficientMaterial() const;
@@ -220,7 +220,7 @@ class Position
   private:
     /**
      * Place a piece on the board.
-     * @param color The piece's colour.
+     * @param color The piece's color.
      * @param piece The piece.
      * @param to The square.
      */
@@ -228,7 +228,7 @@ class Position
 
     /**
      * Remove a piece from the board.
-     * @param color The piece's colour.
+     * @param color The piece's color.
      * @param piece The piece.
      * @param from The square.
      */
@@ -236,7 +236,7 @@ class Position
 
     /**
      * Move a piece on the board.
-     * @param color The piece's colour.
+     * @param color The piece's color.
      * @param piece The piece.
      * @param from Its square.
      * @param to Its destination.

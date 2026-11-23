@@ -181,7 +181,7 @@ int main(int argc, char **argv)
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
             engine.config.executable = name;
-            controller.catalogue().engines.push_back(engine);
+            controller.catalog().engines.push_back(engine);
         }
         controller.Command(amphitheater::app::kNewGame);
     }
@@ -204,7 +204,7 @@ int main(int argc, char **argv)
             pawnstar.declared.push_back(*amphitheater::uci::ParseOptionLine(line));
         }
         pawnstar.SetOption("Hash", "64");
-        controller.catalogue().engines = {pawnstar};
+        controller.catalog().engines = {pawnstar};
 
         // The other four the installers carry, in their order, each named as its program names itself in "id name".
         // Pawnstar-RS says "Pawnstar" there, so it carries a name of its own to tell it from Pawnstar.
@@ -226,7 +226,7 @@ int main(int argc, char **argv)
             engine.config.name       = other.name;
             engine.engine_name       = other.engine_name;
             engine.author            = "Jonny Reckless";
-            controller.catalogue().engines.push_back(engine);
+            controller.catalog().engines.push_back(engine);
         }
         controller.Command(amphitheater::app::kEngineManager);
     }
@@ -252,7 +252,7 @@ int main(int argc, char **argv)
             amphitheater::app::EngineEntry engine;
             engine.config.name       = name;
             engine.config.executable = name;
-            controller.catalogue().engines.push_back(engine);
+            controller.catalog().engines.push_back(engine);
         }
         controller.Command(amphitheater::app::kNewTournament);
     }

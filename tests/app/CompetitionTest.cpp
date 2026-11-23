@@ -114,8 +114,8 @@ TEST(Competition, AMatchIsPlayedToItsEndWithTheBoardFollowingItsGames)
     Rig rig;
     // Each move takes 20 ms, so a game lasts many frames however fast the machine: an engine that answers at once can
     // finish both games between two frames, and the board never sees one in progress.
-    rig.controller.catalogue().engines = {Fake("Alpha", {"--think", "20"}),
-                                          Fake("Beta", {"--seed", "5", "--think", "20"})};
+    rig.controller.catalog().engines = {Fake("Alpha", {"--think", "20"}),
+                                        Fake("Beta", {"--seed", "5", "--think", "20"})};
     rig.controller.Command(kNewMatch);
     auto *dialog = dynamic_cast<CompetitionDialog *>(rig.controller.dialog());
     ASSERT_NE(dialog, nullptr);
@@ -173,7 +173,7 @@ TEST(Competition, AGameInProgressIsChosenToWatch)
 TEST(Competition, ATournamentsStandingsAndCrosstableFollowItsResults)
 {
     Rig rig;
-    rig.controller.catalogue().engines = {Fake("Alpha"), Fake("Beta", {"--seed", "5"}), Fake("Gamma", {"--seed", "9"})};
+    rig.controller.catalog().engines = {Fake("Alpha"), Fake("Beta", {"--seed", "5"}), Fake("Gamma", {"--seed", "9"})};
     rig.controller.Command(kNewTournament);
     auto *dialog = dynamic_cast<CompetitionDialog *>(rig.controller.dialog());
     ASSERT_NE(dialog, nullptr);
@@ -216,7 +216,7 @@ TEST(Competition, ATournamentsStandingsAndCrosstableFollowItsResults)
 TEST(Competition, TheDialogsRefuseWhatTheCommandLineRefuses)
 {
     Rig rig;
-    rig.controller.catalogue().engines = {Fake("Alpha"), Fake("Beta")};
+    rig.controller.catalog().engines = {Fake("Alpha"), Fake("Beta")};
     rig.controller.Command(kNewMatch);
     auto *dialog = dynamic_cast<CompetitionDialog *>(rig.controller.dialog());
     ASSERT_NE(dialog, nullptr);

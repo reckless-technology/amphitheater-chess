@@ -2,7 +2,7 @@
 Type=Application
 Name=Reckless Amphitheater
 GenericName=Chess GUI
-Comment=Play, analyse and run matches and tournaments between UCI chess engines
+Comment=Play, analyze and run matches and tournaments between UCI chess engines
 Exec=/opt/reckless-technology/bin/amphitheater %F
 Icon=com.recklesstechnology.amphitheater
 Terminal=false

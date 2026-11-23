@@ -379,7 +379,7 @@ bool Position::HasInsufficientMaterial() const
     {
         return true;
     }
-    // Bishops alone, every one on squares of one colour, can never give mate.
+    // Bishops alone, every one on squares of one color, can never give mate.
     return knights.IsEmpty() && ((bishops & kWhiteSquares).IsEmpty() || (bishops & kBlackSquares).IsEmpty());
 }
 

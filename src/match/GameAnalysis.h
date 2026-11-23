@@ -22,7 +22,7 @@
 namespace amphitheater::match
 {
 
-/** How a game is analysed. */
+/** How a game is analyzed. */
 struct GameAnalysisSettings
 {
     uci::EngineConfig                  engine;    ///< The engine.
@@ -74,7 +74,7 @@ std::optional<MoveQuality> JudgeMove(const PositionAnalysis &before, const Posit
 int NagOf(MoveQuality quality);
 
 /** An engine over a game's positions, on a thread of its own. */
-class GameAnalyser
+class GameAnalyzer
 {
   public:
     /**
@@ -82,13 +82,13 @@ class GameAnalyser
      * @param start The position before the first move.
      * @param moves The game's moves, in UCI notation, each legal.
      */
-    GameAnalyser(GameAnalysisSettings settings, chess::Position start, std::vector<std::string> moves);
+    GameAnalyzer(GameAnalysisSettings settings, chess::Position start, std::vector<std::string> moves);
 
     /** Stops the analysis and waits for its thread, the engine quit. */
-    ~GameAnalyser();
+    ~GameAnalyzer();
 
-    GameAnalyser(const GameAnalyser &)            = delete;
-    GameAnalyser &operator=(const GameAnalyser &) = delete;
+    GameAnalyzer(const GameAnalyzer &)            = delete;
+    GameAnalyzer &operator=(const GameAnalyzer &) = delete;
 
     /** The engine started and the positions searched, the start's first, on a thread of their own. */
     void Start();

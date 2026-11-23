@@ -373,7 +373,7 @@ TEST(GameRunner, CallbackPlayersAndCancellation)
     EXPECT_EQ(chess::WritePgn(record.ToPgn()).find("[Result \"*\"]") != std::string::npos, true);
 }
 
-TEST(GameRunner, AWaitGivenUpWhenTheGameIsCancelledAbandonsItRatherThanLosingIt)
+TEST(GameRunner, AWaitGivenUpWhenTheGameIsCanceledAbandonsItRatherThanLosingIt)
 {
     // A person at the GUI stops the game while it is their move: the chooser gives up its wait and answers with no
     // move. The game is abandoned, not lost on time.
