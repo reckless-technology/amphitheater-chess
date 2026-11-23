@@ -15,11 +15,13 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <functional>
 #include <memory>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 #include "AppPlatform.h"
@@ -36,6 +38,21 @@
 #include <windows.h>
 #endif
 
+#if defined(__linux__)
+#include <dlfcn.h>
+#include <unistd.h>
+// Xlib last: its macros (None, Bool, Status, True) would reach into the headers above.
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#if __has_include(<X11/extensions/Xrandr.h>)
+#include <X11/extensions/Xrandr.h>
+/// Whether this build can set RandR's monitors up for the screens' test: RandR's header was there to build against.
+#define RECKLESS_TEST_MONITORS 1
+#else
+#define RECKLESS_TEST_MONITORS 0
+#endif
+#endif
+
 namespace
 {
 /** The platform for a test, or null - the test skipped, or failed where a window is required - where this machine
@@ -49,6 +66,12 @@ std::unique_ptr<reckless::app::AppPlatform> PlatformOrNull()
     {
         return nullptr;
     }
+#endif
+#if defined(__linux__)
+    // Xvfb refuses a connection opened within about a millisecond of another's close - 7 in 500 open-and-close
+    // pairs, none with 2 ms between them (measured on Linux Mint 22, 2026-11-19, with Xvfb from Ubuntu 24.04's xserver)
+    // - which reads as a platform with no window, at 0 ms, in whichever test came next.
+    std::this_thread::sleep_for(std::chrono::milliseconds(3));
 #endif
     return reckless::app::AppPlatform::Create("RecklessPlatformTest", {});
 }
@@ -318,6 +341,163 @@ TEST(AppPlatform, AQueueAWorkerKeepsOutlivesThePlatformAndRefusesItsPosts)
     EXPECT_FALSE(ran);
 }
 
+#if !defined(__APPLE__) // a Mac runs no loop here
+TEST(AppPlatform, ATimerTheAppCancelsTicksNoMoreAndMayCancelItselfInItsOwnTick)
+{
+    const std::unique_ptr<reckless::app::AppPlatform> platform = PlatformOrNull();
+    REQUIRE_PLATFORM(platform);
+    int  steady_ticks = 0;
+    int  own_ticks    = 0;
+    int  own_token    = 0;
+    auto steady       = platform->AddTimer(5, [&steady_ticks] { ++steady_ticks; });
+    own_token         = platform->AddTimer(5, [&] {
+        if (++own_ticks == 3)
+        {
+            platform->CancelTimer(own_token); // from inside its own tick
+        }
+    });
+    EXPECT_NE(steady, 0);
+    EXPECT_NE(own_token, 0);
+    EXPECT_NE(steady, own_token);
+    RunFor(*platform, 0.15);
+    EXPECT_GE(steady_ticks, 4) << "a timer runs until it is cancelled";
+    EXPECT_EQ(own_ticks, 3) << "the one that cancelled itself stopped on the third tick";
+    platform->CancelTimer(steady);
+    const int stopped_at = steady_ticks;
+    RunFor(*platform, 0.06);
+    EXPECT_EQ(steady_ticks, stopped_at) << "a cancelled timer ticks no more";
+    platform->CancelTimer(steady); // twice, and a token never given, are ignored
+    platform->CancelTimer(987654);
+}
+
+TEST(AppPlatform, AWindowWithNoChildWindowTakesAnExactSizeInUnitsAndTellsNoOneOfIt)
+{
+    // A plug-in's editor is attached to the window's handle with no toolkit content in it: the window is its own
+    // size, set exactly in the handle's units, told to nobody (the plug-in asked for it), and its own resize - the
+    // person's - told in those units (see the Linux test below, which makes one).
+    const std::unique_ptr<reckless::app::AppPlatform> platform = PlatformOrNull();
+    REQUIRE_PLATFORM(platform);
+    std::vector<std::pair<int, int>> told_units;
+    std::vector<std::pair<int, int>> told_design;
+    reckless::app::WindowOptions     options;
+    options.title            = "Reckless Platform Test";
+    options.width            = 320;
+    options.height           = 200;
+    options.resized          = [&told_design](int width, int height) { told_design.emplace_back(width, height); };
+    options.resized_in_units = [&told_units](int width, int height) { told_units.emplace_back(width, height); };
+    const std::unique_ptr<reckless::app::AppWindow> window = platform->OpenWindow(options);
+    ASSERT_NE(window, nullptr);
+    EXPECT_NE(window->Handle(), nullptr);
+    RunFor(*platform, 0.1);
+    const reckless::gfx::PointI opened = window->ContentSizeInUnits();
+    EXPECT_GT(opened.x, 0) << "the content's size, in the units the handle is sized in";
+    EXPECT_GT(opened.y, 0);
+    EXPECT_NEAR(static_cast<float>(opened.x), 320.0f * window->Scale(), 1.0f);
+    EXPECT_NEAR(static_cast<float>(opened.y), 200.0f * window->Scale(), 1.0f);
+    told_units.clear();
+    told_design.clear();
+
+    window->SetContentSizeInUnits(407, 301); // odd sizes, which no design size at a fractional scale holds
+    RunFor(*platform, 0.1);
+    EXPECT_EQ(window->ContentSizeInUnits(), (reckless::gfx::PointI{407, 301})) << "exactly the units asked for";
+    EXPECT_TRUE(told_units.empty()) << "a size the app set is told to no one";
+    EXPECT_TRUE(told_design.empty());
+    window->SetContentSizeInUnits(512, 384);
+    RunFor(*platform, 0.08);
+    EXPECT_EQ(window->ContentSizeInUnits(), (reckless::gfx::PointI{512, 384}));
+    EXPECT_TRUE(told_units.empty());
+
+    EXPECT_TRUE(window->SetUserResizable(true, {200, 150}, {900, 700})) << "resizable by the person, per window";
+    EXPECT_TRUE(window->SetUserResizable(false, {0, 0}, {0, 0})) << "and not";
+    RunFor(*platform, 0.08);
+    EXPECT_EQ(window->ContentSizeInUnits(), (reckless::gfx::PointI{512, 384})) << "its size kept through each";
+    EXPECT_TRUE(told_units.empty());
+}
+#endif
+
+#if defined(__linux__)
+TEST(AppPlatform, AWindowsOwnResizeAndCloseAreToldAndItClosesWhenTheAppDestroysIt)
+{
+    // The window manager's resize reaches resized_in_units in pixels, exact, for a window with no child window - made
+    // here as a window manager makes one, by resizing the X window from another connection - and its close button as
+    // a WM_DELETE_WINDOW message reaches `closing`, which does not close it: destroying the AppWindow does, and tells
+    // nothing.
+    const std::unique_ptr<reckless::app::AppPlatform> platform = PlatformOrNull();
+    REQUIRE_PLATFORM(platform);
+    Display *display = XOpenDisplay(nullptr);
+    ASSERT_NE(display, nullptr);
+    std::vector<std::pair<int, int>> told_units;
+    int                              closings = 0;
+    reckless::app::WindowOptions     options;
+    options.title            = "Reckless Platform Test";
+    options.width            = 320;
+    options.height           = 200;
+    options.resized_in_units = [&told_units](int width, int height) { told_units.emplace_back(width, height); };
+    options.closing          = [&closings] { ++closings; };
+    auto window              = platform->OpenWindow(options);
+    ASSERT_NE(window, nullptr);
+    RunFor(*platform, 0.1);
+    ASSERT_TRUE(window->SetUserResizable(true, {200, 150}, {900, 700}));
+    RunFor(*platform, 0.08);
+    const auto id = static_cast<::Window>(reinterpret_cast<std::uintptr_t>(window->Handle()));
+    XResizeWindow(display, id, 541, 333);
+    XFlush(display);
+    EXPECT_TRUE(RunUntil(*platform, [&told_units] { return !told_units.empty(); }));
+    ASSERT_FALSE(told_units.empty());
+    EXPECT_EQ(told_units.back(), (std::pair<int, int>{541, 333})) << "the person's size, in pixels, exactly";
+    EXPECT_EQ(window->ContentSizeInUnits(), (reckless::gfx::PointI{541, 333}));
+
+    XEvent close{};
+    close.xclient.type         = ClientMessage;
+    close.xclient.window       = id;
+    close.xclient.message_type = XInternAtom(display, "WM_PROTOCOLS", False);
+    close.xclient.format       = 32;
+    close.xclient.data.l[0]    = static_cast<long>(XInternAtom(display, "WM_DELETE_WINDOW", False));
+    close.xclient.data.l[1]    = CurrentTime;
+    XSendEvent(display, id, False, NoEventMask, &close);
+    XFlush(display);
+    EXPECT_TRUE(RunUntil(*platform, [&closings] { return closings > 0; })) << "the close told to the app";
+    EXPECT_EQ(closings, 1);
+    window.reset(); // the app closes it, from outside the event
+    EXPECT_EQ(closings, 1) << "destroying the window tells nothing";
+    XSync(display, False);
+    XWindowAttributes gone{};
+    EXPECT_EQ(XGetWindowAttributes(display, id, &gone), 0) << "the native window is gone";
+    XCloseDisplay(display);
+}
+
+TEST(AppPlatform, ADescriptorWatchedForTheAppIsPolledByTheLoopUntilItIsUnwatched)
+{
+    // What VST3's IRunLoop::registerEventHandler asks of a Linux host: the loop calls back whenever the descriptor is
+    // readable, level triggered, and stops at once when the watch is taken back, from inside the callback too.
+    const std::unique_ptr<reckless::app::AppPlatform> platform = PlatformOrNull();
+    REQUIRE_PLATFORM(platform);
+    ASSERT_TRUE(platform->CanWatchFileDescriptors());
+    EXPECT_EQ(platform->WatchFileDescriptor(-1, [] {}), 0) << "no such descriptor";
+    int fds[2];
+    ASSERT_EQ(pipe(fds), 0);
+    int calls = 0;
+    int token = 0;
+    token     = platform->WatchFileDescriptor(fds[0], [&] {
+        if (++calls == 3)
+        {
+            platform->UnwatchFileDescriptor(token); // from inside its own callback
+        }
+    });
+    EXPECT_NE(token, 0);
+    RunFor(*platform, 0.04);
+    EXPECT_EQ(calls, 0) << "nothing readable, nothing called";
+    ASSERT_EQ(write(fds[1], "x", 1), 1);
+    EXPECT_TRUE(RunUntil(*platform, [&calls] { return calls >= 3; })) << "never read, so readable each turn";
+    RunFor(*platform, 0.06);
+    EXPECT_EQ(calls, 3) << "unwatched inside the third call: no fourth";
+    platform->UnwatchFileDescriptor(token); // again, and one never given, are ignored
+    platform->UnwatchFileDescriptor(424242);
+    close(fds[0]);
+    close(fds[1]);
+}
+#endif
+
 TEST(AppPlatform, AWindowThatDidNotAskNeverGoesFullScreen)
 {
     const std::unique_ptr<reckless::app::AppPlatform> platform = PlatformOrNull();
@@ -426,3 +606,222 @@ TEST(AppPlatform, AWindowGoesFullScreenOverItsDisplayAndComesBackToItsOwnPlaceAn
 #endif
 #endif
 }
+
+#if defined(_WIN32)
+// A window's place put back where it was read from, and the screens' areas in the same pixels: on Windows both are
+// the virtual desktop's physical pixels (the process is per-monitor DPI aware), the window rectangle's top left
+// against each monitor's work area. Skipped where the session has no monitor to enumerate - a runner that is a
+// service on a window station that shows nothing - and failed, as the window suites are, where a window is required.
+TEST(AppPlatform, AWindowsPositionReadAndPutBackLandsWhereItWasAndIsOnAScreenArea)
+{
+    const std::unique_ptr<reckless::app::AppPlatform> platform = PlatformOrNull();
+    REQUIRE_PLATFORM(platform);
+    const std::vector<reckless::gfx::RectI> areas = platform->ScreenAreas();
+    if (areas.empty())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "a window was promised, and the session has no monitor";
+        }
+        GTEST_SKIP() << "no monitor in this session (a service's window station)";
+    }
+    reckless::app::WindowOptions options;
+    options.title                                          = "Reckless Platform Test";
+    options.width                                          = 320;
+    options.height                                         = 200;
+    options.constrain                                      = [](reckless::gfx::PointF proposed) { return proposed; };
+    const std::unique_ptr<reckless::app::AppWindow> window = platform->OpenWindow(options);
+    ASSERT_NE(window, nullptr);
+    RunFor(*platform, 0.3);
+
+    const std::pair<int, int> place = window->Position();
+    const bool is_on_an_area = std::any_of(areas.begin(), areas.end(), [&place](const reckless::gfx::RectI &area) {
+        return place.first >= area.x() && place.first < area.x() + area.width() && place.second >= area.y() &&
+               place.second < area.y() + area.height();
+    });
+    EXPECT_TRUE(is_on_an_area) << "the window's top left " << place.first << "," << place.second
+                               << " is inside one of the screens' work areas";
+
+    EXPECT_TRUE(window->SetPosition(place.first, place.second));
+    EXPECT_EQ(window->Position(), place) << "read and put back, it lands where it was";
+    const auto hwnd = static_cast<HWND>(window->Handle());
+    RECT       frame{};
+    GetWindowRect(hwnd, &frame);
+    EXPECT_EQ(std::make_pair(static_cast<int>(frame.left), static_cast<int>(frame.top)), place)
+        << "Position is the window rectangle's top left, which is what SetPosition places";
+
+    const std::pair<int, int> moved{place.first + 24, place.second + 16};
+    EXPECT_TRUE(window->SetPosition(moved.first, moved.second));
+    EXPECT_EQ(window->Position(), moved);
+    EXPECT_TRUE(window->SetPosition(place.first, place.second));
+    EXPECT_EQ(window->Position(), place) << "and put back again";
+}
+#endif
+
+#if defined(__linux__)
+TEST(AppPlatform, WithNoDisplayThePlatformSaysItCannotTellTheLargestContentRatherThanEndingTheProcess)
+{
+    // An app asks how large its window may be before it opens one (AppRun), and a run with no display - an app's
+    // --smoke under ssh, DISPLAY unset - reached the screen's work area through a null connection and ended on
+    // SIGSEGV (Sentinel's app_smoke, jonny-precision, 2026-11-09). With no display there is no screen to fit: {0, 0},
+    // which AppPlatform's contract says is no limit known.
+    const char *const was  = std::getenv("DISPLAY");
+    const std::string kept = was != nullptr ? was : "";
+    const bool        had  = was != nullptr;
+    unsetenv("DISPLAY");
+    {
+        const std::unique_ptr<reckless::app::AppPlatform> platform =
+            reckless::app::AppPlatform::Create("RecklessPlatformTest", {});
+        ASSERT_NE(platform, nullptr);
+        reckless::app::WindowOptions options;
+        options.width  = 320;
+        options.height = 200;
+        EXPECT_EQ(platform->LargestContent(options), (reckless::gfx::PointI{0, 0}));
+        EXPECT_TRUE(platform->ScreenAreas().empty()) << "no display, so no screens to name";
+    }
+    if (had)
+    {
+        setenv("DISPLAY", kept.c_str(), 1);
+    }
+}
+
+namespace
+{
+/** Whether a window manager runs on `display`: one that says it is there (_NET_SUPPORTING_WM_CHECK on the root).
+    @param display  a connection of the test's own
+    @return         true on a person's desktop; false on xvfb-run's bare server */
+bool HasWindowManager(Display *display)
+{
+    Atom           type   = 0;
+    int            format = 0;
+    unsigned long  items  = 0;
+    unsigned long  after  = 0;
+    unsigned char *data   = nullptr;
+    const bool     has =
+        XGetWindowProperty(display, DefaultRootWindow(display), XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False),
+                           0, 1, False, XA_WINDOW, &type, &format, &items, &after, &data) == Success &&
+        data != nullptr && items == 1;
+    if (data != nullptr)
+    {
+        XFree(data);
+    }
+    return has;
+}
+} // namespace
+
+TEST(AppPlatform, AWindowPutBackWhereItStandsStaysAndOnePutElsewhereGoesThere)
+{
+    // SetPosition is Position's exact inverse - on Linux the client area's top left - so a place read and put back is
+    // where the window stood, under a window manager that draws a title bar over it as under none, and a place inside
+    // the main display's area is where the window goes, once the window manager has placed it.
+    const std::unique_ptr<reckless::app::AppPlatform> platform = PlatformOrNull();
+    REQUIRE_PLATFORM(platform);
+    reckless::app::WindowOptions options;
+    options.title                                          = "Reckless Platform Test";
+    options.width                                          = 320;
+    options.height                                         = 200;
+    const std::unique_ptr<reckless::app::AppWindow> window = platform->OpenWindow(options);
+    ASSERT_NE(window, nullptr);
+    RunFor(*platform, 0.5); // shown, and placed by any window manager
+    const std::pair<int, int> stood = window->Position();
+    ASSERT_TRUE(window->SetPosition(stood.first, stood.second));
+    RunFor(*platform, 0.5);
+    EXPECT_EQ(window->Position(), stood) << "a place read and put back is where it was";
+
+    const std::vector<reckless::gfx::RectI> areas = platform->ScreenAreas();
+    ASSERT_FALSE(areas.empty()) << "a display has at least one screen";
+    const reckless::gfx::RectI main_area = areas.front();
+    const std::pair<int, int>  target{main_area.x() + main_area.width() / 4, main_area.y() + main_area.height() / 4};
+    ASSERT_NE(target, stood) << "a place to go that is not where the window stands";
+    ASSERT_TRUE(window->SetPosition(target.first, target.second));
+    EXPECT_TRUE(RunUntil(*platform, [&window, target] { return window->Position() == target; }))
+        << "where it went: " << window->Position().first << ", " << window->Position().second;
+}
+
+TEST(AppPlatform, TheScreensAreRandrsMonitorsThePrimaryFirstEachHeldToWhatTheWindowManagerLeaves)
+{
+    const std::unique_ptr<reckless::app::AppPlatform> platform = PlatformOrNull();
+    REQUIRE_PLATFORM(platform);
+    Display *const display = XOpenDisplay(nullptr);
+    ASSERT_NE(display, nullptr);
+    const ::Window                          root = DefaultRootWindow(display);
+    const reckless::gfx::RectI              whole{0, 0, DisplayWidth(display, DefaultScreen(display)),
+                                                  DisplayHeight(display, DefaultScreen(display))};
+    const std::vector<reckless::gfx::RectI> areas = platform->ScreenAreas();
+    ASSERT_FALSE(areas.empty()) << "a server with RandR 1.5 names its monitors";
+    if (HasWindowManager(display))
+    {
+        // A person's desktop, whose monitors and panels are the person's: only read. Each area is a part of the root.
+        for (const reckless::gfx::RectI &area : areas)
+        {
+            EXPECT_FALSE(area.IsEmpty());
+            EXPECT_TRUE(whole.Contains(area))
+                << area.x() << ", " << area.y() << " " << area.width() << " x " << area.height();
+        }
+        XCloseDisplay(display);
+        return;
+    }
+    // xvfb-run's bare server: one monitor over the whole screen, and no window manager to take a panel off it.
+    EXPECT_EQ(areas, (std::vector<reckless::gfx::RectI>{whole}));
+#if RECKLESS_TEST_MONITORS
+    // Two monitors set up within it, the left the primary, as two panels side by side are, and a window manager's
+    // word on what its panels leave said on the root as one would say it: the left display's own work area, as Mutter
+    // and Muffin publish one display by display, and the desktop's one, 40 pixels off the bottom. A monitor set up
+    // lasts as long as the connection that set it up, so all of it goes with this connection at the end.
+    void *const library = dlopen("libXrandr.so.2", RTLD_NOW | RTLD_LOCAL);
+    const auto  set_monitor =
+        reinterpret_cast<decltype(&XRRSetMonitor)>(library != nullptr ? dlsym(library, "XRRSetMonitor") : nullptr);
+    if (set_monitor == nullptr)
+    {
+        XCloseDisplay(display);
+        GTEST_SKIP() << "no libXrandr to set monitors up with";
+    }
+    const int                  half = whole.width() / 2;
+    const reckless::gfx::RectI left{0, 0, half, whole.height()};
+    const reckless::gfx::RectI right{half, 0, whole.width() - half, whole.height()};
+    for (const auto &[name, area, is_primary] :
+         {std::tuple{"RecklessTestLeft", left, true}, std::tuple{"RecklessTestRight", right, false}})
+    {
+        XRRMonitorInfo monitor{};
+        monitor.name    = XInternAtom(display, name, False);
+        monitor.primary = is_primary ? True : False;
+        monitor.x       = area.x();
+        monitor.y       = area.y();
+        monitor.width   = area.width();
+        monitor.height  = area.height();
+        monitor.mwidth  = area.width() / 4; // a millimetre a monitor must have, at about 100 dpi
+        monitor.mheight = area.height() / 4;
+        set_monitor(display, root, &monitor);
+    }
+    XSync(display, False);
+    std::vector<reckless::gfx::RectI> named = platform->ScreenAreas();
+    ASSERT_EQ(named.size(), 3u) << "the two set up and the screen's own";
+    EXPECT_EQ(named.front(), left) << "the primary first";
+    EXPECT_NE(std::find(named.begin(), named.end(), right), named.end());
+    EXPECT_NE(std::find(named.begin(), named.end(), whole), named.end());
+
+    const reckless::gfx::RectI left_work{0, 0, half, whole.height() - 100};
+    const reckless::gfx::RectI desktop_work{0, 0, whole.width(), whole.height() - 40};
+    const auto                 say = [display, root](const char *name, reckless::gfx::RectI area) {
+        const long values[4] = {area.x(), area.y(), area.width(), area.height()};
+        XChangeProperty(display, root, XInternAtom(display, name, False), XA_CARDINAL, 32, PropModeReplace,
+                        reinterpret_cast<const unsigned char *>(values), 4);
+    };
+    say("_GTK_WORKAREAS_D0", left_work);
+    say("_NET_WORKAREA", desktop_work);
+    XSync(display, False);
+    named = platform->ScreenAreas();
+    XDeleteProperty(display, root, XInternAtom(display, "_GTK_WORKAREAS_D0", False));
+    XDeleteProperty(display, root, XInternAtom(display, "_NET_WORKAREA", False));
+    XCloseDisplay(display); // and the monitors with it
+    ASSERT_EQ(named.size(), 3u);
+    EXPECT_EQ(named.front(), left_work) << "the left display's own work area, which only it lies wholly inside";
+    EXPECT_NE(std::find(named.begin(), named.end(), right.Intersection(desktop_work)), named.end())
+        << "the right display has none of its own: the part of the desktop's work area on it";
+    EXPECT_NE(std::find(named.begin(), named.end(), desktop_work), named.end())
+        << "and the screen's own monitor the same, not the left display's area that lies inside it";
+#else
+    XCloseDisplay(display);
+#endif
+}
+#endif

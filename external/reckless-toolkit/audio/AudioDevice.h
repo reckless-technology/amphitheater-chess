@@ -1,10 +1,13 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "RealtimeThread.h"
 
 namespace reckless::audio
 {
@@ -44,6 +47,32 @@ struct DeviceInfo
     std::vector<int> sample_rates;             ///< the rates it lists, in hertz; empty where the API lists none
     int              current_sample_rate{0};   ///< the rate it runs at now, 0 where the API does not say
     int              preferred_sample_rate{0}; ///< the rate the API would open it at, 0 where it does not say
+
+    /** The names of its input channels, as the API or the driver gives them, in UTF-8, one per channel in the device's
+        order: either empty - the back end cannot tell - or exactly `input_channels` long, a channel it has no name for
+        left as "". Never made up: a product shows "Input 3" itself for a channel with no name. Read from what the API
+        lists, never by opening a stream; ChannelNames.h says what each back end reads and what it cannot. Where a name
+        is a speaker position ("FL"; ALSA's channel map) it says what the driver declares the channel carries, which on
+        an interface that is not a speaker layout is its default and no label. Appended after the older fields so a
+        positional initialiser of those still means what it did. */
+    std::vector<std::string> input_channel_names;
+    std::vector<std::string> output_channel_names; ///< the same for the output channels (`input_channel_names`)
+
+    /** The name of one input channel.
+        @param channel  the channel, counted from 0
+        @return         its name, empty where the back end has none or the channel is not there; a view into this */
+    std::string_view InputChannelName(int channel) const noexcept
+    {
+        return NameAt(input_channel_names, channel);
+    }
+
+    /** The name of one output channel.
+        @param channel  the channel, counted from 0
+        @return         its name, empty where the back end has none or the channel is not there; a view into this */
+    std::string_view OutputChannelName(int channel) const noexcept
+    {
+        return NameAt(output_channel_names, channel);
+    }
 
     /** What it can be opened as: "duplex" (in and out at once), "input", "output", or "none".
         @return  the kind's name, a string literal that outlives the device */
@@ -95,6 +124,18 @@ struct DeviceInfo
         }
         return false;
     }
+
+  private:
+    /** One name of a list.
+        @param names    the list, empty or one name a channel
+        @param channel  the channel, counted from 0
+        @return         its name; empty where the list has none or the channel is not there */
+    static std::string_view NameAt(const std::vector<std::string> &names, int channel) noexcept
+    {
+        return channel >= 0 && static_cast<std::size_t>(channel) < names.size()
+                   ? std::string_view(names[static_cast<std::size_t>(channel)])
+                   : std::string_view();
+    }
 };
 
 /** The stream to open: the input device (empty for none) and the output device, the run of each one's channels to
@@ -122,7 +163,8 @@ struct StreamRequest
 
 /** What a stream opened as: its rate and block, the channels the callback sees each way, the latency the API reports
     beyond the block itself - input and output summed, in samples, 0 where it reports none - and the periods its output
-    buffers where the API says. */
+    buffers where the API says. The two sides of that sum are told apart as well (`input_latency_frames`,
+    `output_latency_frames`), for a program that places a take by the input's alone or shows a round trip from both. */
 struct StreamFormat
 {
     int sample_rate{0};      ///< the rate the stream runs at, in hertz
@@ -131,6 +173,15 @@ struct StreamFormat
     int output_channels{0};  ///< the output channels the callback sees
     int reported_latency{0}; ///< the latency the API reports beyond the block, in samples, input and output summed
     int periods{0};          ///< the blocks the output buffers, where the API says; 0 where it does not
+    /** The input side's share of `reported_latency`, in samples: what a recording is late by beyond the block the
+        callback reads, which a program places a take by. 0 with no input, and 0 where the back end cannot tell the
+        input's from the output's (ALSA: the figure it has is the playback buffer alone, whose capture side adds
+        no latency of its own beyond the block, and a driver's own capture delay is not reported). */
+    int input_latency_frames{0};
+    /** The output side's share of `reported_latency`, in samples: what a sound written is late by beyond the block the
+        callback writes. 0 where the back end cannot tell. With `input_latency_frames` it is `reported_latency`,
+        exactly, on every back end - a back end that tells neither side leaves both 0 and the sum as it was. */
+    int output_latency_frames{0};
 };
 
 /** What runs a stream. */
@@ -202,6 +253,28 @@ class AudioSystem
     /** The last error or warning the API reported, for a person to read.
         @return  the text, empty when there is none */
     virtual std::string LastError() const = 0;
+
+    /** The calling thread - one of the consumer's own, a worker that renders beside the callback inside its deadline -
+        given the standing the open stream's callback thread has: the scheduling policy and priority, the multimedia
+        scheduler's class or the audio workgroup, whichever the platform and API give (docs/audio/native-backends.md,
+        "Threads of a consumer's own"). Called by the thread itself, once at its start, and undone by `membership` at
+        its end - RealtimeThreadScope does both. Any thread, but not while the stream is being opened or closed: the
+        caller joins its workers after Open() and lets them leave before Close().
+
+        Not realtime-safe, on purpose: it may allocate and ask the kernel, since a thread does it once, never in steady
+        state. A refusal - Linux with no `rtprio` limit, no stream open - is a result with its reason, never an error
+        or an abort; the thread then runs as it was. This default refuses with a stream not open or an API that gives
+        a consumer's thread nothing; a back end that can overrides it.
+        @param membership  receives what undoes the join, when one was made
+        @return            what was achieved and what was refused, and why */
+    virtual RealtimeThreadResult JoinAudioThread(RealtimeThreadMembership &membership) const
+    {
+        static_cast<void>(membership);
+        RealtimeThreadResult result;
+        result.refused = IsOpen() ? "this audio API gives a consumer's own threads no realtime standing"
+                                  : "no stream is open, so there is no callback thread whose standing to give";
+        return result;
+    }
 };
 
 /** Where MIDI input lands. */

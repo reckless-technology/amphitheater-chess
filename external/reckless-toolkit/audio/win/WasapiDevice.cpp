@@ -32,6 +32,8 @@
 #include <propidl.h>
 #include <wrl/client.h>
 
+#include "MmcssThread.h"
+
 namespace reckless::audio
 {
 namespace
@@ -301,6 +303,8 @@ class WasapiSystem final : public AudioSystem
             device.current_sample_rate   = endpoint.mix_rate;
             device.preferred_sample_rate = endpoint.mix_rate;
             device.sample_rates          = RatesOf(endpoint);
+            // No channel names: an endpoint is a mix of channels with no per-channel name in the Core Audio
+            // interfaces (its speaker mask says positions, not labels), so DeviceInfo's lists stay empty here.
             devices.push_back(std::move(device));
         }
         return devices;
@@ -388,8 +392,9 @@ class WasapiSystem final : public AudioSystem
         format_.input_channels  = input_count_;
         format_.output_channels = output_count_;
         // The latency beyond the block: each endpoint's, and on the way in the margin the ring keeps, a capture period.
-        format_.reported_latency =
-            out_.latency_frames + (in_.client != nullptr ? in_.latency_frames + in_.period_frames : 0);
+        format_.output_latency_frames = out_.latency_frames;
+        format_.input_latency_frames  = in_.client != nullptr ? in_.latency_frames + in_.period_frames : 0;
+        format_.reported_latency      = format_.output_latency_frames + format_.input_latency_frames;
         callback_.store(&callback, std::memory_order_release);
         failed_.store(false, std::memory_order_relaxed);
         open_ = true;
@@ -462,6 +467,21 @@ class WasapiSystem final : public AudioSystem
     StreamFormat Format() const override
     {
         return format_;
+    }
+
+    /** A consumer's thread at the standing of the stream's own: the multimedia scheduler's Pro Audio class, falling
+        back to the time-critical thread priority as the stream's thread does (audio/win/MmcssThread.h).
+        @param membership  receives what reverts the thread
+        @return            what was achieved, or why not */
+    RealtimeThreadResult JoinAudioThread(RealtimeThreadMembership &membership) const override
+    {
+        if (!open_)
+        {
+            RealtimeThreadResult result;
+            result.refused = "no stream is open, so there is no callback thread whose standing to give";
+            return result;
+        }
+        return windows_realtime::JoinProAudio(membership);
     }
 
     std::string LastError() const override

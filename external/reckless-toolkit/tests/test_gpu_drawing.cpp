@@ -5,11 +5,14 @@
 #include <gtest/gtest.h>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
 
+#include "EarlyBackBuffer.h"
 #include "GpuDrawing.h"
+#include "GpuSwapInterval.h"
 #include "View.h"
 #include "Window.h"
 
@@ -90,6 +93,27 @@ TEST(GpuDrawing, TheGpuAskedForIsTriedOnlyWhereNothingRefusesItAndEachRefusalIsS
     }
 }
 
+TEST(GpuDrawing, TheSwapIntervalIsOneInFullScreenAndZeroWindowedUnlessTheEnvironmentSaysOtherwise)
+{
+    using reckless::window::SwapIntervalFor;
+    using reckless::window::SwapIntervalRequest;
+    using reckless::window::SwapIntervalRequestOf;
+    EXPECT_STREQ(reckless::window::kGpuSwapIntervalEnvironmentVariable, "RECKLESS_GPU_SWAP_INTERVAL");
+    EXPECT_EQ(SwapIntervalFor(SwapIntervalRequest::kAuto, true), 1);
+    EXPECT_EQ(SwapIntervalFor(SwapIntervalRequest::kAuto, false), 0);
+    EXPECT_EQ(SwapIntervalFor(SwapIntervalRequest::kNoWait, true), 0);
+    EXPECT_EQ(SwapIntervalFor(SwapIntervalRequest::kNoWait, false), 0);
+    EXPECT_EQ(SwapIntervalFor(SwapIntervalRequest::kEveryBlank, true), 1);
+    EXPECT_EQ(SwapIntervalFor(SwapIntervalRequest::kEveryBlank, false), 1);
+    EXPECT_EQ(SwapIntervalRequestOf(std::optional<std::string>("0")), SwapIntervalRequest::kNoWait);
+    EXPECT_EQ(SwapIntervalRequestOf(std::optional<std::string>("1")), SwapIntervalRequest::kEveryBlank);
+    for (const char *other : {"auto", "", "2", "fs1", "AUTO"})
+    {
+        EXPECT_EQ(SwapIntervalRequestOf(std::optional<std::string>(other)), SwapIntervalRequest::kAuto) << other;
+    }
+    EXPECT_EQ(SwapIntervalRequestOf(std::nullopt), SwapIntervalRequest::kAuto);
+}
+
 TEST(GpuDrawing, OnlyOffInTheEnvironmentTurnsTheGpuOff)
 {
     EXPECT_STREQ(reckless::window::kGpuDrawingEnvironmentVariable, "RECKLESS_GPU_DRAWING");
@@ -139,7 +163,8 @@ TEST(GpuDrawing, EveryReasonIsSaidInWordsOfItsOwn)
          {DrawingFallback::kNone, DrawingFallback::kNotAsked, DrawingFallback::kForcedOff, DrawingFallback::kNotLinked,
           DrawingFallback::kNoGpuOnThisPlatform, DrawingFallback::kNoPixelFormat, DrawingFallback::kNoContext,
           DrawingFallback::kGlTooOld, DrawingFallback::kNoSkiaInterface, DrawingFallback::kNoSkiaContext,
-          DrawingFallback::kNoSurface, DrawingFallback::kContextLostTooOften, DrawingFallback::kContextNotMadeAgain})
+          DrawingFallback::kNoSurface, DrawingFallback::kContextLostTooOften, DrawingFallback::kContextNotMadeAgain,
+          DrawingFallback::kSoftwareRenderer, DrawingFallback::kNoMetalDevice})
     {
         const char *text = reckless::window::TextOf(why);
         ASSERT_NE(text, nullptr);
@@ -160,4 +185,132 @@ TEST(GpuDrawing, AWindowWithNoGpuPathOfItsOwnAnswersTheCpuRasterAndSaysWhy)
     EXPECT_TRUE(asked.why == DrawingFallback::kNoGpuOnThisPlatform || asked.why == DrawingFallback::kForcedOff)
         << reckless::window::TextOf(asked.why);
     EXPECT_EQ(window.SetDrawing({}).why, DrawingFallback::kNotAsked);
+}
+
+TEST(GpuDrawing, TheNewBackEndsReasonsAreSaidInWordsThatNameWhatRefused)
+{
+    using reckless::window::TextOf;
+    EXPECT_STREQ(TextOf(DrawingFallback::kSoftwareRenderer),
+                 "the GL is a software renderer, which the CPU raster outdraws");
+    EXPECT_STREQ(TextOf(DrawingFallback::kNoMetalDevice), "there is no Metal device to draw with");
+    // Words shared by every back end say nothing of one API; Windows' own say GL, as they always did.
+    EXPECT_STREQ(TextOf(DrawingFallback::kNoSkiaContext),
+                 "Skia would not make its GPU context on the GPU's graphics API");
+    EXPECT_STREQ(TextOf(DrawingFallback::kNoContext), "the platform would not make a GL context on the window");
+    EXPECT_STREQ(TextOf(DrawingFallback::kGlTooOld), "the GL given is older than 3.0");
+}
+
+TEST(GpuDrawing, ARefusalOfTheEnvironmentOrThePlatformComesBeforeAnyBackEndsOwn)
+{
+    // The new reasons are a back end's own, found only once the platform tries: ChosenDrawing never answers them, and
+    // answers the same for every platform that has a path, so the order of its checks is the order it always was.
+    const DrawingRequest asked{Drawing::kGpu, SomeBackEnd()};
+    for (const bool is_forced_off : {false, true})
+    {
+        for (const bool has_platform_gpu : {false, true})
+        {
+            const DrawingFallback why = ChosenDrawing(asked, is_forced_off, has_platform_gpu).why;
+            EXPECT_NE(why, DrawingFallback::kSoftwareRenderer);
+            EXPECT_NE(why, DrawingFallback::kNoMetalDevice);
+        }
+    }
+    EXPECT_EQ(ChosenDrawing(asked, true, true).why, DrawingFallback::kForcedOff);
+    EXPECT_EQ(ChosenDrawing(asked, false, false).why, DrawingFallback::kNoGpuOnThisPlatform);
+    EXPECT_EQ(ChosenDrawing({Drawing::kGpu, nullptr}, false, true).why, DrawingFallback::kNotLinked);
+    EXPECT_EQ(ChosenDrawing(asked, false, true).why, DrawingFallback::kNone);
+}
+
+TEST(GpuDrawing, ASoftwareGlIsNamedByItsRenderer)
+{
+    using reckless::window::IsSoftwareRenderer;
+    EXPECT_TRUE(IsSoftwareRenderer("llvmpipe (LLVM 17.0.6, 256 bits)"));
+    EXPECT_TRUE(IsSoftwareRenderer("softpipe"));
+    EXPECT_TRUE(IsSoftwareRenderer("Mesa Software Rasterizer"));
+    EXPECT_TRUE(IsSoftwareRenderer("SWRAST"));
+    EXPECT_TRUE(IsSoftwareRenderer("Apple Software Renderer"));
+    EXPECT_FALSE(IsSoftwareRenderer("NVIDIA GeForce RTX 4070 Laptop GPU/PCIe/SSE2"));
+    EXPECT_FALSE(IsSoftwareRenderer("Mesa Intel(R) UHD Graphics 630 (CFL GT2)"));
+    EXPECT_FALSE(IsSoftwareRenderer("AMD Radeon Pro 5500M OpenGL Engine"));
+    EXPECT_FALSE(IsSoftwareRenderer(""));
+    EXPECT_FALSE(IsSoftwareRenderer(nullptr));
+}
+
+// ---- The back buffer taken before the frame (window/EarlyBackBuffer.h) -------------------------------------------
+//
+// The rules for holding one between the taking and the present, which need no GPU: a frame that never presented
+// keeps its buffer rather than taking a second, a resize lets one go because it can no longer be shown, and a
+// present empties the holder either way. A std::shared_ptr<int> stands in for a back end's surface.
+
+namespace
+{
+using StandIn = std::shared_ptr<int>;
+using Held    = reckless::window::EarlyBackBuffer<StandIn>;
+using reckless::gfx::PointI;
+
+/** A surface the stand-in can tell apart. @param which what to call it @return the stand-in */
+StandIn Made(int which)
+{
+    return std::make_shared<int>(which);
+}
+} // namespace
+
+TEST(EarlyBackBuffer, HoldsNothingUntilOneIsTakenAndSaysTheSizeItWasTakenAt)
+{
+    Held held;
+    EXPECT_FALSE(held.holds());
+    EXPECT_EQ(held.size(), (PointI{0, 0}));
+    held.TakeNow({640, 480}, [] { return Made(1); });
+    EXPECT_TRUE(held.holds());
+    EXPECT_EQ(held.size(), (PointI{640, 480}));
+}
+
+TEST(EarlyBackBuffer, AFrameThatNeverPresentedKeepsItsBufferRatherThanTakingASecond)
+{
+    Held held;
+    int  taken = 0;
+    held.TakeNow({640, 480}, [&] {
+        ++taken;
+        return Made(1);
+    });
+    held.TakeNow({640, 480}, [&] {
+        ++taken;
+        return Made(2);
+    });
+    EXPECT_EQ(taken, 1) << "two of the pool's three would be held for one frame";
+    EXPECT_EQ(*held.ForPresent({640, 480}), 1) << "and it is the one already taken that is presented";
+}
+
+TEST(EarlyBackBuffer, ASizeChangeLetsTheOldOneGoBecauseItCannotBeShown)
+{
+    Held held;
+    held.TakeNow({640, 480}, [] { return Made(1); });
+    const StandIn watched = held.ForPresent({640, 480});
+    held.TakeNow({640, 480}, [] { return Made(1); });
+    held.TakeNow({800, 600}, [] { return Made(2); }); // a resize between one frame and the next
+    EXPECT_EQ(held.size(), (PointI{800, 600}));
+    EXPECT_EQ(*held.ForPresent({800, 600}), 2);
+}
+
+TEST(EarlyBackBuffer, APresentEmptiesTheHolderWhetherOrNotTheSizeStillFits)
+{
+    Held held;
+    held.TakeNow({640, 480}, [] { return Made(1); });
+    EXPECT_EQ(*held.ForPresent({640, 480}), 1);
+    EXPECT_FALSE(held.holds()) << "presented, so the holder is empty";
+
+    held.TakeNow({640, 480}, [] { return Made(2); });
+    EXPECT_EQ(held.ForPresent({800, 600}), nullptr) << "a resize since: nothing to present, and the caller takes one";
+    EXPECT_FALSE(held.holds()) << "and the one that cannot be shown is let go rather than kept";
+}
+
+TEST(EarlyBackBuffer, ReleaseGivesTheBufferBackAndATakeThatAnswersNothingHoldsNothing)
+{
+    Held held;
+    held.TakeNow({640, 480}, [] { return Made(1); });
+    held.Release();
+    EXPECT_FALSE(held.holds());
+    EXPECT_EQ(held.size(), (PointI{0, 0}));
+    held.TakeNow({640, 480}, [] { return StandIn{}; }); // the back end had none free within its own timeout
+    EXPECT_FALSE(held.holds()) << "nothing was taken, so nothing is held and no size is claimed";
+    EXPECT_EQ(held.size(), (PointI{0, 0}));
 }

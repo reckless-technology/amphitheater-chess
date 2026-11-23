@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,6 +43,10 @@ TEST(ChildWindow, AUriListsFilePathsArePercentDecodedAndAStrayPercentIsItself)
 }
 
 #if defined(__linux__)
+#include <poll.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -63,14 +68,15 @@ TEST(ChildWindow, AUriListsFilePathsArePercentDecodedAndAStrayPercentIsItself)
 
 namespace
 {
-/** The run loop a Linux host gives a plug-in's window, turned by the suite: the window's connection read and its timer
-    ticked on each turn. */
+/** The run loop a Linux host gives a plug-in's window, turned by the suite: every descriptor the window watches - its
+    connection, and its display clock's timer once it has one - read and its timer ticked on each turn, or either of
+    them alone. Each watch reads only what its descriptor holds, so one turned with nothing to read does nothing. */
 class TurnedLoop final : public reckless::window::RunLoop
 {
   public:
-    bool WatchFd(int, std::function<void()> ready) override
+    bool WatchFd(int fd, std::function<void()> ready) override
     {
-        ready_ = std::move(ready);
+        watches_.push_back({fd, std::move(ready)});
         return true;
     }
 
@@ -82,19 +88,58 @@ class TurnedLoop final : public reckless::window::RunLoop
 
     void Turn()
     {
-        if (ready_)
+        TurnWatches();
+        TurnTimer();
+    }
+
+    /** Every watch called back, whatever its descriptor holds. */
+    void TurnWatches()
+    {
+        for (std::size_t i = 0; i < watches_.size(); ++i)
         {
-            ready_(); // whatever the connection holds; nothing when it holds nothing
+            watches_[i].ready();
         }
+    }
+
+    /** Up to `milliseconds` waited for any watched descriptor to have something to read, then every watch called back:
+        what a host's loop does between its timer's ticks.
+        @param milliseconds  the longest wait */
+    void WaitOnWatches(int milliseconds)
+    {
+        std::vector<pollfd> descriptors;
+        for (const Watch &watch : watches_)
+        {
+            descriptors.push_back({watch.fd, POLLIN, 0});
+        }
+        poll(descriptors.data(), descriptors.size(), milliseconds);
+        TurnWatches();
+    }
+
+    /** The timer ticked, and nothing read. */
+    void TurnTimer()
+    {
         if (tick_)
         {
             tick_();
         }
     }
 
+    /** @return  how many descriptors the window has asked to be watched */
+    std::size_t watches() const noexcept
+    {
+        return watches_.size();
+    }
+
   private:
-    std::function<void()> ready_;
-    std::function<void()> tick_;
+    /** A descriptor watched, and what to call when it can be read. */
+    struct Watch
+    {
+        int                   fd;    ///< the descriptor
+        std::function<void()> ready; ///< called back on each turn
+    };
+
+    std::vector<Watch>    watches_; ///< every watch, in the order asked for
+    std::function<void()> tick_;    ///< the timer's callback
 };
 
 /** The panel, as far as a drop asks of one: it takes capture files anywhere, and writes down what it hears. */
@@ -279,6 +324,21 @@ TEST(ChildWindow, TakesTheDropsDraggedOverTheTopLevelItIsTheProxyOf)
         }
     };
 
+    // The drag's point in the root's coordinates, as a file manager sends it, once the top-level is up: a window
+    // manager frames and places a window as it maps it, after Show returns, and a point read before that is off the
+    // window by the time the child reads it back (Cinnamon on Xorg, 2026-11-08). Xvfb has no window manager, and no
+    // wait.
+    for (int i = 0; i < 400; ++i)
+    {
+        XWindowAttributes attributes{};
+        if (XGetWindowAttributes(display, toplevel, &attributes) != 0 && attributes.map_state == IsViewable)
+        {
+            break;
+        }
+        turns.Turn();
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    XSync(display, False);
     int      x = 0, y = 0;
     ::Window under = 0;
     XTranslateCoordinates(display, proxy, DefaultRootWindow(display), 20, 30, &x, &y, &under);
@@ -365,6 +425,64 @@ TEST(ChildWindow, CtrlWithALetterReachesTheViewsAsTheLetterWithThePrimaryModifie
     EXPECT_EQ(copied, (std::vector<std::string>{"1. c4 e5"})) << "Ctrl+A then Ctrl+C, as Command+A and +C on a Mac";
     press(XK_c, ControlMask | Mod1Mask);
     EXPECT_EQ(copied.size(), 1u) << "not with Alt held too";
+    child.reset();
+    XCloseDisplay(display);
+}
+
+TEST(ChildWindow, AViewThatTakesTheKeyboardBeforeTheWindowIsUpGetsXsFocusOnceItIs)
+{
+    // A view may take the keyboard as its window opens, before the top-level is mapped - before a window manager has
+    // put it up, or before its owner has shown it at all. X's focus set on a window that is not viewable is a BadMatch,
+    // which Xlib's default handler answers by ending the process (Cinnamon on Xorg, 2026-11-08): the window waits until
+    // it is viewable, and then takes it.
+    reckless::test::TestHostWindow top(240, 160);
+    if (!top.Valid())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "the run promises a window and there is no display";
+        }
+        GTEST_SKIP() << "no display";
+    }
+    reckless::view::View     root;
+    reckless::view::TextView text{reckless::view::TextView::Style{}};
+    root.SetBounds({240, 160});
+    text.SetBounds({0, 0, 240, 160});
+    root.AddChild(text);
+    auto        loop  = std::make_unique<TurnedLoop>();
+    TurnedLoop &turns = *loop;
+    auto        child = reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::move(loop));
+    ASSERT_NE(child, nullptr);
+    turns.Turn();
+    root.host()->RequestKeyboardFocus(&text); // the top-level not shown, so the child is not viewable
+    turns.Turn();
+
+    Display *display = XOpenDisplay(nullptr);
+    ASSERT_NE(display, nullptr);
+    const auto toplevel  = static_cast<::Window>(reinterpret_cast<std::uintptr_t>(top.Parent()));
+    ::Window   tree_root = 0, tree_parent = 0, *children = nullptr;
+    unsigned   count = 0;
+    ASSERT_NE(XQueryTree(display, toplevel, &tree_root, &tree_parent, &children, &count), 0);
+    ASSERT_EQ(count, 1u) << "the child window in the top-level";
+    const ::Window window = children[0];
+    XFree(children);
+    const auto focus = [display] {
+        ::Window held   = 0;
+        int      revert = 0;
+        XGetInputFocus(display, &held, &revert);
+        return held;
+    };
+    EXPECT_NE(focus(), window) << "not yet: the window is not viewable";
+
+    top.Show(true);
+    bool is_focused = false;
+    for (int i = 0; i < 400 && !is_focused; ++i)
+    {
+        turns.Turn();
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        is_focused = focus() == window;
+    }
+    EXPECT_TRUE(is_focused) << "the child took X's focus once it was viewable";
     child.reset();
     XCloseDisplay(display);
 }
@@ -503,6 +621,242 @@ TEST(ChildWindow, TheRawKeysGiveEveryEdgeAndLeaveTheViewsWhatTheyAlwaysHad)
     EXPECT_TRUE(heard.empty());
     child.reset();
     XCloseDisplay(display);
+}
+
+namespace
+{
+/** A view that writes down the middle button, the wheel with its modifiers and the function keys it is given. */
+class DawProbe final : public reckless::view::View
+{
+  public:
+    DawProbe()
+    {
+        takes_middle_button = true;
+    }
+
+    std::vector<std::string> log;
+
+    bool WantsKeyboardFocus() const override
+    {
+        return true;
+    }
+
+    void MouseDown(const reckless::view::MouseEvent &e) override
+    {
+        log.push_back(std::string("down") + (e.middle ? " middle" : "") + (e.right ? " right" : ""));
+    }
+
+    void MouseUp(const reckless::view::MouseEvent &e) override
+    {
+        log.push_back(std::string("up") + (e.middle ? " middle" : ""));
+    }
+
+    bool MouseWheel(const reckless::view::MouseEvent &e) override
+    {
+        log.push_back("wheel " + std::to_string(static_cast<int>(e.wheel_x)) + "," +
+                      std::to_string(static_cast<int>(e.wheel_y)) + (e.modifiers.control ? " control" : "") +
+                      (e.modifiers.command ? " command" : "") + (e.modifiers.shift ? " shift" : ""));
+        return true;
+    }
+
+    bool KeyPressed(const reckless::view::KeyEvent &key) override
+    {
+        const int function = static_cast<int>(key.key) - static_cast<int>(reckless::view::Key::kF1);
+        log.push_back(function >= 0 && function < 12 ? "F" + std::to_string(function + 1) : "key");
+        return true;
+    }
+};
+} // namespace
+
+TEST(ChildWindow, AMiddlePressTheWheelWithItsModifiersAndTheFunctionKeysReachAViewOnLinux)
+{
+    reckless::test::TestHostWindow top(240, 160);
+    if (!top.Valid())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "the run promises a window and there is no display";
+        }
+        GTEST_SKIP() << "no display";
+    }
+    top.Show(true);
+    reckless::view::View root;
+    DawProbe             probe;
+    root.SetBounds({240, 160});
+    probe.SetBounds({0, 0, 240, 160});
+    root.AddChild(probe);
+    auto        loop  = std::make_unique<TurnedLoop>();
+    TurnedLoop &turns = *loop;
+    auto        child = reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::move(loop));
+    ASSERT_NE(child, nullptr);
+    turns.Turn();
+    root.host()->RequestKeyboardFocus(&probe);
+
+    Display *display = XOpenDisplay(nullptr);
+    ASSERT_NE(display, nullptr);
+    const auto toplevel  = static_cast<::Window>(reinterpret_cast<std::uintptr_t>(top.Parent()));
+    ::Window   tree_root = 0, tree_parent = 0, *children = nullptr;
+    unsigned   count = 0;
+    ASSERT_NE(XQueryTree(display, toplevel, &tree_root, &tree_parent, &children, &count), 0);
+    ASSERT_EQ(count, 1u);
+    const ::Window window = children[0];
+    XFree(children);
+    const auto settle = [&] {
+        XFlush(display);
+        for (int i = 0; i < 20; ++i)
+        {
+            turns.Turn();
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+    };
+    const auto button = [&](unsigned which, bool is_down, unsigned state) {
+        XEvent e{};
+        e.xbutton.type        = is_down ? ButtonPress : ButtonRelease;
+        e.xbutton.display     = display;
+        e.xbutton.window      = window;
+        e.xbutton.root        = DefaultRootWindow(display);
+        e.xbutton.x           = 20;
+        e.xbutton.y           = 20;
+        e.xbutton.state       = state;
+        e.xbutton.button      = which;
+        e.xbutton.same_screen = True;
+        XSendEvent(display, window, False, is_down ? ButtonPressMask : ButtonReleaseMask, &e);
+        settle();
+    };
+    button(Button2, true, 0);
+    button(Button2, false, Button2Mask);
+    button(Button4, true, ControlMask); // the wheel away from the player, Control held: a zoom
+    button(6, true, ShiftMask);         // the wheel tilted left, Shift held
+    XEvent key{};
+    key.xkey.type        = KeyPress;
+    key.xkey.display     = display;
+    key.xkey.window      = window;
+    key.xkey.root        = DefaultRootWindow(display);
+    key.xkey.keycode     = XKeysymToKeycode(display, XK_F5);
+    key.xkey.same_screen = True;
+    XSendEvent(display, window, False, KeyPressMask, &key);
+    settle();
+    EXPECT_EQ(probe.log, (std::vector<std::string>{"down middle", "up middle", "wheel 0,20 control command",
+                                                   "wheel 20,0 shift", "F5"}))
+        << "the middle button as itself, the wheel's travel and the keys held with it (Control is the primary here "
+           "too), F5 by name";
+    child.reset();
+    XCloseDisplay(display);
+}
+
+TEST(ChildWindow, ADialogForSeveralFilesOrAFolderAsksTheDesktopsDialogForThemAndAnswersEveryPath)
+{
+    // The desktop's dialog is zenity or kdialog, run as a process: this suite puts a zenity of its own first on the
+    // PATH, which writes down the arguments it was run with and answers as the real one does - one path to a line.
+    reckless::test::TestHostWindow top(240, 160);
+    if (!top.Valid())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "the run promises a window and there is no display";
+        }
+        GTEST_SKIP() << "no display";
+    }
+    top.Show(true);
+    char folder_template[] = "/tmp/reckless-dialog-XXXXXX";
+    ASSERT_NE(mkdtemp(folder_template), nullptr);
+    const std::string folder = folder_template;
+    const std::string script = folder + "/zenity";
+    {
+        std::FILE *file = std::fopen(script.c_str(), "w");
+        ASSERT_NE(file, nullptr);
+        std::fprintf(file,
+                     "#!/bin/sh\nprintf '%%s\\n' \"$*\" > '%s/args'\n"
+                     "case \"$*\" in\n"
+                     "*--directory*) printf '/home/a/New Project\\n';;\n"
+                     "*--multiple*) printf '/home/a/one.wav\\n/home/a/two words.wav\\n/home/a/3.wav\\n';;\n"
+                     "*--file-selection*) printf '/home/a/single.wav\\n';;\nesac\n",
+                     folder.c_str());
+        std::fclose(file);
+        ASSERT_EQ(chmod(script.c_str(), 0755), 0);
+    }
+    const std::string old_path = std::getenv("PATH") != nullptr ? std::getenv("PATH") : "";
+    setenv("PATH", (folder + ":" + old_path).c_str(), 1);
+
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto        loop  = std::make_unique<TurnedLoop>();
+    TurnedLoop &turns = *loop;
+    auto        child = reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::move(loop));
+    ASSERT_NE(child, nullptr);
+    turns.Turn();
+    const auto arguments = [&folder] {
+        std::string text;
+        if (std::FILE *file = std::fopen((folder + "/args").c_str(), "r"))
+        {
+            char buffer[512];
+            while (std::fgets(buffer, sizeof(buffer), file) != nullptr)
+            {
+                text += buffer;
+            }
+            std::fclose(file);
+        }
+        return text;
+    };
+    const auto ask = [&](const reckless::view::FileRequest &request, bool several) {
+        std::vector<std::string> answer;
+        bool                     answered = false;
+        const auto               done     = [&answer, &answered](std::vector<std::string> paths) {
+            answer   = std::move(paths);
+            answered = true;
+        };
+        if (several)
+        {
+            root.host()->ChooseFiles(request, [&done](const std::vector<std::string> &paths) { done(paths); });
+        }
+        else
+        {
+            root.host()->ChooseFile(request, [&done](const std::string &path) {
+                done(path.empty() ? std::vector<std::string>{} : std::vector<std::string>{path});
+            });
+        }
+        for (int i = 0; i < 500 && !answered; ++i)
+        {
+            turns.Turn();
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        EXPECT_TRUE(answered) << "the dialog answered";
+        return answer;
+    };
+
+    reckless::view::FileRequest request;
+    request.title    = "Add audio";
+    request.patterns = {"*.wav"};
+    request.multiple = true;
+    EXPECT_EQ(ask(request, true),
+              (std::vector<std::string>{"/home/a/one.wav", "/home/a/two words.wav", "/home/a/3.wav"}))
+        << "every path of a multiple open, in the dialog's order, a space in one of them whole";
+    EXPECT_NE(arguments().find("--multiple"), std::string::npos) << arguments();
+    EXPECT_NE(arguments().find("*.wav"), std::string::npos) << "the patterns still filter";
+
+    reckless::view::FileRequest project;
+    project.title         = "New project";
+    project.choose_folder = true;
+    project.patterns      = {"*.wav"}; // a folder has no pattern: ignored
+    EXPECT_EQ(ask(project, true), (std::vector<std::string>{"/home/a/New Project"})) << "the folder's path";
+    EXPECT_NE(arguments().find("--directory"), std::string::npos) << arguments();
+    EXPECT_EQ(arguments().find("*.wav"), std::string::npos) << "no pattern asked of a folder";
+
+    reckless::view::FileRequest one;
+    one.title = "Open";
+    EXPECT_EQ(ask(one, false), (std::vector<std::string>{"/home/a/single.wav"}))
+        << "the single dialog as it always was";
+    EXPECT_EQ(arguments().find("--multiple"), std::string::npos) << arguments();
+    EXPECT_EQ(arguments().find("--directory"), std::string::npos) << arguments();
+
+    // A request for several, through the single dialog, is the first of them: a caller that never asked for the list.
+    EXPECT_EQ(ask(request, false), (std::vector<std::string>{"/home/a/one.wav"}));
+
+    child.reset();
+    setenv("PATH", old_path.c_str(), 1);
+    unlink(script.c_str());
+    unlink((folder + "/args").c_str());
+    rmdir(folder.c_str());
 }
 #else
 TEST(ChildWindow, TakesTheDropsDraggedOverTheTopLevelItIsTheProxyOf)
@@ -1320,11 +1674,280 @@ TEST(ChildWindowFramePacing, PanelsThatFitARefreshPaintInOneOrderEveryRefresh)
 #endif
 
 #if !defined(_WIN32) && !defined(__APPLE__)
-TEST(ChildWindowFramePacing, SaysPlainlyThatThereIsNoDisplayClockOnX11)
+namespace
 {
-    // There is none, and the toolkit says so rather than faking a phase lock: X hands a window's pixels over with a
-    // copy, not a presentation, so nothing reports a vertical blank without a GL context or the Present extension -
-    // neither of which this present path has or cheaply could (window/linux/WindowLinux.cpp says why at length).
+/** Whether this build can use Present at all: the headers window/linux/DisplayClockLinux.h needs were there to build
+    against. Where they were not (a machine without libxpresent-dev) that file compiles the fallback alone, and a window
+    has no display clock whatever the server offers; the same test the window's own build makes, so the two agree.
+    @return  true where the build can ask Present for blanks */
+constexpr bool CanThisBuildUsePresent()
+{
+#if __has_include(<X11/extensions/Xpresent.h>) && __has_include(<X11/extensions/Xrandr.h>)
+    return true;
+#else
+    return false;
+#endif
+}
+
+/** Whether the X server the suite runs on has the Present extension, asked on a connection of the suite's own.
+    @return  true where it has */
+bool DoesTheServerHavePresent()
+{
+    Display *display = XOpenDisplay(nullptr);
+    if (display == nullptr)
+    {
+        return false;
+    }
+    int        opcode      = 0;
+    int        event_base  = 0;
+    int        error_base  = 0;
+    const bool has_present = XQueryExtension(display, "Present", &opcode, &event_base, &error_base) == True;
+    XCloseDisplay(display);
+    return has_present;
+}
+} // namespace
+
+TEST(ChildWindowFramePacing, IsOnTheDisplaysClockExactlyWhereTheServerHasPresentAndTheMonitorsModeNamesARate)
+{
+    // The two branches, told apart from the outside rather than by the window's own word: the suite asks the server
+    // whether it has Present, and the window what rate its monitor's mode names. On a desktop both are there and the
+    // window paces on its monitor's blanks; under Xvfb, CI's server, Present answers from a timer of its own and the
+    // mode names no timing, so the window stays on the loop's timer and says the rate is unknown.
+    reckless::test::TestHostWindow top(240, 160);
+    if (!top.Valid())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "the run promised a window and there is none";
+        }
+        GTEST_SKIP() << "no display to make a window on";
+    }
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto        loop  = std::make_unique<TurnedLoop>();
+    TurnedLoop &turns = *loop;
+    auto        child = reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::move(loop));
+    ASSERT_NE(child, nullptr);
+    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked) << "until someone asks";
+    const std::size_t watched    = turns.watches();
+    const double      mode_hertz = child->DisplayModeHertz();
+    EXPECT_TRUE(mode_hertz == 0.0 || reckless::window::IsBelievableRefreshRate(mode_hertz)) << mode_hertz;
+    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked) << "reading the rate asks for nothing";
+    EXPECT_EQ(turns.watches(), watched) << "and watches nothing more";
+
+    const FramePacingState asked = child->SetFramePacing({FramePacing::kDisplayClock, 4, 1, 5000});
+    HoldsWhicheverPacingItReached(asked, 4, "Linux, asked for a frame every fourth refresh, 5 ms ahead", 5000, true);
+    // A server's Present is of use only to a build that can speak it: one compiled without the Present headers has no
+    // display clock to offer whatever the server has, and says so.
+    const bool has_present = CanThisBuildUsePresent() && DoesTheServerHavePresent();
+    const bool has_rate    = reckless::window::IsBelievableRefreshRate(mode_hertz);
+    EXPECT_EQ(asked.pacing == FramePacing::kDisplayClock, has_present && has_rate)
+        << "Present " << has_present << ", the mode " << mode_hertz << " Hz: " << reckless::window::TextOf(asked.why);
+    if (asked.pacing == FramePacing::kDisplayClock)
+    {
+        EXPECT_DOUBLE_EQ(asked.display_hertz, mode_hertz) << "the rate divided is the mode's";
+        EXPECT_EQ(turns.watches(), watched + 1) << "and the clock's timer is watched on the window's loop";
+    }
+    else if (!has_present)
+    {
+        EXPECT_EQ(asked.why, FramePacingFallback::kNoDisplayClock)
+            << "no Present to use, in the build or on the server, so no clock";
+    }
+    else
+    {
+        EXPECT_EQ(asked.why, FramePacingFallback::kRefreshRateUnknown) << "a mode that names no timing has no rate";
+    }
+    EXPECT_EQ(child->FramePacingNow().pacing, asked.pacing) << "and it says the same again";
+    EXPECT_EQ(child->FramePacingNow().why, asked.why);
+
+    const FramePacingState back = child->SetFramePacing({});
+    EXPECT_EQ(back.why, FramePacingFallback::kNotAsked) << "a default request is a window asking for nothing";
+    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked);
+    child.reset(); // before the window it sits in
+}
+
+namespace
+{
+/** How many X errors the process heard, and of them the Present extension's, while CountedXErrors held the handler. */
+int g_x_errors       = 0;
+int g_present_errors = 0; ///< The errors whose request was the Present extension's.
+int g_present_opcode = 0; ///< The Present extension's major opcode on this server; 0 where it has none.
+
+/** An X error counted rather than ending the process, as Xlib's own handler would.
+    @param display  the connection it came on
+    @param error    the error
+    @return         0, as Xlib ignores */
+int CountXError(Display *display, XErrorEvent *error)
+{
+    (void)display;
+    ++g_x_errors;
+    if (g_present_opcode != 0 && error->request_code == g_present_opcode)
+    {
+        ++g_present_errors;
+    }
+    return 0;
+}
+
+/** The process's X error handler counting, for as long as it lives: the handler is the process's, so it hears the
+    errors of every connection, the child window's own included, and the suite runs on one thread. */
+class CountedXErrors
+{
+  public:
+    CountedXErrors()
+    {
+        g_x_errors       = 0;
+        g_present_errors = 0;
+        Display *display = XOpenDisplay(nullptr);
+        if (display != nullptr)
+        {
+            int event_base = 0;
+            int error_base = 0;
+            if (XQueryExtension(display, "Present", &g_present_opcode, &event_base, &error_base) != True)
+            {
+                g_present_opcode = 0;
+            }
+            XCloseDisplay(display);
+        }
+        previous_ = XSetErrorHandler(CountXError);
+    }
+
+    ~CountedXErrors()
+    {
+        XSetErrorHandler(previous_);
+    }
+
+    CountedXErrors(const CountedXErrors &)            = delete;
+    CountedXErrors &operator=(const CountedXErrors &) = delete;
+
+  private:
+    XErrorHandler previous_{nullptr}; ///< The handler before, put back.
+};
+} // namespace
+
+TEST(ChildWindowFramePacing, AWindowClosedOnTheDisplaysClockAsksNothingOfTheWindowItWas)
+{
+    // The clock's Present selection is on the window, and the clock is the window's connection's, which outlives the
+    // window by a step: the window is destroyed first, and a clock still running then freed its selection on a window
+    // that was gone - a BadWindow on Present's SelectInput at every close of a window paced on the display. The window
+    // stops the clock on itself before it is destroyed. Under Xvfb, whose mode names no rate, the clock never runs, so
+    // the case is a desktop's; this says so rather than pass on nothing.
+    reckless::test::TestHostWindow top(240, 160);
+    if (!top.Valid())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "the run promised a window and there is none";
+        }
+        GTEST_SKIP() << "no display to make a window on";
+    }
+    const CountedXErrors errors;
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto child =
+        reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::make_unique<TurnedLoop>());
+    ASSERT_NE(child, nullptr);
+    const bool is_on_the_clock =
+        child->SetFramePacing({FramePacing::kDisplayClock, 1, 1}).pacing == FramePacing::kDisplayClock;
+    child.reset(); // the window, its connection and the clock, on the clock where it runs
+    EXPECT_EQ(g_present_errors, 0) << "nothing asked of Present about a window that is gone";
+    EXPECT_EQ(g_x_errors, 0) << "and no other error either";
+    if (!is_on_the_clock)
+    {
+        GTEST_SKIP() << "the display's clock does not run here (Xvfb's mode names no rate), so a desktop proves this";
+    }
+}
+
+TEST(ChildWindowFramePacing, TakesItsFramesFromWhicheverItIsPacedOnAndNeverFromBoth)
+{
+    // On the display's clock the frames come from the clock's timer, which the loop watches, and the loop's own timer
+    // runs everything else but no frame; on the loop's timer, the other way round. Turning each alone shows which, and
+    // that the window is never paced by both - which would be two frames a refresh, or frames on two phases.
+    reckless::test::TestHostWindow top(240, 160);
+    if (!top.Valid())
+    {
+        if (reckless::test::WindowRequired())
+        {
+            FAIL() << "the run promised a window and there is none";
+        }
+        GTEST_SKIP() << "no display to make a window on";
+    }
+    reckless::view::View root;
+    root.SetBounds({240, 160});
+    auto        loop  = std::make_unique<TurnedLoop>();
+    TurnedLoop &turns = *loop;
+    auto        child = reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::move(loop));
+    ASSERT_NE(child, nullptr);
+    std::vector<std::chrono::steady_clock::time_point> frames;
+    child->SetFrameCallback([&] { frames.push_back(std::chrono::steady_clock::now()); });
+    const FramePacingState state       = child->SetFramePacing({FramePacing::kDisplayClock, 1, 1});
+    const bool             is_on_clock = state.pacing == FramePacing::kDisplayClock;
+
+    for (int turn = 0; turn < 30; ++turn)
+    {
+        turns.TurnTimer();
+    }
+    EXPECT_EQ(frames.size(), is_on_clock ? 0u : 30u) << "the loop's timer runs a frame only off the display's clock";
+
+    frames.clear();
+    const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
+    while (std::chrono::steady_clock::now() < until)
+    {
+        turns.WaitOnWatches(5);
+    }
+    if (is_on_clock)
+    {
+        // Liveness, not a rate: half a second of a monitor of at least twenty hertz is ten frames.
+        EXPECT_GE(frames.size(), 10u) << "the display's clock wakes the frames by itself";
+        double sum     = 0.0;
+        double squares = 0.0;
+        for (std::size_t i = 1; i < frames.size(); ++i)
+        {
+            const double gap = std::chrono::duration<double, std::milli>(frames[i] - frames[i - 1]).count();
+            sum += gap;
+            squares += gap * gap;
+        }
+        const double count = static_cast<double>(frames.size() > 1 ? frames.size() - 1 : 1);
+        const double mean  = sum / count;
+        std::printf(
+            "[ frame pacing ] Linux, on the display's clock at %.4f Hz: %zu frames, %.3f ms apart, sd %.3f ms\n",
+            state.display_hertz, frames.size(), mean, std::sqrt(std::max(0.0, squares / count - mean * mean)));
+    }
+    else
+    {
+        EXPECT_TRUE(frames.empty()) << "off the display's clock, nothing the loop watches runs a frame";
+    }
+
+    child->SetFramePacing({});
+    frames.clear();
+    turns.WaitOnWatches(50);
+    turns.WaitOnWatches(50);
+    EXPECT_TRUE(frames.empty()) << "back on the loop's timer, the clock wakes nothing";
+    for (int turn = 0; turn < 5; ++turn)
+    {
+        turns.TurnTimer();
+    }
+    EXPECT_EQ(frames.size(), 5u) << "and the timer runs every frame";
+    child.reset(); // before the window it sits in
+}
+#endif
+
+#if defined(__linux__)
+#include "GpuDrawing.h"
+#include "LoadedLibrariesLinux.h"
+
+TEST(ChildWindowDrawing, AWindowThatIsNotAskedLoadsNoEglOrGlAndAnswersNotLinked)
+{
+    // What keeps a product that does not opt in unchanged, held from the outside: this suite links the window and not
+    // the GPU's back end (reckless_window_gpu), as every plug-in and every app that does not ask does, so nothing of
+    // EGL or GL is linked or loaded - read from the dynamic linker's own list, which holds every library the program
+    // was linked against. The GPU's suite reads its own the same way and finds libEGL, the control that this read can
+    // see it.
+    const std::string loaded = reckless::test::LoadedLibrariesOfThisProcess();
+    ASSERT_FALSE(loaded.empty());
+    for (const char *library : {"libEGL.so", "libGL.so", "libGLX.so", "libOpenGL.so", "libGLdispatch.so"})
+    {
+        EXPECT_FALSE(reckless::test::NamesLibrary(loaded, library)) << library << " is loaded:\n" << loaded;
+    }
     reckless::test::TestHostWindow top(240, 160);
     if (!top.Valid())
     {
@@ -1339,16 +1962,19 @@ TEST(ChildWindowFramePacing, SaysPlainlyThatThereIsNoDisplayClockOnX11)
     auto child =
         reckless::window::CreateChildWindow(top.Parent(), root, 240, 160, 1.0f, std::make_unique<TurnedLoop>());
     ASSERT_NE(child, nullptr);
-    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNotAsked) << "until someone asks";
-
-    const FramePacingState asked = child->SetFramePacing({FramePacing::kDisplayClock, 4, 1, 5000});
-    HoldsWhicheverPacingItReached(asked, 4, "Linux, asked for a frame every fourth refresh, 5 ms ahead", 5000);
-    EXPECT_EQ(asked.why, FramePacingFallback::kNoDisplayClock) << "which is the honest answer on X11, not a rate";
-    EXPECT_EQ(child->FramePacingNow().why, FramePacingFallback::kNoDisplayClock) << "and it says the same again";
-    EXPECT_EQ(child->DisplayModeHertz(), 0.0) << "and names no rate for a product to work a divisor out from";
-
-    const FramePacingState back = child->SetFramePacing({});
-    EXPECT_EQ(back.why, FramePacingFallback::kNotAsked) << "a default request is a window asking for nothing";
+    const reckless::window::DrawingState unasked = child->DrawingNow();
+    EXPECT_EQ(unasked.drawing, reckless::window::Drawing::kCpuRaster) << "a window no one has asked draws as it did";
+    EXPECT_EQ(unasked.why, reckless::window::DrawingFallback::kNotAsked);
+    EXPECT_TRUE(unasked.renderer.empty());
+    // Asked for the GPU with no back end linked: said, and still nothing of EGL loaded.
+    const reckless::window::DrawingState not_linked = child->SetDrawing({reckless::window::Drawing::kGpu, nullptr});
+    EXPECT_EQ(not_linked.drawing, reckless::window::Drawing::kCpuRaster);
+    EXPECT_TRUE(not_linked.why == reckless::window::DrawingFallback::kNotLinked ||
+                not_linked.why == reckless::window::DrawingFallback::kForcedOff)
+        << reckless::window::TextOf(not_linked.why);
+    EXPECT_EQ(child->SetDrawing({}).why, reckless::window::DrawingFallback::kNotAsked) << "and back to not asked";
+    EXPECT_FALSE(reckless::test::NamesLibrary(reckless::test::LoadedLibrariesOfThisProcess(), "libEGL.so"))
+        << "asking loads no EGL where no back end is linked";
     child.reset(); // before the window it sits in
 }
 #endif

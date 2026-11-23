@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -80,6 +81,17 @@ class ChildWindow
         @param scale  window units per design pixel: 1 is the design size, 0.5 to 2 for a shell's range */
     virtual void SetScale(float scale) = 0;
 
+    /** Told by the app whenever its window enters or leaves full screen (RunApp does, from the window's own state), so
+        a window that presents on the GPU can swap in step with the display while nothing composes it, and without
+        waiting while the compositor does (docs/window/gpu-drawing.md, "Pacing, and the swap interval"). Nothing on a
+        window with no GPU presenter to tell, which is the default; Windows' WGL presenter is the only one that acts on
+        it so far.
+        @param is_full_screen  whether the app's window is full screen */
+    virtual void SetFullScreen(bool is_full_screen)
+    {
+        static_cast<void>(is_full_screen);
+    }
+
     /** Runs `frame` once a frame until replaced or the window goes, on whatever the window is paced by
         (SetFramePacing): the platform's own window timer unless a product has asked for the display's clock. The
         platform timer's rate is not the display's and is not promised - it is about sixty a second on macOS and
@@ -134,18 +146,19 @@ class ChildWindow
         and macOS as its mode says. It is not the rate FramePacingState::display_hertz reports, which is the one being
         divided and moves as the compositor's readings do (docs/window/frame-pacing.md, "Choosing a divisor"). Asks the
         system each time, so read it as often as the display might have moved, about once a second, and not every frame.
-        @return  the rate, in hertz; 0 where nothing can say, as on a platform with no display clock, Linux among them
+        @return  the rate, in hertz; 0 where nothing can say, as on a platform with no display clock, or under Xvfb,
+       whose one mode names no timing
      */
     virtual double DisplayModeHertz() const
     {
         return 0.0;
     }
 
-    /** The window drawn as `request` asks: on the GPU - Skia's Ganesh on the platform's GL, each frame presented with a
-        swap - where the platform has a GPU path, the request names a back end (GpuDrawingRequest, which needs
-        reckless_window_gpu linked) and a context can be made, and with the CPU raster it has always drawn with where
-        not. The answer says which it is drawing with and, where it fell back, why (GpuDrawing.h,
-        docs/window/gpu-drawing.md).
+    /** The window drawn as `request` asks: on the GPU - Skia's Ganesh on the platform's GPU API (GL on Windows, Metal
+       on macOS), each frame presented - where the platform has a GPU path, the request names a back end
+       (GpuDrawingRequest, which needs reckless_window_gpu linked) and a context can be made, and with the CPU raster it
+       has always drawn with where not. The answer says which it is drawing with and, where it fell back, why
+       (GpuDrawing.h, docs/window/gpu-drawing.md).
 
         **Nothing until it is asked.** A window whose owner has not called this makes no context, loads no GL and draws
         exactly as it always did; `DrawingRequest{}` asks for that, and calling it with `DrawingRequest{}` after the GPU
@@ -243,9 +256,26 @@ void RevealInFileManager(const std::string &path);
 
 /** A web page, `url` (UTF-8, http or https), opened in the person's default browser: through NSWorkspace on macOS, the
     shell's ShellExecute on Windows and xdg-open on Linux, in a process of its own that the caller never waits for. A
-   URL of any other scheme is refused, so nothing a page hands over opens a file or a program.
+   URL of any other scheme is refused, so nothing a page hands over opens a file or a program (a file is
+    OpenLocalFile's).
     @param url  the page's URL */
 void OpenInBrowser(const std::string &url);
+
+/** An installed file - a user guide, a licence, a page of the product's own - opened in whatever the system opens it
+    with: `xdg-open` on Linux (the same detached spawn as OpenInBrowser), the shell's ShellExecute on Windows and
+    NSWorkspace on macOS. `path` is a filesystem path and nothing else: never parsed as a URL, never handed to a shell
+   or split as a command line, so spaces and non-ASCII characters reach the handler intact, and a relative path is made
+   absolute first. A path that does not exist, or is not a regular file (a folder, a device, a pipe), is refused before
+   anything is spawned or asked of the shell, and so is one holding a NUL. OpenInBrowser is unchanged and still opens a
+   web page only.
+
+    **Security: pass only a path the product built itself.** The handler runs what the file's type says - an
+    executable or a script is started, not shown - so the path must never come from a document, a message, the command
+    line or free text the person typed. The refusal of a missing file guards a mistake, not an attacker.
+    @param path  the file's path
+    @return      true when the handler was started on the file (what it then does is its own); false for a refused
+                 path, or where nothing could be started */
+bool OpenLocalFile(const std::filesystem::path &path);
 
 /** A child window of `parent` (the platform's native handle: an NSView, an HWND, an X11 window id) showing `root`,
     `width` x `height` design pixels at `scale`; null when the platform has none or the parent is unusable. `root`

@@ -49,6 +49,15 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#include <dlfcn.h>
+
+#if __has_include(<X11/extensions/Xrandr.h>)
+#include <X11/extensions/Xrandr.h>
+/// Whether this build can name the displays: RandR's header was there to build against (MonitorsOf).
+#define RECKLESS_X11_MONITORS 1
+#else
+#define RECKLESS_X11_MONITORS 0
+#endif
 
 #include "../../window/linux/X11Clipboard.h" // the child window's too: not on an include path
 
@@ -209,49 +218,151 @@ bool LaysOutBgra(const XVisualInfo &info) noexcept
            info.blue_mask == 0x0000ff;
 }
 
-/** The desktop's work area - what the panels and docks leave of the screen, as the window manager publishes it on the
-    current desktop (_NET_WORKAREA) - else the whole screen.
+/** The root window's property `name` of 32-bit cardinals (CARDINAL), as the window manager publishes its desktops'.
+    @param display  the app's connection
+    @param name     the property's name
+    @param count    the most values to read
+    @return         its values; none where it is missing */
+std::vector<long> RootCardinals(Display *display, const char *name, long count)
+{
+    Atom              type   = 0;
+    int               format = 0;
+    unsigned long     items  = 0;
+    unsigned long     after  = 0;
+    unsigned char    *data   = nullptr;
+    std::vector<long> values;
+    if (XGetWindowProperty(display, DefaultRootWindow(display), XInternAtom(display, name, False), 0, count, False,
+                           XA_CARDINAL, &type, &format, &items, &after, &data) == Success &&
+        data != nullptr && format == 32)
+    {
+        const auto *longs = reinterpret_cast<const long *>(data); // format 32 arrives as longs
+        values.assign(longs, longs + items);
+    }
+    if (data != nullptr)
+    {
+        XFree(data);
+    }
+    return values;
+}
+
+/** The window manager's current desktop (_NET_CURRENT_DESKTOP).
+    @param display  the app's connection
+    @return         its number; 0 where the property is missing */
+long CurrentDesktop(Display *display)
+{
+    const std::vector<long> desktop = RootCardinals(display, "_NET_CURRENT_DESKTOP", 1);
+    return desktop.empty() ? 0 : desktop[0];
+}
+
+/** The rectangles a run of cardinals holds four by four - x, y, width, height - as _NET_WORKAREA and _GTK_WORKAREAS
+    lay them out.
+    @param values  the cardinals
+    @return        the rectangles; a short run at the end is left out */
+std::vector<gfx::RectI> RectanglesOf(const std::vector<long> &values)
+{
+    std::vector<gfx::RectI> rectangles;
+    for (std::size_t at = 0; at + 3 < values.size(); at += 4)
+    {
+        rectangles.push_back({static_cast<int>(values[at]), static_cast<int>(values[at + 1]),
+                              static_cast<int>(values[at + 2]), static_cast<int>(values[at + 3])});
+    }
+    return rectangles;
+}
+
+/** The desktop's work area - what the panels and docks leave of the whole desktop, one rectangle over every display -
+    as the window manager publishes it on the current desktop (_NET_WORKAREA).
+    @param display  the app's connection
+    @return         the area, in pixels from the root window's top left; empty where the property is missing */
+gfx::RectI DesktopWorkArea(Display *display)
+{
+    const std::vector<gfx::RectI> areas = RectanglesOf(RootCardinals(display, "_NET_WORKAREA", 4 * 64));
+    if (areas.empty())
+    {
+        return {};
+    }
+    const auto current = static_cast<std::size_t>(CurrentDesktop(display));
+    return current < areas.size() ? areas[current] : areas.front();
+}
+
+/** The desktop's work area (DesktopWorkArea), else the whole screen.
     @param display  the app's connection
     @return         the area, in pixels from the screen's top left; the whole screen where the property is missing or
                     empty */
 gfx::RectI WorkArea(Display *display)
 {
     const int        screen = DefaultScreen(display);
-    const gfx::RectI whole{0, 0, DisplayWidth(display, screen), DisplayHeight(display, screen)};
-    const ::Window   root = RootWindow(display, screen);
-    const auto       read = [display, root](const char *name, long count, std::vector<long> &values) {
-        Atom           type   = 0;
-        int            format = 0;
-        unsigned long  items  = 0;
-        unsigned long  after  = 0;
-        unsigned char *data   = nullptr;
-        const bool     got    = XGetWindowProperty(display, root, XInternAtom(display, name, False), 0, count, False,
-                                                   XA_CARDINAL, &type, &format, &items, &after, &data) == Success &&
-                                data != nullptr && format == 32;
-        if (got)
-        {
-            const auto *longs = reinterpret_cast<const long *>(data); // format 32 arrives as longs
-            values.assign(longs, longs + items);
-        }
-        if (data != nullptr)
-        {
-            XFree(data);
-        }
-        return got;
-    };
-    std::vector<long> desktop;
-    std::vector<long> areas;
-    const long        current = read("_NET_CURRENT_DESKTOP", 1, desktop) && !desktop.empty() ? desktop[0] : 0;
-    if (!read("_NET_WORKAREA", 4 * 64, areas) || areas.size() < 4)
-    {
-        return whole;
-    }
-    const auto at =
-        static_cast<std::size_t>(4 * current + 3) < areas.size() ? static_cast<std::size_t>(4 * current) : 0u;
-    const gfx::RectI area{static_cast<int>(areas[at]), static_cast<int>(areas[at + 1]), static_cast<int>(areas[at + 2]),
-                          static_cast<int>(areas[at + 3])};
-    return area.IsEmpty() ? whole : area;
+    const gfx::RectI area   = DesktopWorkArea(display);
+    return area.IsEmpty() ? gfx::RectI{0, 0, DisplayWidth(display, screen), DisplayHeight(display, screen)} : area;
 }
+
+#if RECKLESS_X11_MONITORS
+/** The work areas a window manager of Mutter's line - Mutter, Muffin - publishes display by display on the current
+    desktop (_GTK_WORKAREAS_D<desktop>), each what that display's panels leave of it, which _NET_WORKAREA's one
+    rectangle over the whole desktop cannot say.
+    @param display  the app's connection
+    @return         the areas, in pixels from the root window's top left, in the window manager's order; none where the
+                    window manager publishes none */
+std::vector<gfx::RectI> DisplayWorkAreas(Display *display)
+{
+    const std::string name = "_GTK_WORKAREAS_D" + std::to_string(CurrentDesktop(display));
+    return RectanglesOf(RootCardinals(display, name.c_str(), 4 * 64));
+}
+
+/** The displays RandR names - its monitors: an output each, or the outputs a tiled panel is made of as one - the
+    primary first and the rest in the server's order. libXrandr is opened by name, as the display's clock opens it
+    (window/linux/DisplayClockLinux.h), so no product's link line changes and a machine without it names no displays.
+    @param display  the app's connection
+    @return         the displays' rectangles, in pixels from the root window's top left; none where the server has no
+                    RandR 1.5 or the library cannot be opened */
+std::vector<gfx::RectI> MonitorsOf(Display *display)
+{
+    struct Calls
+    {
+        decltype(&XRRQueryExtension) query_extension{nullptr}; ///< XRRQueryExtension
+        decltype(&XRRQueryVersion)   query_version{nullptr};   ///< XRRQueryVersion
+        decltype(&XRRGetMonitors)    get_monitors{nullptr};    ///< XRRGetMonitors
+        decltype(&XRRFreeMonitors)   free_monitors{nullptr};   ///< XRRFreeMonitors
+    };
+
+    static const Calls calls = [] {
+        void      *library = dlopen("libXrandr.so.2", RTLD_NOW | RTLD_LOCAL); // never closed, so no call outlives it
+        const auto find = [library](const char *name) { return library == nullptr ? nullptr : dlsym(library, name); };
+        Calls      found;
+        found.query_extension = reinterpret_cast<decltype(found.query_extension)>(find("XRRQueryExtension"));
+        found.query_version   = reinterpret_cast<decltype(found.query_version)>(find("XRRQueryVersion"));
+        found.get_monitors    = reinterpret_cast<decltype(found.get_monitors)>(find("XRRGetMonitors"));
+        found.free_monitors   = reinterpret_cast<decltype(found.free_monitors)>(find("XRRFreeMonitors"));
+        return found;
+    }();
+    int event_base = 0;
+    int error_base = 0;
+    int major      = 0;
+    int minor      = 0;
+    if (calls.query_extension == nullptr || calls.query_version == nullptr || calls.get_monitors == nullptr ||
+        calls.free_monitors == nullptr || !calls.query_extension(display, &event_base, &error_base) ||
+        !calls.query_version(display, &major, &minor) || major < 1 || (major == 1 && minor < 5))
+    {
+        return {};
+    }
+    int                     count    = 0;
+    XRRMonitorInfo         *monitors = calls.get_monitors(display, DefaultRootWindow(display), True, &count);
+    std::vector<gfx::RectI> rectangles;
+    for (int index = 0; monitors != nullptr && index < count; ++index)
+    {
+        const XRRMonitorInfo &monitor = monitors[index];
+        const gfx::RectI      area{monitor.x, monitor.y, monitor.width, monitor.height};
+        if (!area.IsEmpty())
+        {
+            rectangles.insert(monitor.primary ? rectangles.begin() : rectangles.end(), area);
+        }
+    }
+    if (monitors != nullptr)
+    {
+        calls.free_monitors(monitors);
+    }
+    return rectangles;
+}
+#endif
 
 /** The frame a window manager draws round a window's client area, each side in pixels. */
 struct FrameExtents
@@ -319,6 +430,29 @@ std::vector<Atom> AtomsOf(Display *display, ::Window window, const char *name)
     return atoms;
 }
 
+/** Whether a window is minimised: the state its window manager keeps on it (WM_STATE) is IconicState.
+    @param display  the app's connection
+    @param window   the top-level window
+    @return         true where the window manager has it iconic; false where it is shown or no state is kept */
+bool IsIconic(Display *display, ::Window window)
+{
+    const Atom     wm_state = XInternAtom(display, "WM_STATE", False);
+    Atom           type     = 0;
+    int            format   = 0;
+    unsigned long  items    = 0;
+    unsigned long  after    = 0;
+    unsigned char *data     = nullptr;
+    const bool is_iconic = XGetWindowProperty(display, window, wm_state, 0, 2, False, wm_state, &type, &format, &items,
+                                              &after, &data) == Success &&
+                           data != nullptr && format == 32 && items >= 1 &&
+                           reinterpret_cast<const long *>(data)[0] == IconicState; // format 32 arrives as longs
+    if (data != nullptr)
+    {
+        XFree(data);
+    }
+    return is_iconic;
+}
+
 /** Whether a window manager runs that takes a window full screen as EWMH asks: one that says it is there
     (_NET_SUPPORTING_WM_CHECK on the root) and lists _NET_WM_STATE_FULLSCREEN among what it supports (_NET_SUPPORTED).
     @param display  the app's connection
@@ -377,9 +511,13 @@ class LinuxWindow final : public AppWindow
     }
 
     std::pair<int, int> Position() const override;
+    bool                SetPosition(int x, int y) override;
     void                BringToFront() override;
     void                SetContentSize(int width, int height) override;
     void                SetContentSizeOnScreen(int width, int height) override;
+    gfx::PointI         ContentSizeInUnits() const override;
+    void                SetContentSizeInUnits(int width, int height) override;
+    bool                SetUserResizable(bool is_resizable, gfx::PointI least, gfx::PointI most) override;
     gfx::PointI         LargestContent() const override;
     void                SetTitle(const std::string &title) override;
     std::string         Title() const override;
@@ -457,7 +595,8 @@ class LinuxWindow final : public AppWindow
     std::function<gfx::PointI()>  aspect_; ///< the panel's design size as the aspect to hold, or {0, 0}; may be empty.
     int                           fixed_height_{0}; ///< the bar's height, in design pixels, over what scales.
     std::function<void(int, int)> resized_; ///< told the content's design size after the person dragged the frame.
-    bool                          dialog_;  ///< a dialog: typed as one, Escape closes it.
+    std::function<void(int, int)> resized_in_units_;      ///< told the content's size in pixels after the same drag.
+    bool                          dialog_;                ///< a dialog: typed as one, Escape closes it.
     std::function<void(bool)>     full_screen_changed_;   ///< told each change of full screen; may be empty.
     bool                          may_go_full_screen_;    ///< opened with full screen allowed, and no dialog.
     bool                          is_full_screen_{false}; ///< full screen, or asked to be: the state last asked for
@@ -597,7 +736,7 @@ class LinuxPlatform final : public AppPlatform
         @param milliseconds  the interval, in milliseconds, at least 1
         @param tick          what runs each interval, on the loop's thread
         @return              a token for Unregister */
-    int AddTimer(int milliseconds, std::function<void()> tick)
+    int AddTimer(int milliseconds, std::function<void()> tick) override
     {
         const int  token    = next_token_++;
         const auto interval = std::chrono::milliseconds(std::max(milliseconds, 1));
@@ -613,21 +752,81 @@ class LinuxPlatform final : public AppPlatform
         timers_.erase(token);
     }
 
+    /** Stop a timer AddTimer started, at once: a tick already due is not run. One already stopped is ignored.
+        @param token  a token AddTimer gave */
+    void CancelTimer(int token) override
+    {
+        timers_.erase(token);
+    }
+
+    /** The loop polls descriptors for the app.
+        @return  true */
+    bool CanWatchFileDescriptors() const override
+    {
+        return true;
+    }
+
+    /** Watch `fd` on the loop for the app's own use until UnwatchFileDescriptor, as a plug-in's host loop does
+        (VST3's `IRunLoop::registerEventHandler`).
+        @param fd     the descriptor, which the caller keeps open until it unwatches
+        @param ready  what runs on the loop's thread when it is readable, hung up or in error
+        @return       a token for UnwatchFileDescriptor; 0 for a descriptor that is not one (negative) */
+    int WatchFileDescriptor(int fd, std::function<void()> ready) override
+    {
+        return fd >= 0 ? Watch(fd, std::move(ready)) : 0;
+    }
+
+    /** Take back a watch WatchFileDescriptor made, at once: nothing further is run for it, not even for a descriptor
+        the poll in progress found ready. One already gone is ignored.
+        @param token  a token WatchFileDescriptor gave */
+    void UnwatchFileDescriptor(int token) override
+    {
+        watches_.erase(token);
+    }
+
     // ---- AppPlatform -----------------------------------------------------------------------------------------------
 
     gfx::PointI LargestContent(const WindowOptions &options) const override
     {
         // The window manager says a frame's extents (_NET_FRAME_EXTENTS) only once a window is mapped: a typical title
         // bar and border are allowed for, in design pixels at the desktop's scale.
-        constexpr int    kAssumedFrameWidth  = 8;
-        constexpr int    kAssumedFrameHeight = 40;
-        const float      scale               = window::DisplayScaleOf(nullptr);
-        const gfx::RectI area                = WorkArea(display_);
+        constexpr int kAssumedFrameWidth  = 8;
+        constexpr int kAssumedFrameHeight = 40;
+        if (display_ == nullptr)
+        {
+            return {0, 0}; // no display, so no screen to fit: the platform cannot say, as AppPlatform allows
+        }
+        const float      scale = window::DisplayScaleOf(nullptr);
+        const gfx::RectI area  = WorkArea(display_);
         // Back in design units to the most whose pixels fit: a size that fits whole, as the window sizes its pixels,
         // never the pixel short a truncation gives at a fractional scale.
         return FittedDesignContent(
             {options.width, options.height},
             {PixelsOfDesign(kAssumedFrameWidth, scale), PixelsOfDesign(kAssumedFrameHeight, scale)}, area, scale);
+    }
+
+    /** Every display's usable area, the primary's first: RandR's monitors, each held to what the window manager says
+        its panels leave of it (UsableAreas) - the work area it publishes for that display where it publishes one
+        display by display, as Mutter and Muffin do, else the part of the desktop's one work area it covers, else the
+        whole display. The space is the root window's, the one Position reads, with y down from its top, which is the
+        primary's top where the primary is the top left display.
+        @return  the areas, in pixels; none with no display, no RandR 1.5, or a build without RandR's header */
+    std::vector<gfx::RectI> ScreenAreas() const override
+    {
+#if RECKLESS_X11_MONITORS
+        if (display_ == nullptr)
+        {
+            return {};
+        }
+        const std::vector<gfx::RectI> monitors = MonitorsOf(display_);
+        if (monitors.empty())
+        {
+            return {};
+        }
+        return UsableAreas(monitors, DisplayWorkAreas(display_), DesktopWorkArea(display_));
+#else
+        return {};
+#endif
     }
 
     std::unique_ptr<AppWindow> OpenWindow(const WindowOptions &options) override
@@ -991,7 +1190,8 @@ std::unique_ptr<window::RunLoop> LinuxPlatform::ChildLoop()
 
 LinuxWindow::LinuxWindow(LinuxPlatform &platform, const WindowOptions &options)
     : platform_(platform), display_(platform.display()), closing_(options.closing), constrain_(options.constrain),
-      aspect_(options.aspect), fixed_height_(options.fixed_height), resized_(options.resized), dialog_(options.dialog),
+      aspect_(options.aspect), fixed_height_(options.fixed_height), resized_(options.resized),
+      resized_in_units_(options.resized_in_units), dialog_(options.dialog),
       full_screen_changed_(options.full_screen_changed),
       may_go_full_screen_(options.may_go_full_screen && !options.dialog)
 {
@@ -1147,6 +1347,22 @@ std::pair<int, int> LinuxWindow::Position() const
     return {x, y};
 }
 
+bool LinuxWindow::SetPosition(int x, int y)
+{
+    if (is_full_screen_ || is_full_screen_told_ || IsIconic(display_, window_))
+    {
+        return false; // full screen it stands over the screen, and minimised it comes back where it stood
+    }
+    // The size hints first, the place an asked one (USPosition) and the gravity static, then the move: so the point
+    // placed is the client area's top left - what Position reads - however tall the window manager's title bar. The
+    // window manager has the last word, and may keep a window on its work area or move it on; true says only that the
+    // move was asked, and Position says where the window went once the window manager has placed it.
+    SetSizeHints(x, y, true);
+    XMoveWindow(display_, window_, x, y);
+    XFlush(display_);
+    return true;
+}
+
 void LinuxWindow::BringToFront()
 {
     // Mapped again where the window manager had it iconic, and activated the way a pager asks (_NET_ACTIVE_WINDOW),
@@ -1207,6 +1423,52 @@ void LinuxWindow::SetContentSizeOnScreen(int width, int height)
         const auto f = resized_;
         f(width, height);
     }
+}
+
+gfx::PointI LinuxWindow::ContentSizeInUnits() const
+{
+    return {pixel_width_, pixel_height_};
+}
+
+void LinuxWindow::SetContentSizeInUnits(int width, int height)
+{
+    SetFullScreen(false); // a size of the app's own is the window's
+    // The pixels asked for, exactly, and the size hints for them first, as SetContentSize does; the size is the app's
+    // own, so the ConfigureNotify it brings matches pixel_width_ and is told to no one.
+    pixel_width_      = std::max(1, width);
+    pixel_height_     = std::max(1, height);
+    const auto [x, y] = Position();
+    SetSizeHints(x, y, false);
+    XResizeWindow(display_, window_, static_cast<unsigned>(pixel_width_), static_cast<unsigned>(pixel_height_));
+    XFlush(display_);
+}
+
+bool LinuxWindow::SetUserResizable(bool is_resizable, gfx::PointI least, gfx::PointI most)
+{
+    if (is_resizable)
+    {
+        // The window manager's limits are the constraint's least and most, in design units at the window's scale: a
+        // limit of none is one unit and what a window may be.
+        constrain_ = [this, least, most](gfx::PointF proposed) {
+            const float scale = scale_ > 0.0f ? scale_ : 1.0f;
+            const float low_x = least.x > 0 ? static_cast<float>(least.x) / scale : 1.0f / scale;
+            const float low_y = least.y > 0 ? static_cast<float>(least.y) / scale : 1.0f / scale;
+            const float top_x = most.x > 0 ? static_cast<float>(most.x) / scale : 1.0e5f;
+            const float top_y = most.y > 0 ? static_cast<float>(most.y) / scale : 1.0e5f;
+            return gfx::PointF{std::clamp(proposed.x, low_x, std::max(low_x, top_x)),
+                               std::clamp(proposed.y, low_y, std::max(low_y, top_y))};
+        };
+    }
+    else
+    {
+        constrain_ = nullptr; // one size: the one it has
+    }
+    aspect_           = nullptr;
+    fixed_height_     = 0;
+    const auto [x, y] = Position();
+    SetSizeHints(x, y, false);
+    XFlush(display_);
+    return true;
 }
 
 gfx::PointI LinuxWindow::LargestContent() const
@@ -1462,6 +1724,11 @@ void LinuxWindow::Event(const XEvent &event)
             const auto f = resized_;
             f(std::max(1, static_cast<int>(std::lround(static_cast<float>(pixel_width_) / scale_))),
               std::max(1, static_cast<int>(std::lround(static_cast<float>(pixel_height_) / scale_))));
+        }
+        if (resized_in_units_)
+        {
+            const auto f = resized_in_units_;
+            f(pixel_width_, pixel_height_);
         }
     }
 }
