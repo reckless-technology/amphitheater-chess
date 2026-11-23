@@ -100,6 +100,31 @@ jobs:
       # The window's suites (label window) on a display of their own, one at a time.
       - name: Test the window on a display (xvfb-run)
         run: xvfb-run -a -s "-screen 0 1600x1200x24" ctest --test-dir build/ci-linux --output-on-failure -L '^window$'
+      # The integration suite against a real engine: Pawnstar's release binary, pinned by version and held to its
+      # SHA-256 (the release embeds its net and book, so the one file is the whole engine). The suite skips itself when
+      # AMPHITHEATER_TEST_ENGINE is unset, and a skip is reported green, so this step also fails unless both tests
+      # are named as passed and none as skipped.
+      - name: Test against a real engine (Pawnstar 2.3.1)
+        env:
+          PAWNSTAR_VERSION: "2.3.1"
+          PAWNSTAR_SHA256: 2a1b3718d7f926e121cd3ed0e0332183c9414608d2b934d2b82708298cdb1526
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          engine_dir="$RUNNER_TEMP/real-engine"
+          mkdir -p "$engine_dir"
+          asset="pawnstar-$PAWNSTAR_VERSION-linux-x86_64"
+          gh release download "v$PAWNSTAR_VERSION" --repo reckless-technology/pawnstar --pattern "$asset" --dir "$engine_dir"
+          echo "$PAWNSTAR_SHA256  $engine_dir/$asset" | sha256sum --check -
+          mv "$engine_dir/$asset" "$engine_dir/pawnstar"
+          chmod +x "$engine_dir/pawnstar"
+          export AMPHITHEATER_TEST_ENGINE="$engine_dir/pawnstar"
+          ctest --test-dir build/ci-linux --output-on-failure -R '^integration$' -V | tee "$RUNNER_TEMP/real-engine.log"
+          for test_name in RealEngine.HandshakeAndSearch RealEngine.AShortMatchAgainstItself; do
+            grep -q "^[0-9]*: \[       OK \] $test_name " "$RUNNER_TEMP/real-engine.log" \
+              || { echo "::error::$test_name did not pass (it was skipped or never ran)"; exit 1; }
+          done
+          if grep -q 'SKIPPED' "$RUNNER_TEMP/real-engine.log"; then echo "::error::a real-engine test was skipped"; exit 1; fi
       # The release's two Linux packages, unsigned, from this tree, as release.yml makes them: the stage (each bundled
       # engine downloaded by its pin, held to its hash and answering its handshake), the portable
       # zip and the Debian package, each held to the stage and every engine started from its place in it; then dropped.
