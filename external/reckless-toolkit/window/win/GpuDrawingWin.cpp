@@ -2,27 +2,21 @@
 // window is given a double-buffered pixel format, a GL context is made on it - a robust one, which a driver reset is
 // reported to, where the driver offers that - and Skia's GPU context on the context. The views draw into a surface of
 // the window's size on the GPU, which keeps its pixels from frame to frame as the CPU raster does, and each frame is
-// that surface drawn into the window's back buffer and the buffers swapped, with a swap interval of 0: the swap never
-// waits for the display, because the frame callback is already paced on the display's own clock
-// (ChildWindow::SetFramePacing) and a swap that waited too would be a second clock fighting the first
-// (docs/window/gpu-drawing.md).
+// that surface drawn into the window's back buffer and the buffers swapped, with a swap interval of 0 while the window
+// is windowed: the swap never waits for the display, because the frame callback is already paced on the display's own
+// clock (ChildWindow::SetFramePacing) and a swap that waited too would be a second clock fighting the first. In full
+// screen nothing composes the frame and a swap that does not wait tears, so the interval is 1 there
+// (SkiaGpuPresenter::SetFullScreen; docs/window/gpu-drawing.md, "Pacing, and the swap interval").
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
 
-#include "include/core/SkBlendMode.h"
-#include "include/core/SkCanvas.h"
 #include "include/core/SkColorSpace.h"
-#include "include/core/SkImageInfo.h"
-#include "include/core/SkPaint.h"
-#include "include/core/SkSamplingOptions.h"
 #include "include/core/SkSurface.h"
-#include "include/gpu/GpuTypes.h"
 #include "include/gpu/ganesh/GrBackendSurface.h"
 #include "include/gpu/ganesh/GrDirectContext.h"
-#include "include/gpu/ganesh/GrTypes.h"
 #include "include/gpu/ganesh/SkSurfaceGanesh.h"
 #include "include/gpu/ganesh/gl/GrGLBackendSurface.h"
 #include "include/gpu/ganesh/gl/GrGLDirectContext.h"
@@ -30,6 +24,7 @@
 #include "include/gpu/ganesh/gl/win/GrGLMakeWinInterface.h"
 
 #include "GpuDrawingBackend.h"
+#include "ProcessEnvironment.h"
 
 // windows.h after Skia's headers: it defines macros (DrawText, min, max) that would reach into them.
 #ifndef NOMINMAX
@@ -43,6 +38,7 @@
 #include <GL/gl.h>
 
 #include "GpuPresenterWin.h"
+#include "GpuSurfacePresenter.h"
 
 namespace reckless::window
 {
@@ -99,8 +95,10 @@ bool NamesExtension(const char *extensions, const char *name) noexcept
     return false;
 }
 
-/** A window drawn by Skia's Ganesh on WGL. Made by MakeWglPresenter, which leaves it whole or makes nothing. */
-class WglPresenter final : public win::GpuPresenter
+/** A window drawn by Skia's Ganesh on WGL: the platform-neutral half is SkiaGpuPresenter's (the surface the views draw
+    into, the copy over the back buffer, the loss), and this is the WGL of it. Made by MakeWglPresenter, which leaves it
+    whole or makes nothing. */
+class WglPresenter final : public SkiaGpuPresenter
 {
   public:
     /** The presenter over what MakeWglPresenter made, which it owns from here.
@@ -108,10 +106,14 @@ class WglPresenter final : public win::GpuPresenter
         @param dc       the window's device context, held for the presenter's life
         @param gl       the GL context on it
         @param context  Skia's GPU context on `gl`
-        @param reset_status  the GL's reset status function, where the context is a robust one; null where not */
+        @param reset_status  the GL's reset status function, where the context is a robust one; null where not
+        @param set_swap_interval  wglSwapIntervalEXT, where the driver has it; null where not
+        @param request  what decides the swap interval (RECKLESS_GPU_SWAP_INTERVAL) */
     WglPresenter(HWND window, HDC dc, HGLRC gl, sk_sp<GrDirectContext> context,
-                 GraphicsResetStatusFunction reset_status) noexcept
-        : window_(window), dc_(dc), gl_(gl), context_(std::move(context)), reset_status_(reset_status)
+                 GraphicsResetStatusFunction reset_status, SwapIntervalFunction set_swap_interval,
+                 SwapIntervalRequest request) noexcept
+        : SkiaGpuPresenter(std::move(context), request), window_(window), dc_(dc), gl_(gl), reset_status_(reset_status),
+          set_swap_interval_(set_swap_interval)
     {
     }
 
@@ -120,17 +122,8 @@ class WglPresenter final : public win::GpuPresenter
     ~WglPresenter() override
     {
         const bool is_current = MakeCurrent();
-        offscreen_.reset();
         back_buffer_.reset();
-        if (context_)
-        {
-            if (is_current && !context_->abandoned())
-            {
-                context_->flushAndSubmit(GrSyncCpu::kYes);
-            }
-            context_->releaseResourcesAndAbandonContext();
-            context_.reset();
-        }
+        ShutDownSkia(is_current);
         wglMakeCurrent(nullptr, nullptr);
         wglDeleteContext(gl_);
         ReleaseDC(window_, dc_);
@@ -139,43 +132,14 @@ class WglPresenter final : public win::GpuPresenter
     WglPresenter(const WglPresenter &)            = delete;
     WglPresenter &operator=(const WglPresenter &) = delete;
 
-    sk_sp<SkSurface> SurfaceOfSize(int width, int height) override
+  private:
+    bool MakeCurrent() const noexcept override
     {
-        if (!MakeCurrent() || context_->abandoned())
-        {
-            return nullptr;
-        }
-        if (!offscreen_ || offscreen_->width() != width || offscreen_->height() != height)
-        {
-            offscreen_.reset();
-            back_buffer_.reset();
-            // RGBA, as GL holds it, premultiplied as the CPU raster is; drawn top-down, as the views lay it out.
-            offscreen_ =
-                SkSurfaces::RenderTarget(context_.get(), skgpu::Budgeted::kNo,
-                                         SkImageInfo::Make(width, height, kRGBA_8888_SkColorType, kPremul_SkAlphaType),
-                                         0, kTopLeft_GrSurfaceOrigin, nullptr);
-            if (!offscreen_)
-            {
-                return nullptr;
-            }
-            offscreen_->getCanvas()->clear(SK_ColorTRANSPARENT);
-        }
-        return offscreen_;
+        return wglGetCurrentContext() == gl_ && wglGetCurrentDC() == dc_ ? true : wglMakeCurrent(dc_, gl_) != FALSE;
     }
 
-    bool BeginFrame() override
+    sk_sp<SkSurface> BackBuffer(int width, int height) override
     {
-        return MakeCurrent() && !context_->abandoned();
-    }
-
-    bool Present() override
-    {
-        if (!offscreen_ || !MakeCurrent() || context_->abandoned())
-        {
-            return !IsLost();
-        }
-        const int width  = offscreen_->width();
-        const int height = offscreen_->height();
         if (!back_buffer_ || back_buffer_->width() != width || back_buffer_->height() != height)
         {
             // The window's own framebuffer, 0, at the surface's size - which is the window's, the window having been
@@ -184,49 +148,36 @@ class WglPresenter final : public win::GpuPresenter
             framebuffer.fFBOID                 = 0;
             framebuffer.fFormat                = kGlRgba8;
             const GrBackendRenderTarget target = GrBackendRenderTargets::MakeGL(width, height, 0, 8, framebuffer);
-            back_buffer_ = SkSurfaces::WrapBackendRenderTarget(context_.get(), target, kBottomLeft_GrSurfaceOrigin,
+            back_buffer_ = SkSurfaces::WrapBackendRenderTarget(Context(), target, kBottomLeft_GrSurfaceOrigin,
                                                                kRGBA_8888_SkColorType, nullptr, nullptr);
-            if (!back_buffer_)
-            {
-                return !IsLost();
-            }
         }
-        // The whole frame, as it stands, over the back buffer: the swap leaves the back buffer's pixels undefined, so
-        // only the views' own surface keeps them, and the copy is the GPU's, a fraction of a millisecond at 4K.
-        SkPaint copy;
-        copy.setBlendMode(SkBlendMode::kSrc);
-        offscreen_->draw(back_buffer_->getCanvas(), 0, 0, SkSamplingOptions(), &copy);
-        context_->flushAndSubmit(back_buffer_.get(), GrSyncCpu::kNo);
-        SwapBuffers(dc_);
-        return !IsLost();
+        return back_buffer_;
     }
 
-  private:
-    /** The GL context current on this thread, where it is not already.
-        @return  true when it is current */
-    bool MakeCurrent() const noexcept
+    void SetSwapInterval(int interval) noexcept override
     {
-        return wglGetCurrentContext() == gl_ && wglGetCurrentDC() == dc_ ? true : wglMakeCurrent(dc_, gl_) != FALSE;
-    }
-
-    /** Whether the GPU has gone: the driver said the context was reset, or Skia has abandoned its context.
-        @return  true when it is lost */
-    bool IsLost() const noexcept
-    {
-        if (context_->abandoned())
+        if (set_swap_interval_ != nullptr)
         {
-            return true;
+            set_swap_interval_(interval); // the context is current: Present has made it so
         }
+    }
+
+    void SwapBuffers() noexcept override
+    {
+        ::SwapBuffers(dc_);
+    }
+
+    bool IsDeviceReset() const noexcept override
+    {
         return reset_status_ != nullptr && reset_status_() != kGlNoError;
     }
 
     HWND                        window_;                ///< the window drawn in.
     HDC                         dc_;                    ///< its device context, held for the presenter's life.
     HGLRC                       gl_;                    ///< the GL context on it.
-    sk_sp<GrDirectContext>      context_;               ///< Skia's GPU context on the GL.
     GraphicsResetStatusFunction reset_status_{nullptr}; ///< the reset status, for a robust context; null otherwise.
-    sk_sp<SkSurface>            offscreen_;             ///< the surface the views draw into, which keeps its pixels.
-    sk_sp<SkSurface>            back_buffer_;           ///< the window's framebuffer, wrapped at the surface's size.
+    SwapIntervalFunction        set_swap_interval_{nullptr}; ///< wglSwapIntervalEXT; null where the driver has none.
+    sk_sp<SkSurface>            back_buffer_; ///< the window's framebuffer, wrapped at the surface's size.
 };
 
 /** A GL context on `dc`, robust - a driver reset reported, not hidden - where the driver offers that, and the one WGL
@@ -377,9 +328,9 @@ DrawingFallback ProbeTheGl(std::string &renderer)
     context on it. Nothing is left behind where a step refuses, and no context is current.
     @param window  the child window
     @return        the presenter, or null and why */
-win::GpuPresenterMade MakeWglPresenter(HWND window)
+GpuPresenterMade MakeWglPresenter(HWND window)
 {
-    win::GpuPresenterMade made;
+    GpuPresenterMade made;
     made.why = ProbeTheGl(made.renderer);
     if (made.why != DrawingFallback::kNone)
     {
@@ -434,14 +385,18 @@ win::GpuPresenterMade MakeWglPresenter(HWND window)
     {
         return give_up(DrawingFallback::kNoSkiaContext);
     }
-    // Swap interval 0: the frame callback is paced on the display's clock, and a swap that waited for the blank as well
-    // would hold the window's thread up to a refresh beside it (docs/window/gpu-drawing.md, "Pacing").
-    if (const auto swap_interval = ContextFunction<SwapIntervalFunction>("wglSwapIntervalEXT"))
+    // Swap interval 0 to start: the frame callback is paced on the display's clock, and a swap that waited for the
+    // blank as well would hold the window's thread up to a refresh beside it. The presenter changes it to 1 while the
+    // window is full screen, or as RECKLESS_GPU_SWAP_INTERVAL asks (docs/window/gpu-drawing.md, "Pacing").
+    const auto swap_interval = ContextFunction<SwapIntervalFunction>("wglSwapIntervalEXT");
+    if (swap_interval != nullptr)
     {
         swap_interval(0);
     }
-    made.presenter = std::make_unique<WglPresenter>(window, dc, gl, std::move(context), reset_status);
-    made.why       = DrawingFallback::kNone;
+    made.presenter = std::make_unique<WglPresenter>(
+        window, dc, gl, std::move(context), reset_status, swap_interval,
+        SwapIntervalRequestOf(core::EnvironmentVariable(kGpuSwapIntervalEnvironmentVariable)));
+    made.why = DrawingFallback::kNone;
     return made;
 }
 

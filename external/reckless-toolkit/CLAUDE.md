@@ -6,11 +6,11 @@ functions and suites; this file is how work here is done.
 ## What this is
 
 The Reckless Technology toolkit: the C++20 library the company's products share (all of it in the
-namespace `reckless`): JSON, text and the user's files (`core/`), the drawing layer (`gfx/`) and the series' look
+namespace `reckless`): JSON, text and the user's files (`core/`; `WriteWhole` is atomic and durable - fsync the temporary, rename, fsync the folder, F_FULLFSYNC on macOS, FlushFileBuffers and write-through replace on Windows - and `tests/check_write_order.cmake` reads that order from strace on Linux; with the CPU topology and thread pinning, `CpuTopology.h`), the drawing layer (`gfx/`) and the series' look
 (`look/`), the views (`view/`) and the series' panel (`panel/`), the child window on Skia (`window/`, `skia/`) - drawn with Skia's CPU
-raster, or on the GPU where a product asks and links `reckless_window_gpu` (Ganesh on WGL, Windows only so far:
+raster, or on the GPU where a product asks and links `reckless_window_gpu` (Ganesh on WGL on Windows, on Metal on macOS and on EGL on Linux, on the shared seam:
 [docs/window/gpu-drawing.md](docs/window/gpu-drawing.md)) - an app's
-platform layer (`app/`), the audio device layer (`audio/`), the controllers a program reads beside the keyboard
+platform layer (`app/`), the audio device layer (`audio/`, with the standing of the callback's thread for a consumer's own realtime threads: `RealtimeThreadScope.h`), the controllers a program reads beside the keyboard
 (`input/`), the network (`net/`), the update check every product runs
 (`update/`: the check, a product's description and the one factory its checker comes from, and the Updates menu) and
 the licence (`licence/`), with the artwork (`assets/`), the suites (`tests/`) and the CMake helpers (`cmake/`). Every
@@ -54,15 +54,16 @@ toolkit change reaches a product in two steps: merge it here, then run that scri
 | Knect 4 | `knect4` (public) | **a subtree**, added with the GUI and the audio layer on and its suites and ASIO off; its window is built on the app shell, its landings' clicks played through the audio layer's default output |
 | Reckless Sudoku | `sudoku` (public) | **a subtree**, added with the GUI on and its suites, the audio layer and ASIO off; its window is built on the app shell, under the series' header with the company mark |
 | Sentinel | `sentinel` (private until it ships) | **a subtree**, added with the GUI and the audio layer on and its suites and ASIO off; its window is built on the app shell, reads the raw keys, and plays through the audio layer's default output |
+| Reckless Studio | `reckless-studio` (private, proprietary) | **a subtree**, added with the GUI and the audio layer on, its suites and ASIO off; a digital audio workstation whose window is built on the app shell, and which builds against the plugin suite at its pinned commit through `vst-plugins`' deploy key |
 
 **A consumer needs no key to read this repository any more**: it is public, so a consumer's CI clones it over https,
 and the per-consumer read-only deploy keys that used to sit here (Settings, Deploy keys) can go with the secrets that
 held their private halves in each consumer.
 
 The other way round, this repository's CI reads each consumer for the `consumers` job below, and there a key is still
-needed for a **private** consumer only: `vst-plugins` and `sentinel`, each through a read-only deploy key on it
+needed for a **private** consumer only: `vst-plugins`, `sentinel` and `reckless-studio`, each through a read-only deploy key on it
 ("reckless-toolkit (public) CI consumer guard (read-only)") whose private half is this repository's secret
-`CONSUMER_VST_PLUGINS_DEPLOY_KEY` or `CONSUMER_SENTINEL_DEPLOY_KEY`, each held for Actions and for Dependabot (a
+`CONSUMER_VST_PLUGINS_DEPLOY_KEY`, `CONSUMER_SENTINEL_DEPLOY_KEY` or `CONSUMER_STUDIO_DEPLOY_KEY`, each held for Actions and for Dependabot (a
 Dependabot pull request is given only Dependabot's secrets, and a private consumer with no key is skipped). When
 Sentinel goes public at ship its line turns `public` and its key and secrets go. `amphitheater-chess`, `knect4` and `sudoku` went public and GPL on 2026-10-24 and
 are cloned over https with no key, which is what a checkout with no key can do; `tools/check-consumers.sh` chooses per
@@ -165,12 +166,12 @@ and whether code changed), `linux` (gcc, every suite, the device suite with `REC
 `RECKLESS_AUDIO_REQUIRE=ASIO` on the SDK fetched by name and hash), `macos` (universal arm64 and x86_64, every binary
 read with `lipo` and `vtool` for both slices and the 13.3 floor, `RECKLESS_AUDIO_REQUIRE=CoreAudio`,
 `RECKLESS_REQUIRE_WINDOW`), `minimal` (no GUI, no audio device layer), `consumers` (Linux: `tools/check-consumers.sh`
-clones vst-plugins, IR Capture, Amphitheater, Knect 4, Sudoku and Sentinel at their default branches' heads through the consumer guard's
-deploy keys, links this checkout in at each one's `external/reckless-toolkit`, configures each as its own CI does and
+clones vst-plugins, IR Capture, Amphitheater, Knect 4, Sudoku, Sentinel and Reckless Studio at their default branches' heads through the consumer guard's
+deploy keys (Studio's suite dependency, `vst-plugins`, is cloned at Studio's pinned commit with `CONSUMER_VST_PLUGINS_DEPLOY_KEY`), links this checkout in at each one's `external/reckless-toolkit`, configures each as its own CI does and
 builds a few of its targets - vst-plugins' `reckless_update_shared` and `reckless_plugin_view_test`, IR Capture's
-`ir_capture_ui`, Amphitheater's `amphitheater_gui`, Knect 4's `knect4_gui`, Sudoku's `sudoku_gui`, Sentinel's `Sentinel` - so a target, CTest or option named as a
+`ir_capture_ui`, Amphitheater's `amphitheater_gui`, Knect 4's `knect4_gui`, Sudoku's `sudoku_gui`, Sentinel's `Sentinel`, Studio's `studio_app_shell` and `studio_engine` - so a target, CTest or option named as a
 product's, a header a product's shadows, or a moved function fails here), `coverage` (gcc, gcovr on `core/`, `gfx/` but
-its Skia canvas, `input/` but its platforms' translation units, `look/`, `view/`, `net/`, `update/` and `licence/`, red under the floor `--fail-under-line` names),
+its Skia canvas, `input/` but its platforms' translation units, `look/`, `view/`, `net/`, `update/` and `licence/`, red under the floor `--fail-under-line` names; built with `-fprofile-update=atomic`, because gcov's counters are plain increments otherwise and the Ogg Vorbis suite opens files on eight threads at once, so lost increments gave a branch a negative count and gcovr exited 64 on `NegativeHits` from 2026-11-19 - never silence that with `--gcov-ignore-parse-errors`),
 `format`, `doxygen` and `CI`, the aggregate the ruleset requires. Documentation alone builds nothing.
 `RECKLESS_UPDATE_CHECK=off` everywhere. Nothing is kept between runs: each job builds from nothing and fetches what it
 needs. `.github/dependabot.yml` watches the actions' majors; its

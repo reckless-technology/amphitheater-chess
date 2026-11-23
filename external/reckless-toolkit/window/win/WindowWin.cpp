@@ -25,6 +25,7 @@
 #include "include/core/SkCanvas.h"
 #include "include/core/SkSurface.h"
 
+#include "LocalFileOpening.h"
 #include "SkiaCanvas.h"
 #include "Window.h"
 
@@ -129,7 +130,8 @@ std::atomic<int> window_count{0};
     @return the Shift, Control and Alt states */
 view::Modifiers CurrentModifiers() noexcept
 {
-    return {GetKeyState(VK_SHIFT) < 0, GetKeyState(VK_CONTROL) < 0, GetKeyState(VK_MENU) < 0};
+    return {GetKeyState(VK_SHIFT) < 0, GetKeyState(VK_CONTROL) < 0, GetKeyState(VK_MENU) < 0,
+            GetKeyState(VK_CONTROL) < 0};
 }
 
 /** Text in the platform's wide form.
@@ -187,6 +189,19 @@ LPCWSTR CursorFor(view::Cursor cursor)
     return IDC_ARROW;
 }
 
+/** The function key a virtual-key code is, F1 to F12: not part of NamedKey's table, which the raw keys are named from
+    and which the products that read them have always seen without function keys.
+    @param code  the virtual-key code, a key-down message's wparam
+    @return      kF1 to kF12, or Key::kNone for any other key */
+view::Key FunctionKey(WPARAM code)
+{
+    if (code >= VK_F1 && code <= VK_F12)
+    {
+        return static_cast<view::Key>(static_cast<int>(view::Key::kF1) + static_cast<int>(code - VK_F1));
+    }
+    return view::Key::kNone;
+}
+
 /** A named key from its virtual-key code; Key::kNone for one that types a character (WM_CHAR brings that).
     @param code  the virtual-key code, a key-down message's wparam
     @return      the key, or Key::kNone */
@@ -235,20 +250,33 @@ struct SurfaceLife
     IFileDialog *dialog_up{nullptr}; ///< the file dialog while it shows, else null.
 };
 
-/** The shell's file dialog for `request`, modal over `owner`; the path chosen, or empty. `life.dialog_up` is the
+/** The shell's file dialog for `request`, modal over `owner`; the paths chosen, or none. `life.dialog_up` is the
     dialog while it shows.
-    @param request  the title, the patterns, the folder and whether it saves
+    @param request  the title, the patterns, the folder, and whether it saves, takes several files or a folder
     @param owner    the window the dialog is modal over
     @param life     the surface's life, whose dialog_up is set for the dialog's loop
-    @return         the path chosen, in UTF-8; empty for a cancel or a failure */
-std::string RunFileDialog(const view::FileRequest &request, HWND owner, SurfaceLife &life)
+    @return         the paths chosen, in UTF-8, in the order the dialog gives them; none for a cancel or a failure */
+std::vector<std::string> RunFileDialog(const view::FileRequest &request, HWND owner, SurfaceLife &life)
 {
-    const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    std::string   result;
-    IFileDialog  *dialog = nullptr;
-    if (SUCCEEDED(CoCreateInstance(request.save ? CLSID_FileSaveDialog : CLSID_FileOpenDialog, nullptr,
-                                   CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog))))
+    const HRESULT            com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    std::vector<std::string> result;
+    IFileDialog             *dialog = nullptr;
+    // A folder is an open dialog's, whatever the request says of saving; several files are an open's alone.
+    const bool is_folder = request.choose_folder;
+    const bool is_save   = request.save && !is_folder;
+    const bool is_list   = request.multiple && !is_save && !is_folder;
+    if (SUCCEEDED(CoCreateInstance(is_save ? CLSID_FileSaveDialog : CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                                   IID_PPV_ARGS(&dialog))))
     {
+        if (is_folder || is_list)
+        {
+            DWORD options = 0;
+            if (SUCCEEDED(dialog->GetOptions(&options)))
+            {
+                dialog->SetOptions(options | (is_folder ? FOS_PICKFOLDERS : 0u) |
+                                   (is_list ? FOS_ALLOWMULTISELECT : 0u));
+            }
+        }
         if (!request.title.empty())
         {
             dialog->SetTitle(WideOf(request.title).c_str());
@@ -258,12 +286,12 @@ std::string RunFileDialog(const view::FileRequest &request, HWND owner, SurfaceL
         {
             spec += (spec.empty() ? L"" : L";") + WideOf(pattern);
         }
-        if (!spec.empty())
+        if (!spec.empty() && !is_folder)
         {
             const COMDLG_FILTERSPEC filter{L"Files", spec.c_str()};
             dialog->SetFileTypes(1, &filter);
         }
-        if (request.save && !request.file_name.empty())
+        if (is_save && !request.file_name.empty())
         {
             dialog->SetFileName(WideOf(request.file_name).c_str());
         }
@@ -281,16 +309,43 @@ std::string RunFileDialog(const view::FileRequest &request, HWND owner, SurfaceL
         life.dialog_up      = nullptr;
         if (SUCCEEDED(shown))
         {
-            IShellItem *item = nullptr;
-            if (SUCCEEDED(dialog->GetResult(&item)))
-            {
+            const auto take = [&result](IShellItem *item) {
                 PWSTR path = nullptr;
                 if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path)))
                 {
-                    result = Utf8Of(path);
+                    result.push_back(Utf8Of(path));
                     CoTaskMemFree(path);
                 }
-                item->Release();
+            };
+            IFileOpenDialog *open_dialog = nullptr;
+            if (is_list && SUCCEEDED(dialog->QueryInterface(IID_PPV_ARGS(&open_dialog))))
+            {
+                IShellItemArray *items = nullptr;
+                if (SUCCEEDED(open_dialog->GetResults(&items)))
+                {
+                    DWORD count = 0;
+                    items->GetCount(&count);
+                    for (DWORD i = 0; i < count; ++i)
+                    {
+                        IShellItem *item = nullptr;
+                        if (SUCCEEDED(items->GetItemAt(i, &item)))
+                        {
+                            take(item);
+                            item->Release();
+                        }
+                    }
+                    items->Release();
+                }
+                open_dialog->Release();
+            }
+            else
+            {
+                IShellItem *item = nullptr;
+                if (SUCCEEDED(dialog->GetResult(&item)))
+                {
+                    take(item);
+                    item->Release();
+                }
             }
         }
         dialog->Release();
@@ -416,29 +471,108 @@ CompositionTiming CompositionTimingNow() noexcept
     return read;
 }
 
-/** The refresh rate of the display `window` is on, from the mode that display is in. This is the one reading that is
-    the window's own display rather than the whole desktop's, so a window on a second monitor of another rate is
-    caught by cross-checking it against the compositor's and nowhere else.
+/** How often the mode of the window's display is read again while its clock runs, in seconds. A bound on how soon a
+    mode switch is noticed, not a rate: the read is a display-configuration query, kept off every frame's path. */
+inline constexpr double kDisplayModeReadAgainSeconds = 1.0;
+
+/** How far, as a fraction, an exact mode's period may move and still be the one being divided: the same rational read
+    twice is the same period to the last digit, so this only has to be wider than rounding. */
+inline constexpr double kExactPeriodHoldsStillWithin = 1.0e-4;
+
+/** The rate of the mode a display is in. */
+struct DisplayRate
+{
+    double hertz{0.0}; ///< the rate in hertz; 0 where Windows named none, or named the hardware's default.
+    bool   is_exact{
+        false}; ///< true where `hertz` is the mode's own rational (59.94), not the whole hertz of its DEVMODE.
+};
+
+/** The exact refresh rate of the display named `device`, from the active display configuration (QueryDisplayConfig),
+    which keeps a mode's rate as a rational: 60000 / 1001 where the DEVMODE says 59.
+    @param device       the GDI device name of the display (MONITORINFOEX::szDevice)
+    @param whole_hertz  the whole-hertz rate the display's DEVMODE names, in hertz
+    @return             the rate, in hertz; 0 where the configuration could not be read or names none for the display */
+double ExactRefreshHertzOfDevice(const wchar_t *device, double whole_hertz) noexcept
+{
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths;
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes;
+    LONG                                 result = ERROR_INSUFFICIENT_BUFFER;
+    for (int attempt = 0; attempt < 3 && result == ERROR_INSUFFICIENT_BUFFER; ++attempt)
+    {
+        UINT32 path_count = 0;
+        UINT32 mode_count = 0;
+        if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count) != ERROR_SUCCESS)
+        {
+            return 0.0;
+        }
+        paths.assign(path_count, DISPLAYCONFIG_PATH_INFO{});
+        modes.assign(mode_count, DISPLAYCONFIG_MODE_INFO{});
+        result =
+            QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr);
+        if (result == ERROR_SUCCESS)
+        {
+            paths.resize(path_count);
+        }
+    }
+    if (result != ERROR_SUCCESS)
+    {
+        return 0.0;
+    }
+    for (const DISPLAYCONFIG_PATH_INFO &path : paths)
+    {
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME name{};
+        name.header.type      = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+        name.header.size      = sizeof(name);
+        name.header.adapterId = path.sourceInfo.adapterId;
+        name.header.id        = path.sourceInfo.id;
+        if (DisplayConfigGetDeviceInfo(&name.header) == ERROR_SUCCESS &&
+            std::wcscmp(name.viewGdiDeviceName, device) == 0)
+        {
+            return ExactModeHertz(path.targetInfo.refreshRate.Numerator, path.targetInfo.refreshRate.Denominator,
+                                  whole_hertz);
+        }
+    }
+    return 0.0;
+}
+
+/** The refresh rate of the display `window` is on, from the mode that display is in: the mode's exact rational where
+    the display configuration gives one that agrees with the DEVMODE, and the DEVMODE's whole hertz (which Windows cuts
+    59.94 down to 59 in) otherwise. This is the one reading that is the window's own display rather than the whole
+    desktop's, so a window on a second monitor of another rate is caught by cross-checking it against the compositor's
+    and nowhere else.
     @param window  the window
-    @return        the rate, in hertz; 0 where Windows named none, or named the hardware's default rather than a rate */
-double DisplayRefreshHertzOf(HWND window) noexcept
+    @return        the rate; `hertz` 0 where Windows named none, or named the hardware's default rather than a rate */
+DisplayRate DisplayRateOf(HWND window) noexcept
 {
     const HMONITOR monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
     MONITORINFOEXW monitor_info{};
     monitor_info.cbSize = sizeof(monitor_info);
     if (monitor == nullptr || GetMonitorInfoW(monitor, reinterpret_cast<LPMONITORINFO>(&monitor_info)) == FALSE)
     {
-        return 0.0;
+        return {};
     }
     DEVMODEW mode{};
     mode.dmSize = sizeof(mode);
     if (EnumDisplaySettingsW(monitor_info.szDevice, ENUM_CURRENT_SETTINGS, &mode) == FALSE)
     {
-        return 0.0;
+        return {};
     }
     // 0 and 1 are Windows' answers for "the hardware's default", which is no rate: IsBelievableRefreshRate refuses
     // both, and the compositor's reading is then the only one.
-    return static_cast<double>(mode.dmDisplayFrequency);
+    const double whole = static_cast<double>(mode.dmDisplayFrequency);
+    if (const double exact = ExactRefreshHertzOfDevice(monitor_info.szDevice, whole); exact > 0.0)
+    {
+        return {exact, true};
+    }
+    return {whole, false};
+}
+
+/** The rate of the mode of the display `window` is on.
+    @param window  the window
+    @return        the rate, in hertz (DisplayRateOf); 0 where there is none */
+double DisplayRefreshHertzOf(HWND window) noexcept
+{
+    return DisplayRateOf(window).hertz;
 }
 
 /**
@@ -681,10 +815,25 @@ class WinDisplayClock
         FrameClock         clock;
         RefreshSteadiness  steadiness;
         CompositorReadings readings;
-        HMONITOR           display        = nullptr;
-        double             display_hertz  = 0.0;
-        double             period_divided = 0.0;
-        std::size_t        unsteady       = 0;
+        HMONITOR           display       = nullptr;
+        double             display_hertz = 0.0;
+        bool        is_display_exact     = false; // whether `display_hertz` is the mode's rational, not its whole hertz
+        double      display_read_seconds = 0.0;
+        double      period_divided       = 0.0;
+        std::size_t unsteady             = 0;
+        // The mode read again: its rational where the display configuration gives one, and, where it gives none for a
+        // moment (a mode being switched), the exact rate already held rather than the whole hertz Windows cuts it to.
+        const auto read_display = [&] {
+            const DisplayRate read = DisplayRateOf(window_);
+            display_read_seconds   = QpcSeconds();
+            if (!read.is_exact && is_display_exact && IsBelievableRefreshRate(read.hertz) &&
+                std::fabs(read.hertz - display_hertz) <= kModeIsNamedWithinHertz)
+            {
+                return; // the same mode, named in whole hertz this once
+            }
+            display_hertz    = read.hertz;
+            is_display_exact = read.is_exact;
+        };
         for (;;)
         {
             CompositionTiming timing         = CompositionTimingNow();
@@ -698,7 +847,14 @@ class WinDisplayClock
                 unsteady = 0;
                 steadiness.Forget();
                 readings.Forget();
-                display_hertz = DisplayRefreshHertzOf(window_);
+                is_display_exact = false;
+                read_display();
+            }
+            else if (QpcSeconds() - display_read_seconds >= kDisplayModeReadAgainSeconds)
+            {
+                // Once the mode's own rate is what is divided the compositor's period no longer shows a mode switch,
+                // so the mode is looked at again on a timer as well as when a period has moved.
+                read_display();
             }
             const bool is_set_aside = readings.Note(timing.hertz, display_hertz);
             // A reading that agrees with the mode but is wandering is no more a period to put a frame on than one that
@@ -711,16 +867,30 @@ class WinDisplayClock
                 timing.hertz          = display_hertz;
                 timing.period_seconds = 1.0 / display_hertz;
             }
+            // The mode's own rational is the panel's rate whatever the compositor says it is: the compositor was
+            // measured reading exactly 59.000 Hz for a whole run on a 59.94 Hz panel, a reading that agrees with the
+            // mode's whole hertz and so passes every cross-check. The compositor's last blank still anchors the grid
+            // (`is_on_the_mode` stays as it was); only the period divided is the mode's. Readings that disagree for
+            // good are another monitor's and stay believed.
+            const bool is_period_exact =
+                is_display_exact && IsBelievableRefreshRate(display_hertz) && !readings.does_disagree_for_good();
+            if (is_period_exact && !is_on_the_mode)
+            {
+                timing.hertz          = display_hertz;
+                timing.period_seconds = 1.0 / display_hertz;
+            }
             // A period further from the one being divided than one period read twice could be: the mode changed, or
-            // the window arrived on a display of another rate.
-            const bool has_period_moved =
-                timing.period_seconds > 0.0 && std::fabs(timing.period_seconds - period_divided) >
-                                                   kRefreshPeriodsHoldStillWithin * timing.period_seconds;
+            // the window arrived on a display of another rate. An exact period is the mode's alone and holds to far
+            // less than a read one does.
+            const double moved_within = is_period_exact ? kExactPeriodHoldsStillWithin : kRefreshPeriodsHoldStillWithin;
+            const bool   has_period_moved =
+                timing.period_seconds > 0.0 &&
+                std::fabs(timing.period_seconds - period_divided) > moved_within * timing.period_seconds;
             if (has_period_moved)
             {
                 // The rate to divide is read again rather than carried over - a mode change on the one display is
                 // caught here, and reading it only when something has moved keeps it off every frame's path.
-                display_hertz = DisplayRefreshHertzOf(window_);
+                read_display();
             }
             if (IsBelievableRefreshRate(display_hertz))
             {
@@ -1016,6 +1186,19 @@ class WinSurface : public view::Host
         @param picked   told the path chosen, in UTF-8, or an empty string for a cancel; runs on the message thread */
     void ChooseFile(const view::FileRequest &request, std::function<void(const std::string &)> picked) override
     {
+        ChooseFiles(request, [picked = std::move(picked)](const std::vector<std::string> &paths) {
+            picked(paths.empty() ? std::string() : paths.front());
+        });
+    }
+
+    /** The shell's own dialog for several files or a folder, opened as ChooseFile's is: from a message of its own,
+        modal over the host's window. `picked` hears the paths while the window lives, and nothing once it has gone.
+        @param request  the title, the patterns, the folder, and whether it saves, takes several files or a folder
+        @param picked   told the paths chosen, in UTF-8, in the dialog's order, or none for a cancel; runs on the
+                        message thread */
+    void ChooseFiles(const view::FileRequest                              &request,
+                     std::function<void(const std::vector<std::string> &)> picked) override
+    {
         if (hwnd_ == nullptr)
         {
             return; // let go: nothing hears an answer
@@ -1066,7 +1249,19 @@ class WinSurface : public view::Host
         case WM_RBUTTONDBLCLK:
             Press(lparam, 1, true);
             return 0;
+        case WM_MBUTTONDOWN:
+        case WM_MBUTTONDBLCLK:
+            // Only a view that asked for the middle button takes the press (View::takes_middle_button): the window
+            // captures the pointer for it alone, and the rest is the nothing it was.
+            router_.Down(PointOf(lparam), 1, view::MouseButton::kMiddle, CurrentModifiers());
+            if (router_.HasPress())
+            {
+                pressed_ = true;
+                SetCapture(hwnd_);
+            }
+            return 0;
         case WM_LBUTTONUP:
+        case WM_MBUTTONUP:
         case WM_RBUTTONUP:
             if (pressed_)
             {
@@ -1130,8 +1325,12 @@ class WinSurface : public view::Host
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN: {
             TellRawKey(true, wparam, lparam); // nothing where no owner asked; the views are given what they always were
-            const view::Key       key       = NamedKey(wparam);
+            view::Key             key       = NamedKey(wparam);
             const view::Modifiers modifiers = CurrentModifiers();
+            if (key == view::Key::kNone)
+            {
+                key = FunctionKey(wparam);
+            }
             if (key != view::Key::kNone && router_.Key({key, 0, modifiers}))
             {
                 return 0;
@@ -1233,10 +1432,11 @@ class WinSurface : public view::Host
                 PendingDialog pending = std::move(dialogs_.front());
                 dialogs_.pop_front();
                 const std::shared_ptr<SurfaceLife> life = life_;
-                const std::string path = RunFileDialog(pending.request, GetAncestor(hwnd_, GA_ROOT), *life);
+                const std::vector<std::string>     paths =
+                    RunFileDialog(pending.request, GetAncestor(hwnd_, GA_ROOT), *life);
                 if (!life->gone) // else the surface went in the dialog's loop: nothing of it may be touched again
                 {
-                    pending.picked(path);
+                    pending.picked(paths);
                 }
             }
             return 0;
@@ -1401,7 +1601,7 @@ class WinSurface : public view::Host
         @return  true when the window now draws on the GPU */
     bool MakeGpu()
     {
-        win::GpuPresenterMade made = gpu_backend_->make(hwnd_);
+        GpuPresenterMade made = gpu_backend_->make(hwnd_);
         if (!made.renderer.empty())
         {
             drawing_.renderer = std::move(made.renderer);
@@ -1412,7 +1612,8 @@ class WinSurface : public view::Host
             drawing_.why     = made.why;
             return false;
         }
-        gpu_             = std::move(made.presenter);
+        gpu_ = std::move(made.presenter);
+        gpu_->SetFullScreen(is_full_screen_);
         drawing_.drawing = Drawing::kGpu;
         drawing_.why     = DrawingFallback::kNone;
         return true;
@@ -1466,8 +1667,9 @@ class WinSurface : public view::Host
         end makes one, so a popup's and an unasked child window's is null for the window's whole life and the tree is
         rastered and handed to SetDIBitsToDevice exactly as it always was. Declared before `surface_`, which may be on
         it and so goes first. */
-    std::unique_ptr<win::GpuPresenter> gpu_;
-    sk_sp<SkSurface> surface_; ///< Skia's surface the tree is drawn into: over the raster, or on the GPU.
+    std::unique_ptr<GpuPresenter> gpu_;
+    bool                          is_full_screen_{false}; ///< the app told the window it is full screen.
+    sk_sp<SkSurface>              surface_; ///< Skia's surface the tree is drawn into: over the raster, or on the GPU.
     /** The back end the GPU was asked for with, to make it again with when it is lost; null until a product asks. */
     const GpuBackend     *gpu_backend_{nullptr};
     DrawingState          drawing_{}; ///< what the window draws with, and why where it fell back.
@@ -1564,8 +1766,8 @@ class WinSurface : public view::Host
     /** A file dialog asked for and waiting for its message to open. */
     struct PendingDialog
     {
-        view::FileRequest                        request; ///< the dialog's title, patterns and folder.
-        std::function<void(const std::string &)> picked;  ///< told the path chosen.
+        view::FileRequest                                     request; ///< the dialog's title, patterns and folder.
+        std::function<void(const std::vector<std::string> &)> picked;  ///< told the paths chosen.
     };
 
     std::deque<std::function<void()>> calls_;   ///< the calls CallSoon queued, one run per kCallSoonMessage.
@@ -1806,6 +2008,15 @@ class WinChildWindow final : public ChildWindow, public WinSurface
         InvalidateRect(hwnd_, nullptr, FALSE);
     }
 
+    void SetFullScreen(bool is_full_screen) override
+    {
+        is_full_screen_ = is_full_screen; // for a GPU made later: MakeGpu tells it
+        if (gpu_)
+        {
+            gpu_->SetFullScreen(is_full_screen);
+        }
+    }
+
     void SetFrameCallback(std::function<void()> frame) override
     {
         frame_ = std::move(frame);
@@ -1942,13 +2153,17 @@ class WinChildWindow final : public ChildWindow, public WinSurface
     {
         const CompositionTiming timing = CompositionTimingNow();
         DisplayClockReading     reading;
-        reading.has_clock     = timing.is_read;
-        reading.display_hertz = DisplayRefreshHertzOf(hwnd_);
+        reading.has_clock      = timing.is_read;
+        const DisplayRate rate = DisplayRateOf(hwnd_);
+        reading.display_hertz  = rate.hertz;
         // One reading is not enough to refuse on (CompositorReadings), and the clock's own thread goes on to judge it,
         // unless that thread has already found this display to disagree: asking again while that is still so is
-        // answered at once, and starts no clock to find it out a second time.
-        reading.compositor_hertz =
-            has_clock_found_disagreement_ ? timing.hertz : RateOfOneReading(timing.hertz, reading.display_hertz);
+        // answered at once, and starts no clock to find it out a second time. Where the mode's rate is exact the
+        // answer is that rate: the compositor's own reading is no finer, and was measured stuck at the whole hertz.
+        reading.compositor_hertz = has_clock_found_disagreement_ ? timing.hertz
+                                   : rate.is_exact && timing.hertz > 0.0
+                                       ? rate.hertz
+                                       : RateOfOneReading(timing.hertz, reading.display_hertz);
         return ChosenPacing(request_, reading);
     }
 
@@ -2086,6 +2301,25 @@ void OpenInBrowser(const std::string &url)
     {
         CoUninitialize();
     }
+}
+
+bool OpenLocalFile(const std::filesystem::path &path)
+{
+    const std::optional<std::filesystem::path> file = ExistingRegularFile(path);
+    if (!file)
+    {
+        return false;
+    }
+    // The wide path as the file system spells it, no code page and no parsing as a URL; no parameters, so nothing is
+    // split as a command line. COM is up for the call as the shell asks.
+    const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    const auto    result =
+        reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", file->c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+    if (SUCCEEDED(com))
+    {
+        CoUninitialize();
+    }
+    return result > 32; // the shell's own convention: a value over 32 is success
 }
 
 float DisplayScaleOf(void *parent)

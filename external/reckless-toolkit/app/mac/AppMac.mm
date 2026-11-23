@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -26,6 +27,7 @@
 
 #include "../../window/mac/ClipboardMac.h" // the child window's too: not on an include path
 #include "AppPlatform.h"
+#include "OpenFileQueue.h"
 #include "SkiaCanvas.h"
 #include "WindowPlace.h"
 
@@ -41,6 +43,11 @@ class MacPlatform;
     std::function<void()>
          quit_handler; ///< the app's own ending, run once when a quit comes from outside; may be empty.
     bool ending;       ///< true once quit_handler has run, so it runs only once.
+    /** Where the files the system opens go (OpenFileQueue::Receive); may be empty. */
+    std::function<void(std::vector<std::string>)> open_files;
+    /** Whether the app asked for opened files (AppPlatform::SetOpenFilesHandler): the delegate answers the open-file
+        selectors only then, so an app that did not ask is treated by AppKit exactly as it was before they existed. */
+    bool wants_open_files;
 }
 @end
 
@@ -62,6 +69,60 @@ class MacPlatform;
 {
     (void)sender;
     return NO; // the main window's close button ends the app itself, after saving
+}
+
+- (BOOL)respondsToSelector:(SEL)selector
+{
+    if (selector == @selector(application:openFiles:) || selector == @selector(application:openURLs:))
+    {
+        return wants_open_files;
+    }
+    return [super respondsToSelector:selector];
+}
+
+/** Documents opened in the app, a double-click in the Finder or a drop on the Dock's icon - the system's older call,
+    which AppKit makes only where `application:openURLs:` is not answered. The paths go to the queue as UTF-8.
+    @param sender     the application
+    @param filenames  the paths of the files, as NSStrings */
+- (void)application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames
+{
+    std::vector<std::string> paths;
+    for (NSString *name in filenames)
+    {
+        if (const char *utf8 = [name UTF8String])
+        {
+            paths.emplace_back(utf8);
+        }
+    }
+    if (open_files)
+    {
+        open_files(std::move(paths));
+    }
+    [sender replyToOpenOrPrint:NSApplicationDelegateReplySuccess];
+}
+
+/** Documents opened in the app, as URLs: the call macOS 10.13 and later make in preference to `openFiles:`. Only a
+    file URL is a path; any other is left alone.
+    @param application  the application
+    @param urls         what was opened */
+- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls
+{
+    (void)application;
+    std::vector<std::string> paths;
+    for (NSURL *url in urls)
+    {
+        if ([url isFileURL])
+        {
+            if (const char *utf8 = [[url path] UTF8String])
+            {
+                paths.emplace_back(utf8);
+            }
+        }
+    }
+    if (open_files)
+    {
+        open_files(std::move(paths));
+    }
 }
 
 @end
@@ -100,7 +161,12 @@ class MacPlatform;
         of one size. */
     std::function<reckless::gfx::PointF(reckless::gfx::PointF)> constrain;
     std::function<void(int, int)> resized; ///< told the content's size, in points, after each resize; may be empty.
-    bool                          dialog;  ///< a dialog: Escape closes it.
+    /** told the content's size in points after each resize, as `resized` is - macOS's design pixels are points; may be
+        empty. */
+    std::function<void(int, int)> resized_in_units;
+    /** Inside SetContentSizeInUnits: the resize AppKit tells is the app's own, and is told to no one. */
+    bool is_setting_units;
+    bool dialog; ///< a dialog: Escape closes it.
     /** A key that reached the window - its own, or one no view took, up the responder chain - offered to the menu
         bar's shortcuts: true when it was one. May be empty. */
     std::function<bool(NSEvent *)> shortcut;
@@ -170,11 +236,25 @@ class MacPlatform;
 - (void)windowDidResize:(NSNotification *)notification
 {
     (void)notification;
-    if (resized)
+    if (is_setting_units)
+    {
+        return; // the app's own size, which it knows
+    }
+    if (resized || resized_in_units)
     {
         const NSRect content = [self contentRectForFrameRect:self.frame];
-        const auto   f       = resized;
-        f(static_cast<int>(std::lround(content.size.width)), static_cast<int>(std::lround(content.size.height)));
+        const int    width   = static_cast<int>(std::lround(content.size.width));
+        const int    height  = static_cast<int>(std::lround(content.size.height));
+        if (resized)
+        {
+            const auto f = resized;
+            f(width, height);
+        }
+        if (resized_in_units)
+        {
+            const auto f = resized_in_units;
+            f(width, height);
+        }
     }
 }
 
@@ -563,6 +643,8 @@ class MacWindow final : public AppWindow
         window_->closing                = options.closing;
         window_->constrain              = options.constrain;
         window_->resized                = options.resized;
+        window_->resized_in_units       = options.resized_in_units;
+        window_->is_setting_units       = false;
         window_->dialog                 = options.dialog;
         window_->full_screen_changed    = options.full_screen_changed;
         window_->is_full_screen         = false;
@@ -616,6 +698,7 @@ class MacWindow final : public AppWindow
         window_->closing             = nullptr;
         window_->constrain           = nullptr;
         window_->resized             = nullptr;
+        window_->resized_in_units    = nullptr;
         window_->shortcut            = nullptr;
         window_->is_shortcut         = nullptr;
         window_->full_screen_changed = nullptr;
@@ -645,6 +728,24 @@ class MacWindow final : public AppWindow
         const NSRect frame = WindowedFrame();
         return {static_cast<int>(std::lround(frame.origin.x)),
                 static_cast<int>(std::lround(MainScreenHeight() - NSMaxY(frame)))};
+    }
+
+    /** The window's top left placed, Cocoa's y running up from the main screen's bottom where the argument's runs
+        down from its top. A full-screen window is left alone: it stands over a screen of its own, and the place it
+        would come back to is the one it was put at.
+        @param x  the left, in points
+        @param y  the top, y down from the top of the main screen
+        @return   true where the window was placed */
+    bool SetPosition(int x, int y) override
+    {
+        if (IsFullScreen() || window_.miniaturized)
+        {
+            return false;
+        }
+        const NSRect frame = [window_ frame];
+        [window_ setFrameOrigin:NSMakePoint(static_cast<CGFloat>(x),
+                                            MainScreenHeight() - static_cast<CGFloat>(y) - frame.size.height)];
+        return true;
     }
 
     void BringToFront() override
@@ -694,6 +795,47 @@ class MacWindow final : public AppWindow
             frame.origin.y         = MainScreenHeight() - moved.y() - NSHeight(frame);
         }
         [window_ setFrame:frame display:YES];
+    }
+
+    gfx::PointI ContentSizeInUnits() const override
+    {
+        const NSRect content = [window_ contentRectForFrameRect:window_.frame];
+        return {static_cast<int>(std::lround(content.size.width)), static_cast<int>(std::lround(content.size.height))};
+    }
+
+    void SetContentSizeInUnits(int width, int height) override
+    {
+        window_->is_setting_units = true; // AppKit's windowDidResize, sent from inside setFrame, is told to no one
+        SetContentSize(width, height);
+        window_->is_setting_units = false;
+    }
+
+    bool SetUserResizable(bool is_resizable, gfx::PointI least, gfx::PointI most) override
+    {
+        if (IsFullScreen())
+        {
+            return false;
+        }
+        if (is_resizable)
+        {
+            // Held to the limits, in points, by the constraint windowWillResize and the zoom already read; none is one
+            // point at the least and what the screen takes at the most.
+            window_->constrain = [least, most](gfx::PointF proposed) {
+                const float low_x = least.x > 0 ? static_cast<float>(least.x) : 1.0f;
+                const float low_y = least.y > 0 ? static_cast<float>(least.y) : 1.0f;
+                const float top_x = most.x > 0 ? static_cast<float>(most.x) : 1.0e5f;
+                const float top_y = most.y > 0 ? static_cast<float>(most.y) : 1.0e5f;
+                return gfx::PointF{std::clamp(proposed.x, low_x, std::max(low_x, top_x)),
+                                   std::clamp(proposed.y, low_y, std::max(low_y, top_y))};
+            };
+            window_.styleMask |= NSWindowStyleMaskResizable;
+        }
+        else
+        {
+            window_->constrain = nullptr;
+            window_.styleMask &= ~NSWindowStyleMaskResizable;
+        }
+        return true;
     }
 
     gfx::PointI LargestContent() const override
@@ -847,11 +989,15 @@ class MacPlatform final : public AppPlatform
     {
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-        delegate_         = [[RecklessAppDelegate alloc] init];
-        delegate_->ending = false;
-        NSApp.delegate    = delegate_;
-        target_           = [[RecklessMenuTarget alloc] init];
-        bar_target_       = [[RecklessMenuTarget alloc] init];
+        delegate_                   = [[RecklessAppDelegate alloc] init];
+        delegate_->ending           = false;
+        delegate_->wants_open_files = false;
+        delegate_->open_files       = [queue = open_files_](std::vector<std::string> paths) {
+            queue->Receive(std::move(paths));
+        };
+        NSApp.delegate = delegate_;
+        target_        = [[RecklessMenuTarget alloc] init];
+        bar_target_    = [[RecklessMenuTarget alloc] init];
         // A bar item's tag is its command number; the controller is held weakly, the target outliving no platform.
         const std::weak_ptr<MenuBarController> menu = menu_;
         bar_target_->chosen                         = [menu](int command) {
@@ -875,11 +1021,19 @@ class MacPlatform final : public AppPlatform
         });
     }
 
+    /** Every screen's usable area - what the menu bar and the Dock leave of it - y down from the top of the main
+        screen, the main screen's first, as `[NSScreen screens]` orders them.
+        @return  the areas, in points */
+    std::vector<gfx::RectI> ScreenAreas() const override
+    {
+        return VisibleAreas();
+    }
+
     /** Close the posts' queue, invalidate every timer the app made and drop the application delegate. */
     ~MacPlatform() override
     {
         posts_->Close();
-        for (NSTimer *timer : timers_)
+        for (const auto &[token, timer] : timers_)
         {
             [timer invalidate];
         }
@@ -949,14 +1103,32 @@ class MacPlatform final : public AppPlatform
 
     void StartTimer(int milliseconds, std::function<void()> tick) override
     {
+        AddTimer(milliseconds, std::move(tick));
+    }
+
+    int AddTimer(int milliseconds, std::function<void()> tick) override
+    {
         auto     shared = std::make_shared<std::function<void()>>(std::move(tick));
-        NSTimer *timer  = [NSTimer timerWithTimeInterval:milliseconds / 1000.0
+        NSTimer *timer  = [NSTimer timerWithTimeInterval:std::max(milliseconds, 1) / 1000.0
                                                  repeats:YES
                                                    block:^(NSTimer *) {
-                                                    (*shared)();
+                                                    const auto tick_now = *shared; // a copy: the tick may cancel it
+                                                    tick_now();
                                                    }];
         [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
-        timers_.push_back(timer);
+        const int token = ++last_timer_token_;
+        timers_[token]  = timer;
+        return token;
+    }
+
+    void CancelTimer(int token) override
+    {
+        const auto it = timers_.find(token);
+        if (it != timers_.end())
+        {
+            [it->second invalidate];
+            timers_.erase(it);
+        }
     }
 
     void CallSoon(std::function<void()> call) override
@@ -1015,6 +1187,16 @@ class MacPlatform final : public AppPlatform
     void SetQuitHandler(std::function<void()> handler) override
     {
         delegate_->quit_handler = std::move(handler);
+    }
+
+    void SetOpenFilesHandler(std::function<void(const std::vector<std::string> &paths)> handler) override
+    {
+        delegate_->wants_open_files = static_cast<bool>(handler);
+        // AppKit asks its delegate which calls it answers when the delegate is set, so it is set again now that this
+        // has changed: the open-file events are answered only once the app has asked for them.
+        NSApp.delegate = nil;
+        NSApp.delegate = delegate_;
+        open_files_->SetHandler(std::move(handler)); // what came before it is given now, in order
     }
 
   private:
@@ -1143,11 +1325,15 @@ class MacPlatform final : public AppPlatform
     std::shared_ptr<core::PostQueue> posts_{std::make_shared<core::PostQueue>()};
     std::string                      name_;          ///< the app's name.
     RecklessAppDelegate             *delegate_{nil}; ///< the application's delegate, which holds the quit handler.
-    RecklessMenuTarget              *target_{nil};   ///< the target of the app's menu items.
+    /** The files the system opened, held until the app's handler is set (SetOpenFilesHandler); shared with the
+        delegate's block. */
+    std::shared_ptr<OpenFileQueue> open_files_{std::make_shared<OpenFileQueue>()};
+    RecklessMenuTarget            *target_{nil}; ///< the target of the app's menu items.
     RecklessMenuTarget *bar_target_{nil}; ///< the target of the menu bar's items (SetMenuBar), by command number.
     /** The menu bar, its choosing and its shortcuts, shared with every window's keyDown. */
     std::shared_ptr<MenuBarController> menu_{std::make_shared<MenuBarController>()};
-    std::vector<NSTimer *>             timers_; ///< the timers StartTimer made, invalidated in the destructor.
+    std::map<int, NSTimer *>           timers_;              ///< the timers StartTimer and AddTimer made, by token.
+    int                                last_timer_token_{0}; ///< the last token AddTimer gave.
 };
 
 std::unique_ptr<AppPlatform> AppPlatform::Create(const std::string &name, std::span<const std::uint8_t>)

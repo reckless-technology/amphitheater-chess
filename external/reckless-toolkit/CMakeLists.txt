@@ -312,12 +312,22 @@ if(WIN32)
     target_link_libraries(reckless_core_preset_files PUBLIC shell32)
 endif()
 
+# The machine's processors (core/CpuTopology.h): their physical cores, SMT siblings and performance classes, and the pinning
+# of the calling thread to one. The reader of Linux's sysfs is header-only and pure; the platform's calls - Windows'
+# GetLogicalProcessorInformationEx and SetThreadGroupAffinity, macOS' sysctl, Linux's sched_getaffinity - are
+# core/CpuTopology.cpp, a static library of plain C++ beside the header-only core.
+find_package(Threads REQUIRED)
+add_library(reckless_core_cpu STATIC core/CpuTopology.cpp)
+target_link_libraries(reckless_core_cpu PUBLIC reckless_common_core PRIVATE Threads::Threads reckless_warnings)
+set_target_properties(reckless_core_cpu PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
+                                                   VISIBILITY_INLINES_HIDDEN ON)
+
 # Audio files (core/AudioFiles.h): six formats decoded from a file's bytes, and a WAV writer. Compiled, not header only:
 # the codecs are the vendored decoders fetched above, whose implementations compile once, as C, with their own warnings
 # off, in reckless_audio_decoders (core/AudioDecoders.c); their configuration is defined on that target and handed to
 # AudioFiles.cpp with their headers, as SYSTEM includes so the toolkit's warnings stay on the toolkit's code. Both are
 # PIC with their symbols hidden, as the plug-in binaries they may go into are compiled.
-add_library(reckless_audio_decoders STATIC core/AudioDecoders.c)
+add_library(reckless_audio_decoders STATIC core/AudioDecoders.c core/VorbisCrcTable.cpp)
 target_include_directories(reckless_audio_decoders SYSTEM PUBLIC "${dr_libs_SOURCE_DIR}" "${stb_SOURCE_DIR}")
 target_compile_definitions(reckless_audio_decoders PUBLIC
     DR_FLAC_NO_STDIO
@@ -326,10 +336,13 @@ target_compile_definitions(reckless_audio_decoders PUBLIC
     DR_MP3_FLOAT_OUTPUT
     STB_VORBIS_NO_STDIO
     STB_VORBIS_NO_PUSHDATA_API)
-target_compile_options(reckless_audio_decoders
-    PRIVATE   $<IF:$<C_COMPILER_ID:MSVC>,/w,-w>
-    INTERFACE $<$<CXX_COMPILER_ID:MSVC>:/external:W0>)
-set_target_properties(reckless_audio_decoders PROPERTIES POSITION_INDEPENDENT_CODE ON C_VISIBILITY_PRESET hidden)
+target_compile_options(reckless_audio_decoders INTERFACE $<$<CXX_COMPILER_ID:MSVC>:/external:W0>)
+# The vendored file's warnings are its own; core/VorbisCrcTable.cpp, the toolkit's, keeps the toolkit's.
+set_source_files_properties(core/AudioDecoders.c PROPERTIES COMPILE_OPTIONS "$<IF:$<C_COMPILER_ID:MSVC>,/w,-w>")
+target_link_libraries(reckless_audio_decoders PRIVATE reckless_warnings)
+set_target_properties(reckless_audio_decoders PROPERTIES POSITION_INDEPENDENT_CODE ON C_VISIBILITY_PRESET hidden
+                                                         CXX_VISIBILITY_PRESET hidden)
+target_include_directories(reckless_audio_decoders PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/core")
 
 add_library(reckless_common_audio_files STATIC core/AudioFiles.cpp)
 target_link_libraries(reckless_common_audio_files
@@ -620,13 +633,25 @@ endif()
 if(RECKLESS_TOOLKIT_BUILD_TESTS)
     # Core: JSON, decimal text, the preset files and folders, audio files and the interface's preferences.
     add_executable(reckless_core_test tests/test_json.cpp tests/test_decimal_text.cpp tests/test_preset_files.cpp
-                                      tests/test_audio_files.cpp tests/test_interface_settings.cpp)
-    target_link_libraries(reckless_core_test PRIVATE reckless_common_core reckless_core_preset_files
+                                      tests/test_audio_files.cpp tests/test_interface_settings.cpp
+                                      tests/test_cpu_topology.cpp tests/test_durable_write.cpp)
+    target_link_libraries(reckless_core_test PRIVATE reckless_common_core reckless_core_preset_files reckless_core_cpu
                                                      reckless_common_audio_files reckless_warnings
                                                      reckless_toolkit_test_support GTest::gtest_main)
     target_compile_definitions(reckless_core_test PRIVATE
         RECKLESS_AUDIO_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/audio")
     add_test(NAME core COMMAND reckless_core_test)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # WriteWhole's order of calls - file flush, rename, folder flush - read from strace where it exists.
+        find_program(RECKLESS_STRACE strace)
+        if(RECKLESS_STRACE)
+            add_test(NAME core_write_order
+                     COMMAND ${CMAKE_COMMAND} -DSTRACE=${RECKLESS_STRACE} -DTEST_EXE=$<TARGET_FILE:reckless_core_test>
+                             -DLOG=${CMAKE_CURRENT_BINARY_DIR}/write-order.strace
+                             -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_write_order.cmake)
+            set_tests_properties(core_write_order PROPERTIES SKIP_REGULAR_EXPRESSION "strace could not trace")
+        endif()
+    endif()
 
     add_executable(reckless_gfx_test tests/test_gfx.cpp tests/test_svg_art.cpp tests/test_svg_image.cpp)
     target_link_libraries(reckless_gfx_test PRIVATE reckless_common_gfx reckless_warnings GTest::gtest_main)
@@ -654,6 +679,13 @@ if(RECKLESS_TOOLKIT_BUILD_TESTS)
                                                      reckless_warnings reckless_toolkit_test_support
                                                      GTest::gtest_main)
     add_test(NAME view COMMAND reckless_view_test)
+
+    # Opening an installed file in the system's handler (window/LocalFileOpening.h): the paths refused before anything
+    # is spawned, and on Linux the spawn against a stub xdg-open on the PATH - no window, no display, no real handler.
+    add_executable(reckless_local_file_test tests/test_local_file.cpp)
+    target_link_libraries(reckless_local_file_test PRIVATE reckless_window_headers reckless_warnings
+                                                           reckless_toolkit_test_support GTest::gtest_main)
+    add_test(NAME local_file COMMAND reckless_local_file_test)
 
     # The files a binary carries inside itself (cmake/RecklessEmbed.cmake): two tables naming the serif in common,
     # whose bytes every module shares, each held to its files by tests/test_embedded.cpp (CTests embedded_a and
@@ -704,9 +736,13 @@ inline constexpr EmbeddedFile kEmbeddedFiles[] = {
     # formats, periods and capture ring, which need no Windows.
     add_executable(reckless_audio_test tests/test_audio_settings.cpp tests/test_wasapi_formats.cpp
                                        tests/test_asio_formats.cpp tests/test_win_midi_formats.cpp
-                                       tests/test_core_midi_formats.cpp)
+                                       tests/test_core_midi_formats.cpp tests/test_realtime_threads.cpp
+                                       tests/test_stream_format.cpp tests/test_channel_names.cpp)
     target_link_libraries(reckless_audio_test PRIVATE reckless_common_audio reckless_toolkit_test_support
                                                       reckless_warnings GTest::gtest_main)
+    if(WIN32)
+        target_link_libraries(reckless_audio_test PRIVATE avrt) # the multimedia scheduler, which the join test calls
+    endif()
     add_test(NAME audio COMMAND reckless_audio_test)
 
     # The controller layer with no controller: names, the controls a device has said are down, an axis's halves and
@@ -749,7 +785,7 @@ inline constexpr EmbeddedFile kEmbeddedFiles[] = {
     # an app suite of its own: vst-plugins' reckless_app_test, its Standalone's.
     add_executable(reckless_app_shell_test tests/test_post_queue.cpp tests/test_fake_app_platform.cpp
                                            tests/test_app_shell.cpp tests/test_menu_bar.cpp tests/test_window_sizes.cpp
-                                           tests/test_window_place.cpp tests/test_full_screen.cpp)
+                                           tests/test_window_place.cpp tests/test_full_screen.cpp tests/test_open_file_queue.cpp)
     target_link_libraries(reckless_app_shell_test PRIVATE reckless_app_shell reckless_toolkit_test_support
                                                           reckless_warnings GTest::gtest_main)
     add_test(NAME app COMMAND reckless_app_shell_test)
@@ -770,8 +806,14 @@ inline constexpr EmbeddedFile kEmbeddedFiles[] = {
         add_executable(reckless_app_platform_test tests/test_app_platform.cpp)
         target_link_libraries(reckless_app_platform_test PRIVATE reckless_app_platform reckless_toolkit_test_support
                                                                  reckless_warnings GTest::gtest_main)
+        # TIMEOUT: a window suite once hung for two hours with no bound (vst-plugins CI, 2026-11-16). Sized as twice the
+        # slowest run measured over this repository's and vst-plugins' green CI on Linux, Windows and macOS (1.81 s,
+        # app_platform on Linux; run 43642585588 and others), 3.62 s, rounded up to 5. clipboard and app_menu use the same.
+        # app_platform alone is 10: it gained the timer, size-in-units, resize, close and descriptor tests, which wait on
+        # a real loop (2.7 s on a Linux Mint 22 development machine under xvfb-run, 2026-11-19, against 1.8 s before) -
+        # twice the slowest green CI run to come, to be re-sized from one.
         add_test(NAME app_platform COMMAND reckless_app_platform_test)
-        set_tests_properties(app_platform PROPERTIES LABELS window RESOURCE_LOCK display)
+        set_tests_properties(app_platform PROPERTIES LABELS window RESOURCE_LOCK display TIMEOUT 10)
 
         # The clipboard written and read back: the system's only where it is no person's (CI, or
         # RECKLESS_TEST_CLIPBOARD=1), a pasteboard of the suite's own on macOS, and on Linux the CLIPBOARD selection's
@@ -787,7 +829,7 @@ inline constexpr EmbeddedFile kEmbeddedFiles[] = {
             target_compile_options(reckless_clipboard_test PRIVATE -fobjc-arc)
         endif()
         add_test(NAME clipboard COMMAND reckless_clipboard_test)
-        set_tests_properties(clipboard PROPERTIES LABELS window RESOURCE_LOCK display)
+        set_tests_properties(clipboard PROPERTIES LABELS window RESOURCE_LOCK display TIMEOUT 5)
 
         # The menu bar on this build's platform: the bar a Windows window carries and its keys, a child window handing
         # on what its views do not take; the drawn bar and a key press on Linux, on a display; the screen's bar and the
@@ -803,7 +845,7 @@ inline constexpr EmbeddedFile kEmbeddedFiles[] = {
             target_compile_options(reckless_app_menu_test PRIVATE -fobjc-arc)
         endif()
         add_test(NAME app_menu COMMAND reckless_app_menu_test)
-        set_tests_properties(app_menu PROPERTIES LABELS window RESOURCE_LOCK display)
+        set_tests_properties(app_menu PROPERTIES LABELS window RESOURCE_LOCK display TIMEOUT 5)
     endif()
 endif()
 

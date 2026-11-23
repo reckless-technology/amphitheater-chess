@@ -2,7 +2,9 @@
 // device layer that meets JACK, its calls renamed to the loader's (JackNames.h, before jack/jack.h).
 #include "JackNames.h"
 
+#include "ChannelNames.h"
 #include "JackDevice.h"
+#include "RealtimeScheduling.h"
 
 #include <algorithm>
 #include <atomic>
@@ -19,6 +21,7 @@
 #include <vector>
 
 #include <jack/jack.h>
+#include <jack/thread.h>
 
 namespace reckless::audio
 {
@@ -128,13 +131,20 @@ std::vector<DeviceInfo> List(jack_client_t *client)
             continue;
         }
         DeviceInfo device;
-        device.name                  = name;
-        device.output_channels       = static_cast<int>(PortsOf(inputs, name).size());
-        device.input_channels        = static_cast<int>(PortsOf(outputs, name).size());
-        device.duplex_channels       = std::min(device.input_channels, device.output_channels);
-        device.sample_rates          = {rate};
-        device.current_sample_rate   = rate;
-        device.preferred_sample_rate = rate;
+        device.name = name;
+        // The ports the device layer connects a stream to, in the order it connects them (Open): a client's input
+        // ports are the device's outputs. Their own names are the channels' - "capture_1", "playback_FL" - as the
+        // server's graph carries them; nothing is read from a port beyond its name, so no client is touched.
+        const std::vector<std::string> playback_ports = PortsOf(inputs, name);
+        const std::vector<std::string> capture_ports  = PortsOf(outputs, name);
+        device.output_channels                        = static_cast<int>(playback_ports.size());
+        device.input_channels                         = static_cast<int>(capture_ports.size());
+        device.output_channel_names                   = ChannelNamesOfPorts(playback_ports);
+        device.input_channel_names                    = ChannelNamesOfPorts(capture_ports);
+        device.duplex_channels                        = std::min(device.input_channels, device.output_channels);
+        device.sample_rates                           = {rate};
+        device.current_sample_rate                    = rate;
+        device.preferred_sample_rate                  = rate;
         if (device.input_channels + device.output_channels > 0)
         {
             devices.push_back(std::move(device));
@@ -349,11 +359,11 @@ class JackSystem final : public AudioSystem
         inputs_.assign(std::max<std::size_t>(in_ports_.size(), 1), nullptr);
         outputs_.assign(out_ports_.size(), nullptr);
 
-        format_.sample_rate      = rate;
-        format_.block_size       = block_.load(std::memory_order_acquire);
-        format_.input_channels   = static_cast<int>(in_ports_.size());
-        format_.output_channels  = static_cast<int>(out_ports_.size());
-        format_.reported_latency = DeviceLatency();
+        format_.sample_rate     = rate;
+        format_.block_size      = block_.load(std::memory_order_acquire);
+        format_.input_channels  = static_cast<int>(in_ports_.size());
+        format_.output_channels = static_cast<int>(out_ports_.size());
+        SetDeviceLatency();
         callback_.store(&callback, std::memory_order_release);
         failed_.store(false, std::memory_order_relaxed);
         server_gone_.store(false, std::memory_order_relaxed);
@@ -381,7 +391,7 @@ class JackSystem final : public AudioSystem
         }
         active_ = true;
         AwaitBlock();
-        format_.reported_latency = DeviceLatency(); // a device port's latency follows the block, settled now
+        SetDeviceLatency(); // a device port's latency follows the block, settled now
         // Connected once active, as JACK requires; deactivating disconnects them, so each Start connects afresh.
         for (std::size_t c = 0; c < out_ports_.size(); ++c)
         {
@@ -451,6 +461,62 @@ class JackSystem final : public AudioSystem
             format.block_size = block_.load(std::memory_order_acquire); // the server's block, which it may change
         }
         return format;
+    }
+
+    /** A consumer's thread at the standing of the server's callback thread: libjack's own call, at the priority the
+        server gives its clients (`jack_client_real_time_priority`; PipeWire's libjack answers it from its own
+        configuration). Where libjack lacks either call - an old or odd build - or the call fails, the round-robin route
+        the ALSA back end takes, and the result says it fell back. Where the server is not running in real time the
+        callback has no such standing either, so the thread is refused, with that reason.
+        @param membership  receives what puts the thread's own policy back
+        @return            what was achieved, or why not */
+    RealtimeThreadResult JoinAudioThread(RealtimeThreadMembership &membership) const override
+    {
+        RealtimeThreadResult result;
+        if (!open_ || client_ == nullptr)
+        {
+            result.refused = "no stream is open, so there is no callback thread whose standing to give";
+            return result;
+        }
+        std::string fallback_reason;
+        if (reckless_jack_has_real_time_calls() == 0)
+        {
+            fallback_reason = "libjack lacks jack_acquire_real_time_scheduling or jack_client_real_time_priority";
+        }
+        else
+        {
+            const int priority = jack_client_real_time_priority(client_);
+            if (priority <= 0)
+            {
+                result.refused = "the JACK server is not running with realtime scheduling, so its callback has none "
+                                 "either";
+                return result;
+            }
+            int         policy = SCHED_OTHER;
+            sched_param before{};
+            pthread_getschedparam(pthread_self(), &policy, &before);
+            if (jack_acquire_real_time_scheduling(pthread_self(), priority) == 0)
+            {
+                membership.SetUndo([policy, before] {
+                    sched_param restored = before;
+                    pthread_setschedparam(pthread_self(), policy, &restored);
+                });
+                result.is_joined = true;
+                result.achieved  = "JACK realtime scheduling at priority " + std::to_string(priority);
+                return result;
+            }
+            fallback_reason = "jack_acquire_real_time_scheduling refused priority " + std::to_string(priority);
+        }
+        result = linux_realtime::JoinRoundRobin(membership);
+        if (result.is_joined)
+        {
+            result.achieved += " (the ALSA route: " + fallback_reason + ")";
+        }
+        else
+        {
+            result.refused += " (after " + fallback_reason + ")";
+        }
+        return result;
     }
 
     std::string LastError() const override
@@ -541,13 +607,14 @@ class JackSystem final : public AudioSystem
         }
     }
 
-    /** The latency the device ports report beyond the block: the first output's playback latency and the first
-        input's capture latency, summed.
-        @return  the latency, in frames */
-    int DeviceLatency() const
+    /** The latency the device ports report beyond the block, each side apart and summed into the format: the first
+        output's playback latency and the first input's capture latency (`StreamFormat::output_latency_frames`,
+        `input_latency_frames`, and their sum `reported_latency`), in frames. */
+    void SetDeviceLatency()
     {
-        return LatencyOf(client_, targets_.front(), JackPlaybackLatency) +
-               (sources_.empty() ? 0 : LatencyOf(client_, sources_.front(), JackCaptureLatency));
+        format_.output_latency_frames = LatencyOf(client_, targets_.front(), JackPlaybackLatency);
+        format_.input_latency_frames  = sources_.empty() ? 0 : LatencyOf(client_, sources_.front(), JackCaptureLatency);
+        format_.reported_latency      = format_.output_latency_frames + format_.input_latency_frames;
     }
 
     /** JACK's xrun callback, on a thread of the server's: the next process callback is told.

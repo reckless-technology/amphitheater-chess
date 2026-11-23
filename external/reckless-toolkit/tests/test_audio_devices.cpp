@@ -16,10 +16,16 @@
 // wherever their headers are), so a build that silently loses one fails here.
 #include "devices/DeviceSuite.h"
 
+#include "ChannelNames.h"
+#include "RealtimeThreadScope.h"
+
 #if defined(RECKLESS_AUDIO_TEST_ALSA_SEQ)
 #include <alsa/asoundlib.h>
 #endif
 
+using reckless::audio::RealtimeThreadMembership;
+using reckless::audio::RealtimeThreadResult;
+using reckless::audio::RealtimeThreadScope;
 using namespace reckless::audio::test; // the rigs' own: Environment, Trim, the test device
 using namespace reckless::audio::test::suite;
 
@@ -72,6 +78,8 @@ TEST_P(AudioDevices, ProbesTheDevicesEachUnderANameOfItsOwn)
                               (d.is_default_output ? ", default out" : "") + ", rates " + Rates(d.sample_rates) +
                               ", current " + Str(d.current_sample_rate) + ", preferred " +
                               Str(d.preferred_sample_rate));
+        table.Row("  channel names",
+                  "in [" + JoinList(d.input_channel_names) + "] out [" + JoinList(d.output_channel_names) + "]");
     }
     if (devices.empty())
     {
@@ -106,11 +114,34 @@ TEST_P(AudioDevices, ProbesTheDevicesEachUnderANameOfItsOwn)
         EXPECT_TRUE(reckless::gfx::IsValidUtf8(d.name)) << "a name that is not UTF-8 on " << api_ << ": " << d.name;
     }
 
+    // Channel names are the API's own or none: a list is empty or one name a channel, each UTF-8 and with no control
+    // character, and never a name the layer made up. Nothing says what a back end must name - ALSA's are the driver's
+    // speaker positions, WASAPI has none - so only the shape is held, and the table above is where to read them.
+    for (const DeviceInfo &d : devices)
+    {
+        EXPECT_TRUE(d.input_channel_names.empty() ||
+                    d.input_channel_names.size() == static_cast<std::size_t>(d.input_channels))
+            << d.name << " on " << api_;
+        EXPECT_TRUE(d.output_channel_names.empty() ||
+                    d.output_channel_names.size() == static_cast<std::size_t>(d.output_channels))
+            << d.name << " on " << api_;
+        for (const auto *names : {&d.input_channel_names, &d.output_channel_names})
+        {
+            for (const std::string &name : *names)
+            {
+                EXPECT_TRUE(reckless::gfx::IsValidUtf8(name)) << d.name << " on " << api_;
+                EXPECT_EQ(name, reckless::audio::CleanChannelName(name)) << d.name << " on " << api_;
+            }
+        }
+    }
+
     // A second probe lists the same devices.
     const std::vector<DeviceInfo> again = system_->Devices();
     ASSERT_EQ(again.size(), devices.size());
     for (std::size_t i = 0; i < devices.size(); ++i)
     {
+        EXPECT_EQ(again[i].input_channel_names, devices[i].input_channel_names) << devices[i].name;
+        EXPECT_EQ(again[i].output_channel_names, devices[i].output_channel_names) << devices[i].name;
         EXPECT_EQ(again[i].name, devices[i].name);
         EXPECT_EQ(again[i].input_channels, devices[i].input_channels) << devices[i].name;
         EXPECT_EQ(again[i].output_channels, devices[i].output_channels) << devices[i].name;
@@ -277,6 +308,14 @@ TEST_P(AudioDevices, RunsAStreamAtTheRateAndTheBlockItOpenedAt)
     EXPECT_EQ(format.input_channels, request.input_count);
     EXPECT_EQ(format.output_channels, request.output_count);
     EXPECT_GE(format.reported_latency, 0);
+    // The two sides are the sum, on every API; an input the stream does not open reports none.
+    EXPECT_GE(format.input_latency_frames, 0);
+    EXPECT_GE(format.output_latency_frames, 0);
+    EXPECT_EQ(format.input_latency_frames + format.output_latency_frames, format.reported_latency);
+    if (format.input_channels == 0)
+    {
+        EXPECT_EQ(format.input_latency_frames, 0);
+    }
 
     // The stream ran, for as long as the rate and the block say it should have, at the rate it opened at.
     ASSERT_GT(timing.callbacks, 0) << "the stream never called back";
@@ -294,6 +333,58 @@ TEST_P(AudioDevices, RunsAStreamAtTheRateAndTheBlockItOpenedAt)
     // Nothing calls back once the Stop has returned, and the Close closed it.
     EXPECT_EQ(later, after_stop);
     EXPECT_FALSE(system_->IsOpen());
+}
+
+// ---- Each API: a consumer's thread at the callback's standing ------------------------------------------------------
+
+TEST_P(AudioDevices, GivesAConsumersThreadTheCallbacksStandingOrSaysWhyNot)
+{
+    // With no stream open, the join is refused with a reason, whatever the API.
+    {
+        RealtimeThreadMembership   membership;
+        const RealtimeThreadResult closed = system_->JoinAudioThread(membership);
+        EXPECT_FALSE(closed.is_joined);
+        EXPECT_FALSE(membership.IsJoined());
+        EXPECT_NE(closed.refused.find("no stream is open"), std::string::npos) << closed.refused;
+    }
+    const TestDevice device = Find();
+    RECKLESS_NEED_TEST_DEVICE(device);
+    Recorder recorder(0, device.channels, Recorder::Play::kSilence);
+    ASSERT_TRUE(system_->Open(RequestFor(device, false), recorder)) << system_->LastError();
+    ASSERT_TRUE(system_->Start()) << system_->LastError();
+
+    // A thread of the test's own, as a consumer's worker would: joined as it starts, left as it ends.
+    RealtimeThreadResult result;
+    bool                 was_still_joined_at_the_end = false;
+    std::thread          worker([&] {
+        RealtimeThreadScope scope(*system_);
+        result                      = scope.Result();
+        was_still_joined_at_the_end = result.is_joined;
+        scope.Leave();
+    });
+    worker.join();
+    system_->Stop();
+    system_->Close();
+    Table(api_ + ": a consumer's thread joined to the callback's standing")
+        .Row("joined", result.is_joined ? "yes" : "no")
+        .Row("achieved", result.achieved.empty() ? "nothing" : result.achieved)
+        .Row("refused", result.refused.empty() ? "nothing" : result.refused)
+        .Print();
+
+    // Always an answer: what was given, or why not - never both empty.
+    EXPECT_FALSE(result.achieved.empty() && result.refused.empty());
+    EXPECT_EQ(result.is_joined, !result.achieved.empty());
+    if (!result.is_joined)
+    {
+        EXPECT_FALSE(result.refused.empty());
+    }
+    // CoreAudio and Windows Audio, ASIO included, have no limit to refuse by: a thread of ours joins their scheduler.
+    // Linux's ALSA and JACK may refuse, as a user with no `rtprio` limit is refused.
+    if (api_ == "CoreAudio" || api_ == "Windows Audio" || api_ == "Windows Audio (Exclusive Mode)" || api_ == "ASIO")
+    {
+        EXPECT_TRUE(result.is_joined) << result.Describe();
+    }
+    EXPECT_EQ(was_still_joined_at_the_end, result.is_joined);
 }
 
 // ---- Each API: the samples a loop carries back ---------------------------------------------------------------------
@@ -714,6 +805,9 @@ TEST_P(AudioDevices, BuffersThePeriodsTheRequestAsksFor)
         // Beyond the block each way, as StreamFormat means it: the buffer less the two blocks a cable's round trip
         // counts beside it (CarriesTheSamplesALoopBringsBack).
         EXPECT_EQ(format.reported_latency, (periods - 2) * format.block_size) << periods << " periods";
+        // ALSA's figure is the playback buffer's alone: the output side holds all of it, the input side is not told.
+        EXPECT_EQ(format.output_latency_frames, format.reported_latency);
+        EXPECT_EQ(format.input_latency_frames, 0);
         EXPECT_EQ(scan.corrupt, 0);
         if (recorder.xruns() == 0)
         {

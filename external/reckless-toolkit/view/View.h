@@ -23,6 +23,19 @@ struct Modifiers
     bool shift{false};   ///< a shift key
     bool command{false}; ///< the command key on a Mac, control elsewhere
     bool alt{false};     ///< an alt (option) key
+    /** The Control key itself, on every platform: where `command` is Command on a Mac and Control elsewhere, this is
+        the key marked Control wherever it is - so on a Mac Control+wheel (a zoom) and Control+click can be told from
+        Command's, and on Windows and Linux it is true with `command`. Last, so a `{shift, command, alt}` still reads
+        as it always did. */
+    bool control{false};
+};
+
+/** The mouse button a press is of. */
+enum class MouseButton
+{
+    kLeft,   ///< the primary button
+    kRight,  ///< the secondary button, or a control-click on a Mac
+    kMiddle, ///< the middle button, which is the wheel pressed in on most mice
 };
 
 /** A mouse event as the view it reaches sees it: positions in that view's coordinates, in pixels. */
@@ -32,6 +45,7 @@ struct MouseEvent
     gfx::PointF down;          ///< where the press began, in the same coordinates
     int         clicks{1};     ///< 2 for the press of a double click
     bool        right{false};  ///< the secondary button, or a control-click on a Mac
+    bool        middle{false}; ///< the middle button (a wheel pressed in); never with `right`
     Modifiers   modifiers{};   ///< the modifier keys held
     float       wheel_x{0.0f}; ///< the wheel's horizontal travel, in pixels, right positive; 0 outside MouseWheel
     float       wheel_y{0.0f}; ///< the wheel's vertical travel, in pixels, up positive; 0 outside MouseWheel
@@ -57,6 +71,18 @@ enum class Key
     kEnd,       ///< the end key
     kPageUp,    ///< the page up key
     kPageDown,  ///< the page down key
+    kF1,        ///< the first function key
+    kF2,        ///< the second function key
+    kF3,        ///< the third function key
+    kF4,        ///< the fourth function key
+    kF5,        ///< the fifth function key
+    kF6,        ///< the sixth function key
+    kF7,        ///< the seventh function key
+    kF8,        ///< the eighth function key
+    kF9,        ///< the ninth function key
+    kF10,       ///< the tenth function key
+    kF11,       ///< the eleventh function key
+    kF12,       ///< the twelfth function key
 };
 
 /** A key press as the view with the keyboard sees it. */
@@ -90,6 +116,12 @@ struct FileRequest
     std::vector<std::string> patterns;    ///< the files it offers, "*.wav", "*.nam"; empty for any
     bool                     save{false}; ///< true for a place to save a file, false for a file to open
     std::string              file_name;   ///< a save's suggested name
+    /** An open dialog that takes more than one file (Host::ChooseFiles); ignored by a save, and by Host::ChooseFile,
+        which answers one path. */
+    bool multiple{false};
+    /** A dialog that chooses a folder rather than a file (Host::ChooseFiles): `patterns` and `save` are ignored, and
+        the answer is the folder's path. A host that cannot ask for a folder answers none. */
+    bool choose_folder{false};
 };
 
 /** A window of its own over a host's, showing a view tree - a menu, a tooltip - until it is destroyed, or until the
@@ -213,6 +245,27 @@ class Host
     {
         (void)request;
         picked({});
+    }
+
+    /** The platform's own dialog for `request`, answering every path chosen: one or more files of an open dialog
+        (FileRequest::multiple), the folder of a folder dialog (FileRequest::choose_folder), the one path of a save.
+        `picked` runs once on the window's thread with the paths, in the order the dialog gives them, or with none when
+        the person cancels or the host has no dialog. The default is the host's ChooseFile for a request that wants
+        neither a folder nor several files, and no answer for one that does: a host that has a dialog of its own
+        overrides this.
+        @param request  what the dialog asks for
+        @param picked   run once, on the window's thread, with the paths chosen; empty for none */
+    virtual void ChooseFiles(const FileRequest                                         &request,
+                             std::function<void(const std::vector<std::string> &paths)> picked)
+    {
+        if (request.choose_folder)
+        {
+            picked({}); // a host with no folder dialog
+            return;
+        }
+        ChooseFile(request, [picked = std::move(picked)](const std::string &path) {
+            picked(path.empty() ? std::vector<std::string>{} : std::vector<std::string>{path});
+        });
     }
 
     /** The text on the system's clipboard, for a paste: UTF-8, or empty when it holds no text or the host has none.
@@ -580,6 +633,12 @@ class View
 
     std::string tooltip; ///< the text a tooltip shows while the pointer rests on the view; empty for none
 
+    /** Whether the view hears presses of the middle button (MouseEvent::middle, MouseButton::kMiddle): a drag-scroll
+        view sets it. False for every view, whose behaviour with the button is then what it was before the toolkit
+        delivered one - nothing: a press of the middle button reaches the first view up the tree from the pointer that
+        set this, and no other. */
+    bool takes_middle_button{false};
+
     /** The pointer's shape over the view. */
     Cursor cursor{Cursor::kArrow};
 
@@ -605,6 +664,22 @@ class View
         if (Host *h = host())
         {
             h->ChooseFile(request, std::move(picked));
+        }
+        else
+        {
+            picked({});
+        }
+    }
+
+    /** The platform's file dialog for several files or a folder, through the host (Host::ChooseFiles); cancelled at
+        once in no host's tree.
+        @param request  what the dialog asks for
+        @param picked   run once with the paths chosen, or none when cancelled */
+    void ChooseFiles(const FileRequest &request, std::function<void(const std::vector<std::string> &paths)> picked)
+    {
+        if (Host *h = host())
+        {
+            h->ChooseFiles(request, std::move(picked));
         }
         else
         {
@@ -1022,17 +1097,57 @@ class MouseRouter
     }
 
     /** A press: to the view under the pointer, which keeps the press until it ends; the keyboard to the first view
-        from it up that wants it.
+        from it up that wants it. The router holds one press at a time: a press that comes while a view holds another -
+        a second button, on that view or another - first ends the held one for its view, as a release (MouseUp) at the
+        last place the router knew the pointer, and only then begins the new one, so every MouseDown a view hears is
+        followed by one MouseUp. (A middle press no view asked for is nothing and leaves the held press alone.) The
+        window's platforms say nothing of which button was released, so the next release of any button ends the press
+        then held.
         @param point      the pointer, in the root's coordinates, in pixels
         @param clicks     1 for a press, 2 for the second press of a double click
         @param right      true for the secondary button, or a control-click on a Mac
         @param modifiers  the modifier keys held */
     void Down(gfx::PointF point, int clicks, bool right, Modifiers modifiers)
     {
+        Down(point, clicks, right ? MouseButton::kRight : MouseButton::kLeft, modifiers);
+    }
+
+    /** A press of the button named: as the press above, which is this with the left or the right button.
+        @param point      the pointer, in the root's coordinates, in pixels
+        @param clicks     1 for a press, 2 for the second press of a double click
+        @param button     the button pressed
+        @param modifiers  the modifier keys held */
+    void Down(gfx::PointF point, int clicks, MouseButton button, Modifiers modifiers)
+    {
+        if (pressed_ != nullptr)
+        {
+            if (button == MouseButton::kMiddle && PressTarget(point, button) == nullptr)
+            {
+                return; // a middle press no view asked for is nothing, and it leaves the press held as it was
+            }
+            EndHeldPress(); // one press at a time: the view that holds one hears it end before the next begins
+        }
         Hover(point, modifiers);
-        pressed_ = ViewAt(root_, point.ToNearestInt());
-        down_    = point;
-        right_   = right; // the press's button, for its drags and its release
+        pressed_        = PressTarget(point, button);
+        down_           = point;
+        last_point_     = point;
+        last_modifiers_ = modifiers;
+        button_         = button; // the press's button, for its drags and its release
+        if (button == MouseButton::kMiddle)
+        {
+            // Only a view that asked for the middle button (View::takes_middle_button) hears it, the one under the
+            // pointer or the first of its parents that did (PressTarget); for every other the press is nothing, as it
+            // was before the router knew the button, and it moves neither the keyboard nor an earlier press's double
+            // click.
+            double_click_ = nullptr;
+            if (pressed_ != nullptr)
+            {
+                View *view = pressed_;
+                view->MouseDown(EventFor(*view, point, clicks, button, modifiers));
+            }
+            ShowCursor();
+            return;
+        }
         if (View *taker = KeyboardTaker(pressed_); taker != nullptr || !IsKeyboardKept())
         {
             Focus(taker); // a view that keeps the keyboard keeps it from a press on one that wants none
@@ -1041,7 +1156,7 @@ class MouseRouter
         if (pressed_ != nullptr)
         {
             View *view = pressed_;
-            view->MouseDown(EventFor(*view, point, clicks, right, modifiers));
+            view->MouseDown(EventFor(*view, point, clicks, button, modifiers));
             if (clicks == 2 && pressed_ == view)
             {
                 double_click_    = view; // decided at the release
@@ -1049,6 +1164,15 @@ class MouseRouter
             }
         }
         ShowCursor();
+    }
+
+    /** Whether a view holds a press now: the press began on one and has not ended. False after a press of the
+        middle button that no view asked for (View::takes_middle_button), so a window that captures the pointer for a
+        press captures it for one a view took only.
+        @return  true while a view holds a press */
+    bool HasPress() const noexcept
+    {
+        return pressed_ != nullptr;
     }
 
     /** The pointer moved with a press held: to the pressed view, wherever the pointer is.
@@ -1060,9 +1184,11 @@ class MouseRouter
         {
             double_click_ = nullptr; // a drag, not a double click
         }
+        last_point_     = point;
+        last_modifiers_ = modifiers;
         if (pressed_ != nullptr)
         {
-            pressed_->MouseDrag(EventFor(*pressed_, point, 1, right_, modifiers));
+            pressed_->MouseDrag(EventFor(*pressed_, point, 1, button_, modifiers));
         }
     }
 
@@ -1077,11 +1203,11 @@ class MouseRouter
         {
             pressed_         = nullptr;
             const bool quick = std::chrono::steady_clock::now() - double_click_at_ <= kLongPress;
-            view->MouseUp(EventFor(*view, point, 1, right_, modifiers));
+            view->MouseUp(EventFor(*view, point, 1, button_, modifiers));
             if (double_click_ == view && quick) // still in the tree: Forget lets go of one that leaves
             {
                 double_click_ = nullptr;
-                view->MouseDoubleClick(EventFor(*view, point, 2, right_, modifiers));
+                view->MouseDoubleClick(EventFor(*view, point, 2, button_, modifiers));
             }
         }
         double_click_ = nullptr;
@@ -1098,7 +1224,7 @@ class MouseRouter
         Hover(point, modifiers);
         if (hovered_ != nullptr)
         {
-            hovered_->MouseMove(EventFor(*hovered_, point, 1, false, modifiers));
+            hovered_->MouseMove(EventFor(*hovered_, point, 1, MouseButton::kLeft, modifiers));
         }
         ShowCursor();
     }
@@ -1127,7 +1253,7 @@ class MouseRouter
     {
         for (View *view = ViewAt(root_, point.ToNearestInt()); view != nullptr; view = view->parent())
         {
-            MouseEvent e     = EventFor(*view, point, 1, false, modifiers);
+            MouseEvent e     = EventFor(*view, point, 1, MouseButton::kLeft, modifiers);
             e.wheel_x        = dx;
             e.wheel_y        = dy;
             e.wheel_reversed = reversed;
@@ -1315,22 +1441,55 @@ class MouseRouter
     static constexpr float                     kDoubleClickSlop = 4.0f;
     static constexpr std::chrono::milliseconds kLongPress{300}; ///< a press held past this long is no double click
 
+    /** The view a press of `button` at `point` goes to: the one under the pointer; for the middle button, it or the
+        first of its parents that asked for that button (View::takes_middle_button), null when none did.
+        @param point   the pointer, in the root's coordinates, in pixels
+        @param button  the button pressed
+        @return        the view, not owned; null for none */
+    View *PressTarget(gfx::PointF point, MouseButton button) const
+    {
+        View *view = ViewAt(root_, point.ToNearestInt());
+        if (button == MouseButton::kMiddle)
+        {
+            while (view != nullptr && !view->takes_middle_button)
+            {
+                view = view->parent();
+            }
+        }
+        return view;
+    }
+
+    /** The held press ends because another begins: its view hears a MouseUp of its own button at the last place the
+        pointer was told of, which is what the release of that button would have said, and no double click follows. */
+    void EndHeldPress()
+    {
+        View *view    = pressed_;
+        pressed_      = nullptr;
+        double_click_ = nullptr;
+        if (view != nullptr)
+        {
+            view->MouseUp(EventFor(*view, last_point_, 1, button_, last_modifiers_));
+        }
+    }
+
     /** The event `view` hears at `root_point`, in its own coordinates: made of its arguments alone, so a wheel or a
        move during a press changes nothing of the press.
         @param view        the view the event goes to
         @param root_point  the pointer, in the root's coordinates, in pixels
         @param clicks      1, or 2 for the press of a double click
-        @param right       true for the secondary button
+        @param button      the button the event is of
         @param modifiers   the modifier keys held
         @return            the event, in `view`'s coordinates */
-    MouseEvent EventFor(const View &view, gfx::PointF root_point, int clicks, bool right, Modifiers modifiers) const
+    MouseEvent EventFor(const View &view, gfx::PointF root_point, int clicks, MouseButton button,
+                        Modifiers modifiers) const
     {
         const gfx::PointF here = view.ToRoot(gfx::PointF{0.0f, 0.0f});
         MouseEvent        event;
         event.position  = {root_point.x - here.x, root_point.y - here.y};
         event.down      = {down_.x - here.x, down_.y - here.y};
         event.clicks    = clicks;
-        event.right     = right;
+        event.right     = button == MouseButton::kRight;
+        event.middle    = button == MouseButton::kMiddle;
         event.modifiers = modifiers;
         return event;
     }
@@ -1352,11 +1511,11 @@ class MouseRouter
             hovered_   = now;
             if (left != nullptr)
             {
-                left->MouseExit(EventFor(*left, point, 1, false, modifiers));
+                left->MouseExit(EventFor(*left, point, 1, MouseButton::kLeft, modifiers));
             }
             if (hovered_ != nullptr)
             {
-                hovered_->MouseEnter(EventFor(*hovered_, point, 1, false, modifiers));
+                hovered_->MouseEnter(EventFor(*hovered_, point, 1, MouseButton::kLeft, modifiers));
             }
         }
     }
@@ -1382,7 +1541,9 @@ class MouseRouter
     View                                 *double_click_{nullptr}; ///< a double click's second press, until its release
     std::chrono::steady_clock::time_point double_click_at_{};     ///< when the second press of a double click came
     gfx::PointF                           down_{};                ///< where the press began, in the root's coordinates
-    bool                                  right_{false};          ///< whether the press is of the secondary button
-    Cursor                                cursor_{Cursor::kArrow}; ///< the shape last told to the host
+    gfx::PointF                           last_point_{};          ///< where the press was last told of the pointer
+    Modifiers                             last_modifiers_{};      ///< the modifier keys it was last told of
+    MouseButton                           button_{MouseButton::kLeft}; ///< the button the press is of
+    Cursor                                cursor_{Cursor::kArrow};     ///< the shape last told to the host
 };
 } // namespace reckless::view

@@ -230,6 +230,53 @@ devices.
 Nothing above the seam has to change: `AudioDevice.h`'s `AudioSystem` (nine pure virtuals) and `MidiSystem` (four)
 were already written against no library, and no test names a back end.
 
+## The latency, each side apart
+
+`StreamFormat::reported_latency` is one figure, the latency beyond the block input and output summed. Beside it,
+`input_latency_frames` and `output_latency_frames` give the two sides, and they **add up to it exactly** on every back
+end (the sum itself is as it always was, so no caller changed): a recording program places a take by the input's, and
+shows a round trip from both. Each is from what the back end already knew:
+
+| Back end | `input_latency_frames` | `output_latency_frames` |
+|---|---|---|
+| ALSA | **0: not told.** The back end's figure is the playback buffer less two blocks, which is the output's; a capture side's room costs no latency and its driver's own delay is not reported | all of `reported_latency` |
+| JACK | the first input port's capture latency (`jack_port_get_latency_range`, its least) | the first output port's playback latency |
+| CoreAudio | the input scope's device latency, safety offset and its stream's latency (`Latency`); 0 with no input | the output scope's the same |
+| Windows Audio | the capture stream's latency (`GetStreamLatency`) plus the capture period the ring keeps; 0 with no input | the render stream's latency |
+| ASIO | `ASIOGetLatencies`' input less a block; 0 with no input | its output less a block; 0 with no output |
+
+A side that is not open is 0; so is a back end that tells neither (the offline device). **Unrun:** the ALSA split
+is held by the device suite (`tests/test_audio_devices.cpp`) in CI on the loopback card, and was not run on the
+machine that wrote it; the JACK split is the same arithmetic, run there by the same suite; CoreAudio's, Windows Audio's
+and ASIO's are compiled by CI and have never run - the sums are the lines they replace, split.
+
+## The channels' names
+
+`DeviceInfo::input_channel_names` and `output_channel_names` (2026-11-19, for a recording program's "Input 3: Mic/Line 3")
+carry what the API or the driver calls each channel, in UTF-8: **empty where the back end cannot tell, else exactly one
+per channel with a channel it has no name for left as ""**. Never made up - a product writes "Input 3" itself - and read
+from what each API lists, never by opening a stream: no back end opens anything for them that its enumeration did not
+open already. They are read once with the probe that already runs, so a repeated listing costs what it did.
+`InputChannelName(i)` and `OutputChannelName(i)` answer for one channel and give "" past the list. The arithmetic is
+`audio/ChannelNames.h`, held on every platform by `tests/test_channel_names.cpp`; each real API's list is checked for
+its shape by the device suite (`tests/test_audio_devices.cpp`, which prints them).
+
+| API | Names | Read from | Unrun here |
+|---|---|---|---|
+| ASIO | the driver's name for each channel | `ASIOGetChannelInfo`, on the driver the probe has already loaded, no buffers made; the driver's 8-bit text converted from the ANSI code page | compiled by CI only |
+| JACK | each port's own name without its client (`capture_1`, `playback_FL`) | the port list the device layer already reads, in the order it connects the ports | the arithmetic is tested; the live graph is the device suite's |
+| CoreAudio | the HAL's element name for each channel, what a driver or Audio MIDI Setup set | `kAudioObjectPropertyElementName` per scope and element (channel counted from 1 across the streams), a property read; a channel with none is "" | compiled by CI only |
+| ALSA | the speaker **position** the driver declares for each channel: `FL`, `FR`, `FC`, `AUX0` | `snd_pcm_query_chmaps_from_hw` on the card's control, no PCM opened; `hw:` PCMs only, the map of the PCM's channel count; unknown and not-applicable positions are "" | the device suite on CI's loopback card |
+| WASAPI | none | an endpoint has no per-channel name in the Core Audio interfaces; the lists stay empty | compiled by CI only |
+
+**ALSA's are positions, not labels, and the difference matters.** A UMC1820 (kernel 7.0, read from `amixer -c UMC1820
+contents` and `/proc/asound/UMC1820/stream0`, 2026-11-19) declares a *fixed* map of 12 playback channels, `FL FR FC LFE RL
+RR FLC FRC RC SL SR TC`, and of 10 capture channels, `FL FR FC LFE RL RR FLC FRC RC SL`: the speaker layout the
+USB driver gives any multichannel interface that does not describe its channels, and nothing of the front panel's
+"Mic/Line 3". The query cannot tell a default layout from a real one, so the layer reports what the driver declares and
+a product should show an ALSA name only as the position it is. Where a driver (a UAC2 interface with channel clusters)
+declares real positions they are the same names.
+
 ## Where each API ends up
 
 | Platform | Audio | MIDI |
@@ -248,6 +295,45 @@ On Linux, ALSA and JACK are not alternatives to choose between. **ALSA direct is
 period and buffer size, and `snd_pcm_mmap_begin`/`commit` on `SND_PCM_ACCESS_MMAP_INTERLEAVED` is the DMA ring
 itself. JACK is for coexisting with a desktop that owns the card, and one JACK client covers PipeWire too, since
 pipewire-jack implements the JACK API.
+
+## Threads of a consumer's own
+
+A DAW renders its mix on many threads: a few **realtime workers** that work beside the device's callback inside its
+deadline, and a pool of lower-urgency render-ahead threads. The back ends raise their own callback threads (below) and,
+since this section, hand a consumer the same standing for its realtime workers - never for the render-ahead pool,
+which is meant to be preempted.
+
+```cpp
+void WorkerMain(const reckless::audio::AudioSystem &system)
+{
+    const reckless::audio::RealtimeThreadScope standing(system); // first thing in the thread; given back at its end
+    ShowInSettings(standing.Result().Describe());               // "round-robin realtime priority 70", or why not
+    ...
+}
+```
+
+`AudioSystem::JoinAudioThread(RealtimeThreadMembership &)` is the virtual (`audio/AudioDevice.h`) and
+`RealtimeThreadScope` (`audio/RealtimeThreadScope.h`) the RAII that calls it. It is made **by the thread itself**,
+once at its start and once at its end, so it may allocate and ask the kernel - it is never made on an audio thread in
+steady state. A refusal is a **result with its reason** (`RealtimeThreadResult::refused`), never an abort and never
+silent, and the thread runs as it was. With **no stream open** the join is refused ("no stream is open ..."). The caller
+joins its workers after `Open()` and lets them leave before `Close()`.
+
+| API | What the callback thread has today (read 2026-11-19) | What a consumer's thread is given |
+|---|---|---|
+| ALSA | `SCHED_RR` at 70 or the system's maximum, the stream thread's first act, a refusal ignored (`audio/linux/AlsaDevice.cpp`, `Run`) | the same, from the one `audio/linux/RealtimeScheduling.h` (`kStreamThreadPriority`, the constant the stream thread now reads too); refused with `RLIMIT_RTPRIO` named where the user has none - `ulimit -r` is 0 on a stock desktop |
+| JACK (and PipeWire's libjack) | the server's: libjack's own thread, at the server's priority | `jack_client_real_time_priority` and `jack_acquire_real_time_scheduling`, looked up by the run-time loader (`audio/linux/JackLoader.cpp`). A libjack without either, or a refused acquire, falls back to the ALSA route and the result says so; a server not running in realtime refuses, since its callback has none either |
+| Windows Audio (WASAPI, both modes) | MMCSS class `"Pro Audio"` (`AvSetMmThreadCharacteristicsW`), `THREAD_PRIORITY_TIME_CRITICAL` where MMCSS refuses (`audio/win/WasapiDevice.cpp`, `Run`) | the same, from `audio/win/MmcssThread.h`, reverted on leave |
+| ASIO | the driver's own thread, the driver's business | MMCSS `"Pro Audio"` as WASAPI's, on our threads |
+| CoreAudio | the HAL's IOProc thread, in the device's audio workgroup | the device's workgroup joined (`kAudioDevicePropertyIOThreadOSWorkgroup`, macOS 11, then `os_workgroup_join`; left with `os_workgroup_leave`), after a time-constraint policy whose period is the stream's block, as Apple's "Understanding Audio Workgroups" says for parallel realtime threads. Without the workgroup Apple silicon schedules a helper on an efficiency core |
+
+What it does **not** do, deliberately: start a workgroup interval (the HAL's thread owns the cycle), lock memory, or
+touch a thread it was not called on. The time-constraint policy's computation is half the period, within the whole
+period, preemptible; what the HAL's own thread has is not published, so that is a choice to be measured against a real
+Mac (see the pull request that added this).
+
+The machine's cores - which logical processors share a core, which are performance and which efficiency - and the
+pinning of the calling thread to one are in `core/CpuTopology.h`, documented in [../core/cpu-topology.md](../core/cpu-topology.md).
 
 ## Why neither library
 

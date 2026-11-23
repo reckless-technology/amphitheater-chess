@@ -186,6 +186,13 @@ child.SetFramePacing({reckless::window::FramePacing::kDisplayClock, divisor, 1})
   and one a hair over 60 taken up as it is would be a divisor of 2. Whole, each lands where it should: 30, 50, 59 and 60
   give 1; 75 to 120 give 2, 143 to 165 give 3, 239 and 240 give 4. `ModeHertz` in `tests/test_frame_pacing.cpp` holds
   these.
+- **On Windows the rate divided is the mode's exact rational where the display configuration gives one.** The compositor
+  (`DwmGetCompositionTimingInfo`) was measured on 2026-11-09 (Legion5i, 3840 x 2160 at 59.94 Hz) reading exactly
+  59.000 Hz (10000000 / 169491) for a whole run after a full-screen switch, and for stretches of others; that is within
+  a whole hertz of the DEVMODE's 59, so every cross-check passed it and Sentinel's frame log read `refresh_millihertz
+  59000` with 17 % to none of its frames tick-locked. `QueryDisplayConfig` keeps the same mode as 59940 / 1000
+  (`window::ExactModeHertz`), so that is the period divided, the compositor's last blank still anchors the grid, and
+  the mode is read again once a second (a switch no longer shows in the compositor's period) and when a period moves.
 - **`FramePacingState::display_hertz` is not the rate to work it out from.** It is what the window is dividing, for a
   product to report, and on Windows it is the compositor's own reading where that is steady: within a whole hertz of the
   mode (`window::RateOfOneReading` for the answer to `SetFramePacing`, `window::CompositorReadings` from then on), which
@@ -194,7 +201,8 @@ child.SetFramePacing({reckless::window::FramePacing::kDisplayClock, divisor, 1})
 - **The clock follows the display and keeps the product's divisor.** A window moved from 240 Hz to 60 Hz goes on with the
   divisor it was asked for, so a rule that is a rate reads the mode again about once a second - it asks the system each
   time, so not every frame - and asks again where the divisor would change. Asking starts the clock's schedule again.
-- **0 means not here.** Linux has no clock to ask for at all. A window not yet on a screen may have the wrong answer rather
+- **0 means nothing can say**: a platform with no clock, or an X server whose mode names no timing (Xvfb), or a Linux
+  build without RandR's headers. A window not yet on a screen may have the wrong answer rather
   than none: a Mac's view in no window reads the main screen, as a plug-in's may as it is made. So a product reads it
   again once the window shows (`ChildWindow::Showing`).
 - **A fallback on Windows lasts until the product asks again.** A window that has left the clock - another monitor's
@@ -242,10 +250,10 @@ child.SetFramePacing({reckless::window::FramePacing::kDisplayClock, divisor, 1})
 | | Windows | macOS | Linux (X11) |
 |---|---|---|---|
 | The platform's timer, unchanged | `SetTimer` at 16 ms, `WM_TIMER` | `NSTimer` at a sixtieth | the app loop's 16 ms tick |
-| The display clock | a high-resolution waitable timer snapped to the compositor's vertical blank grid | `CADisplayLink` from macOS 14, `CVDisplayLink` below it | **none** |
-| Where it waits | a thread of the window's own, posting each frame to the window | the run loop (Core Animation) or CoreVideo's own thread, hopping to the main queue | - |
-| The rate read | `DwmGetCompositionTimingInfo`, cross-checked against the window's monitor's mode | `NSScreen.maximumFramesPerSecond`, cross-checked against `CGDisplayModeGetRefreshRate` | - |
-| How the subdivision is done | arithmetic: the due time on the grid | counted: every Nth refresh of the link | - |
+| The display clock | a high-resolution waitable timer snapped to the compositor's vertical blank grid | `CADisplayLink` from macOS 14, `CVDisplayLink` below it | a timerfd snapped to the blanks the X server's Present extension reports |
+| Where it waits | a thread of the window's own, posting each frame to the window | the run loop (Core Animation) or CoreVideo's own thread, hopping to the main queue | no thread: the timerfd and the window's connection, both watched by the host's loop |
+| The rate read | `DwmGetCompositionTimingInfo`, cross-checked against the window's monitor's mode | `NSScreen.maximumFramesPerSecond`, cross-checked against `CGDisplayModeGetRefreshRate` | the RandR mode of the monitor the most of the window is on: its pixel clock over its totals |
+| How the subdivision is done | arithmetic: the due time on the grid | counted: every Nth refresh of the link | arithmetic: the due time on the grid, as on Windows |
 
 **Windows.** There is no present to put on the vertical blank. The view tree is rastered on the CPU into a
 `SkSurfaces::WrapPixels` bitmap and blitted with `SetDIBitsToDevice`; there is no GL context, no D3D device and no
@@ -253,7 +261,7 @@ swap chain, so **a DXGI waitable swap chain is out of reach** - reaching one mea
 chain, a per-frame upload of Skia's raster or a move to Skia's D3D backend outright, and redoing the child-window,
 popup, DPI and dirty-rectangle handling that `window/win/WindowWin.cpp` is mostly about. It would also change the
 pixels three shipped products draw. A window a product has asked to draw on the GPU ([gpu-drawing.md](gpu-drawing.md))
-does present - Ganesh on WGL and `SwapBuffers` - but with a swap interval of 0, so its swap does not wait for the blank
+does present - Ganesh on WGL and `SwapBuffers` - but with a swap interval of 0 while windowed (1 in full screen), so its swap does not wait for the blank
 either, and it is paced by this same clock: the clock stays the one clock, and the swap only hands the frame to the
 compositor as `SetDIBitsToDevice` did ([gpu-drawing.md](gpu-drawing.md#pacing-and-the-swap-interval) says why). So the
 clock is the nearest honest thing to a present: a
@@ -276,15 +284,44 @@ main queue, and its calls are deprecated from macOS 15, which is why they are re
 kept in the ticks' own timestamps rather than by counting callbacks, because a run loop that is busy coalesces a
 display link's callbacks and a count would then fall behind the panel.
 
-**Linux has no display clock, and the toolkit says so.** X hands a window's pixels over with `XPutImage`, which is a
-copy and not a presentation, so nothing reports a vertical blank. GLX or EGL would need a GL context and a swap,
-which this path has not got. The X11 Present extension would need the tree rastered into a Pixmap and handed over
-with `PresentPixmap` against a target media stream count - a different present path, a new library on every
-consumer's link line, and a rewrite of the dirty-rectangle handling - **for phase alone**, because the rate on Linux
-is already right: the app loop keeps its deadline in a steady clock and advances it by the period, which measured
-16.000 ms with a standard deviation of 0.306 ms against Windows' 26.9 ms and 7.1 ms. What display synchronisation
-would buy on Linux is phase, not rate, and until that is worth its cost `SetFramePacing` there answers
-`kNoDisplayClock` rather than faking a phase lock.
+**Linux (X11).** `window/linux/DisplayClockLinux.h`. Nothing has to be presented for X to report a vertical blank: the
+Present extension's `PresentNotifyMSC` asks the server to say when the window's monitor reaches a count of its blanks,
+and its `PresentCompleteNotify` says when it did, with the count and the moment on the server's steady clock. Asked for
+the next count each time it answers, it is a report of every blank, read on the window's own connection, which the host's
+loop already watches - whether the window draws with `XPutImage` or with an EGL swap, since a report needs no present.
+Each frame's due time is pulled onto the grid of the last blank reported and the mode's period, as Windows' is, and the
+frame woken on a `timerfd` at that blank less the lead, which the same loop watches. So there is **no thread**: a
+plug-in's window inside a host's loop is paced as an app's is, and the callback runs where the timer's always has. A blank
+reported late, or not at all for a quarter of a second, leaves the grid where the last put it, carried on by the period,
+and the next is asked for again. A stamp more than a second from the window's own clock - a server on another machine -
+is taken at the report's arrival instead (`window::BlankOnTheClock`).
+
+The rate is the **mode's alone**, the RandR mode of the monitor the most of the window lies on, read again once a second
+so a window moved to a monitor of another rate is followed. That is also what tells a real display from none: Xvfb, and a
+window on no monitor at all, are still answered by Present - from a timer of the server's own, about sixty a second - but
+Xvfb's one mode names no timing, so there is no rate to divide and the window says `kRefreshRateUnknown`. A server
+without Present says `kNoDisplayClock`. A variable-refresh panel is not looked for: on X11 a window is composited unless
+it flips full screen and opts in, so the mode is the rate the frames are composited at.
+
+**Under XWayland** the same clock runs, and is kept on purpose. XWayland answers Present from the Wayland compositor's
+own frames (from `wp_presentation` where the compositor offers it, else from its frame callbacks), and its RandR mode is
+one XWayland makes up for the output - 59.963 Hz on a 60 Hz panel, under both compositors measured - so the rate read is
+a little off. Nothing measured shows a cost from that, since each frame is pulled back onto the last blank reported, and
+the platform's timer in its place was worse under both
+([Under XWayland](#under-xwayland)). Whether the window can draw on a GPU there is the compositor's to say, not the
+toolkit's: an XWayland with no GPU path of its own has no DRI3, so EGL on X11 finds no GPU and the window draws on the
+CPU raster ([gpu-drawing.md](gpu-drawing.md#linux)).
+
+Neither library is linked. libXpresent and libXrandr are opened by name the first time a window is asked for the clock or
+its mode, as Windows' compositor calls are looked up from `dwmapi.dll`, so no consumer's link line changes and a window
+no one asks opens neither. Their headers are needed to build the clock (`libxpresent-dev`, which brings
+`libxrandr-dev`); a build without them compiles the fallback alone, and says `kNoDisplayClock`.
+
+**Before this (until 2026-11-09) Linux had no display clock**, on the reasoning that X's copy of a window's pixels is not
+a presentation and that Present would need the tree handed over as a Pixmap with `PresentPixmap`. It does not: a report
+of a blank needs no present at all. And the rate being right was not enough - the app loop's 16 ms deadline is a steady
+60 Hz, but a steady 60.000 Hz against a 59.999 Hz panel has no phase, and a product that locks its tick to the frame
+carries a remainder that lands anywhere ([What this measured on Linux](#what-this-measured-on-linux)).
 
 ## Leading the vertical blank
 
@@ -315,7 +352,7 @@ child.SetFramePacing({reckless::window::FramePacing::kDisplayClock, 1, 1, /*lead
 - **A frame that misses the blank it led is shown a whole refresh later**, which is worse than no lead at all. The
   margin is the product's to choose: the window's own wake is not exact (below), and a frame's cost has a tail.
 
-**Windows** leads. **macOS does not yet**, and its state says 0: a Mac's display link runs the frame callback when it
+**Windows and Linux** lead. **macOS does not yet**, and its state says 0: a Mac's display link runs the frame callback when it
 ticks, and whether a lead would gain anything there depends on *when* it ticks, which nothing in the code can show.
 Core Animation's link hands over `timestamp` (the blank just gone) and `targetTimestamp` (the one the frame will be
 shown at); CoreVideo's an `output` time for the frame. If the callback runs at `timestamp`, a whole refresh before
@@ -323,7 +360,10 @@ shown at); CoreVideo's an `output` time for the frame. If the callback runs at `
 `targetTimestamp - lead` on the main queue rather than in the callback. If the link is already run ahead of the blank
 by about a frame's cost, a lead gains nothing. **What to measure on a Mac**, on Apple Silicon and on Intel:
 `CACurrentMediaTime()` on entry to the callback against `timestamp` and `targetTimestamp`, and then a frame's paint
-against `targetTimestamp`. **Linux** has no display clock to lead.
+against `targetTimestamp`. **Linux** wakes on its timerfd at the blank less the lead, and the frame then waits for
+the compositor - Muffin on Cinnamon, which composites every window, full screen included - as Windows' does; Sentinel's
+13 ms lead at 1080 lines left its frames handed over 5 to 8 ms after waking, a refresh ahead of none of them
+([What this measured on Linux](#what-this-measured-on-linux)).
 
 What the lead does, measured on Legion5i on 2026-11-04 (3840 x 2160 at 59.94 Hz, the compositor's period 16.683 ms;
 a Release build, one frame a refresh, a frame that fills the window with one colour) by a probe that stamps the frame
@@ -344,6 +384,44 @@ is the hop from the clock's thread to the window's (a posted message) and the wa
 is there at a lead of 0 too - a frame woken at the blank begins 0.43 ms after it. A product's lead absorbs it. A cheap
 frame missed nothing at any lead, but at 2 ms three paints in 589 finished after the blank they were woken for: a
 2 ms lead leaves too little for a half-millisecond wake with a millisecond's tail.
+
+### The back buffer is taken before the frame, not at the present
+
+**A lead moves when the frame wakes; this moves when it waits.** Acquiring a back buffer blocks while the display has
+none free, and on a display the frames saturate - full screen with one frame drawn on every refresh - that wait is
+most of a refresh. Taken at the present, where it used to be, it falls **between the product sampling its input and
+the picture reaching the glass**, and the player pays it as input lag. So the window asks the presenter for one
+**before it runs the frame callback** (`GpuPresenter::AcquireBackBuffer`, `window/EarlyBackBuffer.h`), and the same
+wait falls before the input is sampled instead.
+
+Measured on `jonny-macbook` (Apple M1 Pro, macOS 27), full screen with a frame on every refresh, 1,000 frames a run
+joined frame by frame against the product's own log, 2026-11-10:
+
+| | tick to glass, p50 | p99 | interval sd | late frames |
+|---|---|---|---|---|
+| **60 Hz panel**, as it was | 49.26 ms | 49.92 | 0.676 | 0 |
+| **60 Hz panel**, taken first | **33.26** | 34.47 | 0.659 | 0 |
+| **120 Hz panel**, as it was | 36.21 | 38.05 | 0.083 | 0 |
+| **120 Hz panel**, taken first | **32.42** | 34.81 | 0.697 | 2 |
+
+The 60 Hz panel's 33.27 ms is what the same window measures when it is **not** saturated (33.79 at one frame every
+other refresh), so the whole penalty is recovered; and nothing is given up for it - no buffer, and a spread that did
+not worsen. Two things it is not: it is not a lead, which the Mac does not apply at all (`WithoutLead`), and it is
+not the drawable count - keeping two rather than three took **16 ms off the 120 Hz panel and added 16 to the 60 Hz
+one**, which is why the pool is still three.
+
+**And it costs the ordinary case nothing measurable**, which took six runs to say rather than one. A window full
+screen on the 120 Hz panel at one frame every other refresh - what a player is in, where nothing ever waits for a
+drawable - read 17.17 ms before the change and 19.11 after it on the first pair, which looked like a regression of
+a quarter of a refresh. Three pairs run back to back from one build, the arms alternating, say otherwise: **17.22
+against 17.04, 17.25 against 17.11, and 19.97 against 15.75**, the taken-first arm never the worse of a pair. The
+baseline itself moves by 2.8 ms between runs, so on this machine **a difference under about 3 ms on that case is
+not resolvable by single runs**, and the first pair's 2 ms was the run and not the change.
+
+**macOS alone does this today.** The default on `GpuPresenter` does nothing, so Windows and Linux present exactly as
+they did; each wants the same measurement on its own presenter before its window asks. The figures above are one
+machine, idle and on mains, one run per configuration: late-frame counts of 0 to 2 in a thousand are not a
+robustness measurement, and nothing here says what this does on a busy machine.
 
 ## Several windows on one thread
 
@@ -573,6 +651,75 @@ and the last column closed from 99.0 % against 4.4 % to 87.6 % against 26.3 %. O
 58 to 60 Hz at periods of 1 to 15 ms where the sweep above has 57 to 63.5. Why they moved was not looked into, so the older
 figures are kept with this beside them.
 
+## What this measured on Linux
+
+On jonny-precision (Dell Precision 5530, Linux Mint 22.3, Cinnamon on Xorg with Muffin compositing, the 1920 x 1080 panel
+on the Intel UHD 630 at 59.9993 Hz as its mode names it; the NVIDIA Quadro P2000 beside it by PRIME render offload),
+2026-11-09, with Sentinel's latency probe: its own frame log, 30 s of scripted play a run, the GPU drawing on EGL with a
+swap interval of 0, and Sentinel's 13 ms lead. *Ticks not 1* is the frames whose game advanced by 0 or 2 ticks rather
+than 1; the spread is that of the time between frames.
+
+| Paced on | GPU | Window | Runs | Spread between frames | Ticks not 1 | Longest frame | Frames over 25 ms |
+|---|---|---|---|---|---|---|---|
+| the app loop's 16 ms timer, Sentinel's own 60 Hz pacer | Intel | windowed / full screen | 2 / 2 | 1.99 to 2.71 ms | 6.2 to 24.0 % | 26.86 ms | 1 to 4 |
+| the same | NVIDIA | windowed / full screen | 2 / 2 | 1.68 to 2.28 ms | 10.9 to 26.5 % | 27.32 ms | 0 to 6 |
+| **the display's clock** | Intel | windowed / full screen | 2 / 2 | **0.04 to 0.05 ms** | **0.00 %** | 16.97 ms | 0 |
+| **the display's clock** | NVIDIA | windowed / full screen | 2 / 2 | **0.04 to 0.05 ms** | **0.00 %** | 17.09 ms | 0 |
+
+The timer's rows are its runs at a swap interval of 0. At an interval of 1 its runs sometimes settled - in full screen,
+four of four within 0.2 % - and sometimes did not - windowed, about 8 % in three of four - though the swap never waited
+(below), and why they settled was not found. The display clock's rows are every run made on it, eight of eight: 14,400
+frames, every one of them a single tick.
+
+- **The timer judders by two routes.** Its wakes spread by about 2 ms, which turns a frame into 0 or 2 ticks wherever
+  it falls; and a product that locks its tick to the frame carries a remainder from one frame to the next, which a
+  start-up can leave near half a frame, where even 0.06 ms of spread flips frames (6.3 % in one such run). The display's
+  clock removes both: its wakes are 0.05 ms apart at most, and a product on it carries nothing.
+- **Going full screen and back** (F11, mid-run): no frame off a single tick on the Intel GPU; on NVIDIA one long frame at
+  each change, 41 ms and 25 ms, while its surface is made again, and none after.
+- **The CPU raster** on the same clock had 0.5 to 1.0 % of frames off a single tick, every one after a frame whose own
+  raster took 18 to 28 ms - Sentinel's HD look at 1080 lines on this processor, which the timer's runs have too and
+  hide in their own spread. The clock is not what is slow there.
+- **The swap interval stays 0.** An interval of 1 did not make `eglSwapBuffers` wait, on either GPU: it returned in 0.5 ms
+  at 0 and at 1 alike, both drivers queueing the frame, so it gave no clock to pace on; and Muffin composites full-screen
+  windows as well (`unredirect-fullscreen-windows` is false), so nothing can tear on this desktop whatever the interval
+  ([gpu-drawing.md](gpu-drawing.md#linux)).
+- **The blanks themselves**, read with a probe asking `PresentNotifyMSC` for each next one: 16.6664 ms apart with a
+  standard deviation of 0.006 ms while the screen was being drawn, and each report within 0.2 ms of the last one's
+  period. With the desktop idle the stamps spread to 0.6 to 0.8 ms - the panel's self-refresh, which a window being drawn
+  does not leave it in.
+
+### Under XWayland
+
+The same machine and the same probe on 2026-11-10, with Sentinel run as an X client of XWayland under two Wayland
+compositors: Cinnamon 6.6's own experimental Wayland session (Muffin 6.6.3, XWayland 23.2.6) and Weston 13, each the
+seat's session. The platform's timer was had by hiding libXpresent from the window, so that it said `kNoDisplayClock`.
+One run a row unless it says otherwise; the same day's two Xorg runs at the top are the comparison.
+
+| Session | Drawn on | Paced on | Window | Spread between frames | Ticks not 1 | Frames over 25 ms |
+|---|---|---|---|---|---|---|
+| Cinnamon on Xorg | Intel / NVIDIA GPU | the display's clock | windowed / full screen | 0.04 to 0.08 ms | 0.00 to 0.06 % | 0 |
+| Cinnamon on Wayland | the CPU raster | the display's clock (Present from frame callbacks) | windowed / full screen, 2 / 2 | 1.37 to 3.31 ms | 0.4 to 3.4 % | 3 to 54 |
+| Cinnamon on Wayland | the CPU raster | the platform's timer | windowed / full screen | 4.49 to 4.80 ms | 7.1 to 18.9 % | 117 to 137 |
+| Weston 13 | Intel / NVIDIA GPU | **the display's clock** | windowed / full screen | **0.06 to 0.09 ms** | **0.00 %** | 0 |
+| Weston 13 | Intel / NVIDIA GPU | the platform's timer | windowed / full screen | 0.08 to 1.39 ms | 0.0 to 12.3 % | 0 |
+
+- **Present stays the clock under XWayland.** Even where the compositor has no `wp_presentation`, so XWayland's blanks
+  come from its frame callbacks, they beat the platform's timer by about three times in spread and ten times in ticks
+  off one; where it has (Weston) the clock is as good as Xorg's. Treating XWayland's Present as no display clock was
+  considered and is not done.
+- **The rate RandR names is XWayland's own.** Its mode read 59.963 Hz under both compositors, against the panel's
+  59.9993 Hz under Xorg and Weston's 60.0; the frames still averaged 16.666 ms apart, because each is pulled back onto
+  the last blank reported. Taking the period from the reported blanks instead would make the rate read true, and is
+  left until a compositor shows that it costs something.
+- **Cinnamon's Wayland session gives no X client a GPU.** Muffin 6.6.3 offers `zwp_linux_dmabuf_v1` at version 3
+  only - no main device - with no `wl_drm`, so XWayland cannot start glamor ("Failed to initialize glamor, falling back
+  to sw") and offers no DRI3. Mesa's EGL on X11 then gives llvmpipe, which the window turns down for the CPU raster, and
+  NVIDIA's EGL on X11 fails `eglInitialize`; both are the fallbacks working as meant. NVIDIA's GLX by PRIME offload does
+  still reach the P2000 there, but a GLX path beside EGL for one experimental session is not proposed: the CPU raster
+  holds 60 frames a second on it. Under Weston, which offers `linux-dmabuf` version 4, XWayland has DRI3 and both GPUs
+  draw.
+
 ## What is held, and where
 
 The policy needs no window, no display and no clock, and it is in one place for that reason
@@ -603,7 +750,11 @@ someone has, and names no mode.
 it reaches AppKit's run loop, and `tests/FramePacingRule.h` is the assertion both halves make - and **asserts no rate at all**, because a timing distribution is not a pass or a
 fail and none of the three CI runners is a machine to measure one on. The Windows runners are services on a window
 station that shows nothing, where the compositor's timing is very probably not to be had; the Linux job runs under
-Xvfb, which has no vertical blank. So each test holds whichever branch its machine reached - on the display's clock,
+Xvfb, whose Present answers from a timer and whose one mode names no timing. On Linux the two branches are also told
+apart from the outside: the suite asks the server whether it has Present and the window what rate its mode names, and
+holds the window on the display's clock exactly where both are there - on a desktop - and otherwise on the timer with
+`kNoDisplayClock` or `kRefreshRateUnknown`, which is what Xvfb gives. A second Linux case turns the loop's timer and its
+watched descriptors apart and holds that the frames come from whichever the window is paced on, never from both. So each test holds whichever branch its machine reached - on the display's clock,
 a believable rate and the divisor honoured; on the platform's timer, a reason that is neither `kNone` nor `kNotAsked`
 and no rate claimed - and **prints the probe**, so one run says which branch it was on. CTest keeps a passing test's output to itself, so the probe is read with `ctest --preset windows -V -R child_window`, or by running `reckless_child_window_test` itself. Each of them runs twice, once having asked for nothing and once having asked for the display's clock, and holds that the frames arrive on the window's own thread either way - which is how the unchanged path is held rather than inferred. On Windows a further test counts it from the outside, with the window that asks as its control: unasked, every frame arrives as a `WM_TIMER`, nothing is posted to the window for one and the process has no more threads; asked, and on the clock, no frame is a `WM_TIMER`, each is posted, and there is the clock's thread, one more. macOS is the one
 CI platform with a real window server, which the window suites already rely on, so there a display link is genuinely

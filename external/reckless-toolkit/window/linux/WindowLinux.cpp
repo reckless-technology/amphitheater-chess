@@ -6,6 +6,12 @@
 // surface in an override-redirect window over everything, under a pointer grab that shows every press outside the
 // connection's windows to the popups. The file dialog is the desktop's zenity, or kdialog, read without blocking;
 // files dragged from the desktop arrive by XDND.
+// Where a product has asked for the GPU (ChildWindow::SetDrawing) and linked its back end, the child window's tree is
+// drawn into a surface on the GPU instead and presented with an EGL swap (GpuPresenterLinux.h), and nothing of the GPU
+// is touched until then; the popups stay on the CPU raster.
+// Where a product has asked for the display's clock (ChildWindow::SetFramePacing), the frame callback runs on the
+// blanks of the window's monitor as the X server's Present extension reports them, woken on a timerfd the same loop
+// watches (DisplayClockLinux.h); the loop's timer goes on running everything else.
 // Screen points are the root window's, opaque to the views.
 #include <fcntl.h>
 #include <poll.h>
@@ -29,6 +35,7 @@
 #include "include/core/SkCanvas.h"
 #include "include/core/SkSurface.h"
 
+#include "LocalFileOpening.h"
 #include "SkiaCanvas.h"
 #include "UriList.h"
 #include "Window.h"
@@ -44,6 +51,8 @@
 // it is asked for raw keys.
 #include <X11/XKBlib.h>
 
+#include "DisplayClockLinux.h"
+#include "GpuPresenterLinux.h"
 #include "X11Clipboard.h"
 
 namespace reckless::window
@@ -71,7 +80,7 @@ bool TakesBgra(const Visual *visual, int depth) noexcept
     @return       Shift, Control and Alt (Mod1) as the views read them */
 view::Modifiers ModifiersOf(unsigned state) noexcept
 {
-    return {(state & ShiftMask) != 0, (state & ControlMask) != 0, (state & Mod1Mask) != 0};
+    return {(state & ShiftMask) != 0, (state & ControlMask) != 0, (state & Mod1Mask) != 0, (state & ControlMask) != 0};
 }
 
 /** The cursor font's shape for a view's cursor.
@@ -141,6 +150,19 @@ view::Key NamedKeyOfKeySym(KeySym symbol) noexcept
     }
 }
 
+/** The function key a key symbol stands for, F1 to F12: not part of the table the raw keys are named from
+    (NamedKeyOfKeySym), which the products that read raw keys have always seen without them.
+    @param symbol  the key symbol
+    @return        kF1 to kF12, or Key::kNone for any other symbol */
+view::Key FunctionKeyOfKeySym(KeySym symbol) noexcept
+{
+    if (symbol >= XK_F1 && symbol <= XK_F12)
+    {
+        return static_cast<view::Key>(static_cast<int>(view::Key::kF1) + static_cast<int>(symbol - XK_F1));
+    }
+    return view::Key::kNone;
+}
+
 /** A key event as the views' key: the editing and moving keys by their key symbols, the rest as the character it
     types (Latin-1, as XLookupString gives it with no input method).
     @param event  the key press, which XLookupString reads
@@ -155,6 +177,11 @@ view::KeyEvent KeyOf(XKeyEvent &event)
     if (const view::Key named = NamedKeyOfKeySym(symbol); named != view::Key::kNone)
     {
         key.key = named;
+        return key;
+    }
+    if (const view::Key function = FunctionKeyOfKeySym(symbol); function != view::Key::kNone)
+    {
+        key.key = function;
         return key;
     }
     // Ctrl with a letter as the letter with the primary modifier, as a Mac's Command-letter reaches the views:
@@ -252,6 +279,7 @@ class LinuxConnection
     {
         loop_.reset(); // no callback after this
         clipboard_.reset();
+        clock_.reset(); // before the connection its Present selection is on
         if (dialog_pid_ > 0)
         {
             kill(dialog_pid_, SIGTERM);
@@ -277,6 +305,55 @@ class LinuxConnection
         tick_ = std::move(tick);
         return loop_->WatchFd(ConnectionNumber(display_), [this] { Pump(); }) &&
                loop_->StartTimer(kFrameMilliseconds, [this] { Tick(); });
+    }
+
+    /** The frame callback paced as `request` asks: on the blanks of `window`'s monitor where it asks for the display's
+        clock and the server and the monitor can give one (X11DisplayClock), and on the loop's timer otherwise, with the
+        reason. The clock is made the first time it is asked for and its timer watched on the loop from then; a host's
+        loop that will not watch it leaves the window on the timer.
+        @param request  what the product asks for
+        @param window   the window whose monitor is paced on
+        @return         what the frame callback is paced on */
+    FramePacingState SetFramePacing(const FrameRequest &request, ::Window window)
+    {
+        is_clock_asked_ = false;
+        if (clock_)
+        {
+            clock_->Stop();
+        }
+        if (request.pacing == FramePacing::kDisplayClock && !clock_)
+        {
+            clock_            = std::make_unique<x11::X11DisplayClock>(display_);
+            is_clock_watched_ = clock_->timer() >= 0 && loop_->WatchFd(clock_->timer(), [this] { RunDisplayFrame(); });
+        }
+        if (request.pacing != FramePacing::kDisplayClock || !is_clock_watched_)
+        {
+            pacing_ = ChosenPacing(request, DisplayClockReading{}); // not asked, or no clock the loop will wake on
+            return pacing_;
+        }
+        is_clock_asked_ = true;
+        return clock_->Start(window, request);
+    }
+
+    /** The display's clock stopped where it paces `window`, so that Present's selection on it is freed while the
+        window is still there: the clock is the connection's and outlives the window by a step, and freed after the
+        window's destruction its selection was a BadWindow at every close of a window on the display's clock.
+        @param window  the window about to be destroyed */
+    void StopClockOn(::Window window)
+    {
+        if (clock_ && clock_->window() == window)
+        {
+            clock_->Stop();
+        }
+    }
+
+    /** What the frame callback is paced on now: the display's clock's state where it was asked for, which says
+        where the display under the window has since stopped being one to divide, and otherwise the answer
+        SetFramePacing gave.
+        @return  the pacing in force */
+    FramePacingState FramePacingNow() const
+    {
+        return is_clock_asked_ ? clock_->state() : pacing_;
     }
 
     /** The display connection.
@@ -371,6 +448,13 @@ class LinuxConnection
                         already open or the desktop has neither dialog program */
     void ChooseFile(const view::FileRequest &request, std::function<void(const std::string &)> picked);
 
+    /** zenity's or kdialog's answer to `request`, every path of it, given to `picked` on a later tick: the files of a
+        multiple open, the folder of a folder dialog, the one path of the rest. None for a cancel; a dialog already
+        open is cancelled at once.
+        @param request  the dialog's title, folder, file patterns, and whether it saves, takes several or a folder
+        @param picked   run on a later tick with the paths chosen; empty when cancelled */
+    void ChooseFiles(const view::FileRequest &request, std::function<void(const std::vector<std::string> &)> picked);
+
     /** `text` on the CLIPBOARD selection, for a copy: held by the loop where it keeps the clipboard for the windows on
         it (an app's, RunLoop::SetClipboardText), else by an owner on this connection, answering pastes while the
         connection lives (a plug-in's window in a host).
@@ -393,8 +477,13 @@ class LinuxConnection
     void Pump();
 
   private:
-    /** One frame tick: the window's frame callback, the calls deferred to it, the dialog's answer, the events. */
+    /** One frame tick: the window's frame callback, unless the display's clock runs it, then the calls deferred to
+        the tick, the dialog's answer and the events. */
     void Tick();
+
+    /** One frame of the display's clock: its timer read, the frame callback and the events with the repaints it asked
+        for, and the clock's next frame set (X11DisplayClock::Advance). */
+    void RunDisplayFrame();
 
     /** Reads what the file dialog has written; once it has closed, its path is given to the callback. */
     void PollDialog();
@@ -405,17 +494,23 @@ class LinuxConnection
     std::map<::Window, LinuxSurface *> surfaces_; ///< every surface by its window, the child window and its popups
     std::map<::Window, LinuxSurface *> proxied_;  ///< top-level windows whose drops a surface takes (ProxyFor)
     std::vector<LinuxPopup *>          popups_;   ///< the open popups, oldest first
-    ::Window                           grab_window_{0};      ///< the window holding the pointer grab; 0 for none
-    std::deque<std::function<void()>>  calls_;               ///< the calls deferred to the next tick
-    std::map<unsigned, ::Cursor>       cursors_;             ///< the cursors made, by shape
-    std::map<VisualID, Colormap>       colormaps_;           ///< the popups' (ColormapFor)
-    pid_t                              dialog_pid_{-1};      ///< the file dialog's process; -1 for none open
-    int                                dialog_fd_{-1};       ///< the read end of the dialog's output; -1 for none
-    std::string                        dialog_output_;       ///< what the dialog has written so far
-    std::function<void(const std::string &)> dialog_picked_; ///< given the path when the dialog closes
+    ::Window                           grab_window_{0}; ///< the window holding the pointer grab; 0 for none
+    std::deque<std::function<void()>>  calls_;          ///< the calls deferred to the next tick
+    std::map<unsigned, ::Cursor>       cursors_;        ///< the cursors made, by shape
+    std::map<VisualID, Colormap>       colormaps_;      ///< the popups' (ColormapFor)
+    pid_t                              dialog_pid_{-1}; ///< the file dialog's process; -1 for none open
+    int                                dialog_fd_{-1};  ///< the read end of the dialog's output; -1 for none
+    std::string                        dialog_output_;  ///< what the dialog has written so far
+    std::function<void(const std::vector<std::string> &)> dialog_picked_; ///< given the paths when the dialog closes
+    bool dialog_is_list_{false}; ///< the dialog was asked for several files: its output is a path to a line
     /** The CLIPBOARD selection's owner on this connection, made by the first copy the loop does not keep; null until
         then. */
     std::unique_ptr<x11::ClipboardOwner> clipboard_;
+    /** The display's clock, made the first time a product asks for it and kept; null until then. */
+    std::unique_ptr<x11::X11DisplayClock> clock_;
+    bool                                  is_clock_watched_{false}; ///< the loop watches the clock's timer
+    bool             is_clock_asked_{false}; ///< the last request asked for the clock, and the loop can wake on it
+    FramePacingState pacing_{};              ///< the answer to the last request, where it did not reach the clock
 };
 
 /** A view tree drawn in an X window on a shared connection: the raster, the drawing, the mouse and keys to a router,
@@ -518,12 +613,12 @@ class LinuxSurface : public view::Host
             int revert = 0;
             XGetInputFocus(display_, &previous_focus_, &revert);
             focus_taken_ = true;
-            XSetInputFocus(display_, window_, RevertToParent, CurrentTime);
+            TakeXFocusOnceViewable();
         }
         else if (focus_taken_)
         {
             focus_taken_ = false;
-            XSetInputFocus(display_, previous_focus_ != 0 ? previous_focus_ : PointerRoot, RevertToParent, CurrentTime);
+            GiveXFocusBack();
         }
         XFlush(display_);
     }
@@ -569,6 +664,18 @@ class LinuxSurface : public view::Host
         if (!released_)
         {
             connection_.ChooseFile(request, std::move(picked));
+        }
+    }
+
+    /** The connection's file dialog for several files or a folder; nothing once the surface is let go.
+        @param request  the dialog's title, folder, file patterns, and whether it saves, takes several or a folder
+        @param picked   run on a later tick with the paths chosen; empty when cancelled */
+    void ChooseFiles(const view::FileRequest                              &request,
+                     std::function<void(const std::vector<std::string> &)> picked) override
+    {
+        if (!released_)
+        {
+            connection_.ChooseFiles(request, std::move(picked));
         }
     }
 
@@ -631,12 +738,16 @@ class LinuxSurface : public view::Host
         {
         case Expose:
             dirty_ = dirty_.Union({event.xexpose.x, event.xexpose.y, event.xexpose.width, event.xexpose.height});
+            if (is_focus_waiting_)
+            {
+                TakeXFocusOnceViewable(); // the window has come on screen since a view took the keyboard
+            }
             break;
         case ButtonPress:
             Press(event.xbutton);
             break;
         case ButtonRelease:
-            if (event.xbutton.button == Button1 || event.xbutton.button == Button3)
+            if (event.xbutton.button == Button1 || event.xbutton.button == Button2 || event.xbutton.button == Button3)
             {
                 pressed_ = false;
                 router_.Up(ToDesign(event.xbutton.x, event.xbutton.y), ModifiersOf(event.xbutton.state));
@@ -701,14 +812,20 @@ class LinuxSurface : public view::Host
         }
     }
 
-    /** The tree drawn over what was invalidated, and that part put on screen. */
+    /** The tree drawn over what was invalidated, and that part put on screen - or, on the GPU, the whole surface
+        presented. */
     void Paint()
     {
         const gfx::RectI window_area{pixel_width_, pixel_height_};
         const gfx::RectI dirty = dirty_.Intersection(window_area);
         dirty_                 = {};
-        if (dirty.IsEmpty() || !surface_ || image_ == nullptr)
+        if (dirty.IsEmpty() || !surface_ || (!gpu_ && image_ == nullptr))
         {
+            return;
+        }
+        if (gpu_ && !gpu_->BeginFrame())
+        {
+            GpuLost();
             return;
         }
         // Only the dirty part is drawn again: the rest of the raster still holds the last frame. The design pixels
@@ -726,6 +843,16 @@ class LinuxSurface : public view::Host
             view::PaintTree(root_, canvas);
         }
         sk->restore();
+        if (gpu_)
+        {
+            // The whole surface to the window and swapped: the swap leaves the back buffer undefined, so the part
+            // drawn again is not all a present can carry.
+            if (!gpu_->Present())
+            {
+                GpuLost();
+            }
+            return;
+        }
         const gfx::RectI put = ToPixels(design).Intersection(window_area);
         XPutImage(display_, window_, gc_, image_, put.x(), put.y(), put.x(), put.y(),
                   static_cast<unsigned>(put.width()), static_cast<unsigned>(put.height()));
@@ -858,11 +985,15 @@ class LinuxSurface : public view::Host
         root_.SetHost(nullptr);
         if (focus_taken_)
         {
-            XSetInputFocus(display_, previous_focus_ != 0 ? previous_focus_ : PointerRoot, RevertToParent, CurrentTime);
+            GiveXFocusBack();
         }
         connection_.Remove(window_);
+        // The views' surface before the GPU it may be on, and both while the window and its connection are there.
+        surface_.reset();
+        gpu_.reset();
         DestroyImage();
         XFreeGC(display_, gc_);
+        connection_.StopClockOn(window_); // Present's selection freed while the window it is on is still there
         XDestroyWindow(display_, window_);
         XFlush(display_);
     }
@@ -874,12 +1005,27 @@ class LinuxSurface : public view::Host
         (void)event;
     }
 
-    /** The raster and its XImage made again at the root's size times the scale. */
+    /** The raster and its XImage made again at the root's size times the scale - or, on the GPU, the GPU's surface at
+        that size, and the CPU raster instead where the GPU will not make one. */
     void ResizeRaster()
     {
         pixel_width_  = std::max(1, static_cast<int>(std::lround(root_.width() * scale_)));
         pixel_height_ = std::max(1, static_cast<int>(std::lround(root_.height() * scale_)));
         DestroyImage();
+        if (gpu_)
+        {
+            surface_.reset();
+            surface_ = gpu_->SurfaceOfSize(pixel_width_, pixel_height_);
+            if (surface_)
+            {
+                std::vector<std::uint32_t>().swap(pixels_); // no raster while the GPU draws
+                return;
+            }
+            // No surface of this size on the GPU, or the GPU gone: the CPU raster from here, and the reason kept.
+            gpu_.reset();
+            drawing_.drawing = Drawing::kCpuRaster;
+            drawing_.why     = DrawingFallback::kNoSurface;
+        }
         pixels_.assign(static_cast<std::size_t>(pixel_width_) * static_cast<std::size_t>(pixel_height_), 0u);
         const std::size_t row_bytes = static_cast<std::size_t>(pixel_width_) * 4u;
         surface_                    = SkSurfaces::WrapPixels(
@@ -892,6 +1038,46 @@ class LinuxSurface : public view::Host
         {
             image_->byte_order = LSBFirst; // the raster's bytes as they lie, whatever the server's order
         }
+    }
+
+    /** The window drawn as `request` asks (ChildWindow::SetDrawing): on the GPU where the request names a back end,
+        the environment has not turned the GPU off and the back end makes one on this window, and with the CPU raster
+        otherwise. A request for the CPU raster on a window that was never on the GPU touches nothing; one that changes
+        what the window draws with draws the whole window again on the new one. The child window's alone: a popup is
+        never asked, and stays on the CPU raster.
+        @param request  what the product asks for; DrawingRequest{} for the CPU raster
+        @return         what the window is drawing with, and why where it fell back */
+    DrawingState SetDrawing(const DrawingRequest &request)
+    {
+        const DrawingState chosen = ChosenDrawing(
+            request, IsGpuDrawingForcedOff(core::EnvironmentVariable(kGpuDrawingEnvironmentVariable)), true);
+        if (chosen.drawing != Drawing::kGpu)
+        {
+            LetGoOfTheGpu(chosen.why);
+            drawing_.drawing = chosen.drawing;
+            drawing_.why     = chosen.why;
+            return drawing_;
+        }
+        if (gpu_ && request.gpu_backend == gpu_backend_)
+        {
+            return drawing_; // asked again for what it has
+        }
+        LetGoOfTheGpu(DrawingFallback::kNotAsked);
+        gpu_backend_           = request.gpu_backend;
+        drawing_.contexts_lost = 0;
+        drawing_.renderer.clear();
+        MakeGpu();
+        ResizeRaster();
+        dirty_ = {pixel_width_, pixel_height_};
+        return drawing_;
+    }
+
+    /** What the window is drawing with now: what SetDrawing answered, or the CPU raster and why where the GPU has since
+        been lost and not made again, or would not make a surface at a new size.
+        @return  the drawing in force */
+    const DrawingState &DrawingNow() const noexcept
+    {
+        return drawing_;
     }
 
     LinuxConnection  &connection_;      ///< the connection the window is on
@@ -1047,6 +1233,103 @@ class LinuxSurface : public view::Host
         XFlush(display_);
     }
 
+    /** Whether `window` is mapped with every window above it mapped: what X's focus may be set to, since setting it
+        to a window that is not viewable is a BadMatch error, which Xlib's default handler answers by ending the
+        process.
+        @param window  the window
+        @return        true when X reports it viewable */
+    bool IsWindowViewable(::Window window) const
+    {
+        XWindowAttributes attributes{};
+        return XGetWindowAttributes(display_, window, &attributes) != 0 && attributes.map_state == IsViewable;
+    }
+
+    /** X's focus given to this window now where it is viewable, or as soon as it is (its next Expose) where it is not:
+        a view may take the keyboard before the window manager has put the top-level up, as one does that asks for the
+        keyboard as its window opens. */
+    void TakeXFocusOnceViewable()
+    {
+        is_focus_waiting_ = !IsWindowViewable(window_);
+        if (!is_focus_waiting_)
+        {
+            XSetInputFocus(display_, window_, RevertToParent, CurrentTime);
+        }
+    }
+
+    /** X's focus handed back to the window that held it before this one took it - the pointer's window where that one
+        is no longer viewable - and nothing where this one never had it, still waiting to be viewable. */
+    void GiveXFocusBack()
+    {
+        if (is_focus_waiting_)
+        {
+            is_focus_waiting_ = false;
+            return;
+        }
+        const bool is_window = previous_focus_ != None && previous_focus_ != PointerRoot;
+        XSetInputFocus(display_, is_window && IsWindowViewable(previous_focus_) ? previous_focus_ : PointerRoot,
+                       RevertToParent, CurrentTime);
+    }
+
+    /** The GPU made on the window by the back end it was asked for with (`gpu_backend_`), and `drawing_` saying
+        whichever it came to: the GPU, or the CPU raster and the step that refused. The surface is the caller's to make
+        (ResizeRaster).
+        @return  true when the window now draws on the GPU */
+    bool MakeGpu()
+    {
+        GpuPresenterMade made = gpu_backend_->make(display_, window_, visual_);
+        if (!made.renderer.empty())
+        {
+            drawing_.renderer = std::move(made.renderer);
+        }
+        if (!made.presenter)
+        {
+            drawing_.drawing = Drawing::kCpuRaster;
+            drawing_.why     = made.why;
+            return false;
+        }
+        gpu_             = std::move(made.presenter);
+        drawing_.drawing = Drawing::kGpu;
+        drawing_.why     = DrawingFallback::kNone;
+        return true;
+    }
+
+    /** The GPU let go - its surface first - and the window back on the CPU raster, `why` kept; the whole window drawn
+        again. Nothing for a window that was not on the GPU.
+        @param why  why the window draws with the CPU raster now */
+    void LetGoOfTheGpu(DrawingFallback why)
+    {
+        if (gpu_)
+        {
+            surface_.reset();
+            gpu_.reset();
+            drawing_.drawing = Drawing::kCpuRaster;
+            drawing_.why     = why;
+            ResizeRaster();
+            dirty_ = {pixel_width_, pixel_height_};
+        }
+    }
+
+    /** The GPU lost - the driver reset, the context abandoned, or the context no longer made current - and made again
+        in its place, at most kMostGpuContextsLost times; the CPU raster where it is not made again, and either way the
+        whole window drawn again on the next tick, since nothing of the lost surface is left. */
+    void GpuLost()
+    {
+        surface_.reset();
+        gpu_.reset();
+        ++drawing_.contexts_lost;
+        if (!MayMakeTheGpuContextAgain(drawing_.contexts_lost))
+        {
+            drawing_.drawing = Drawing::kCpuRaster;
+            drawing_.why     = DrawingFallback::kContextLostTooOften;
+        }
+        else if (!MakeGpu())
+        {
+            drawing_.why = DrawingFallback::kContextNotMadeAgain;
+        }
+        ResizeRaster();
+        dirty_ = {pixel_width_, pixel_height_};
+    }
+
     /** The XImage destroyed, leaving the raster's pixels to the vector. */
     void DestroyImage()
     {
@@ -1096,6 +1379,10 @@ class LinuxSurface : public view::Host
             router_.Down(point, second ? 2 : 1, false, modifiers);
             break;
         }
+        case Button2:
+            router_.Down(point, 1, view::MouseButton::kMiddle, modifiers);
+            pressed_ = router_.HasPress(); // a press no view asked for is nothing, as it was
+            break;
         case Button3:
             pressed_ = true;
             router_.Down(point, 1, true, modifiers);
@@ -1117,25 +1404,34 @@ class LinuxSurface : public view::Host
         }
     }
 
-    GC                         gc_{};           ///< the graphics context the raster is put on screen with
-    std::vector<std::uint32_t> pixels_;         ///< the raster: B, G, R, A in memory, premultiplied, a row after a row
-    sk_sp<SkSurface>           surface_;        ///< Skia's surface on pixels_
-    XImage                    *image_{nullptr}; ///< the XImage on pixels_, which XPutImage reads
-    bool                       pressed_{false}; ///< a button is down, so moves are drags
-    Time                       last_press_time_{0};  ///< the server time of the last press; 0 after a double click
-    float                      last_press_x_{0.0f};  ///< the last press's x, in window pixels
-    float                      last_press_y_{0.0f};  ///< the last press's y, in window pixels
-    bool                       focus_taken_{false};  ///< a view has the keyboard and this window holds X's focus
-    ::Window                   previous_focus_{0};   ///< the window that held X's focus before this one took it
-    DragAtoms                  atoms_;               ///< the XDND atoms; zero until AcceptDrops
-    ::Window                   drag_source_{0};      ///< the window the drag comes from; 0 for none
-    ::Window                   drag_target_{0};      ///< the window the source addressed: this one, or its top-level
-    std::vector<std::string>   drag_paths_;          ///< the paths being dragged, once fetched
-    gfx::PointF                drag_point_{};        ///< the drag's last position, in design pixels
-    bool                       have_paths_{false};   ///< drag_paths_ has been fetched
-    bool                       requested_{false};    ///< the selection has been asked for
-    bool                       drop_waiting_{false}; ///< a drop came before the paths and waits for them
-    std::vector<LinuxPopup *>  popups_;              ///< the popups opened over it, which go with it
+    GC                         gc_{};   ///< the graphics context the raster is put on screen with
+    std::vector<std::uint32_t> pixels_; ///< the raster: B, G, R, A in memory, premultiplied, a row after a row
+    /** The GPU the tree is drawn on (SetDrawing): **null until a product asks for the GPU** and its back end makes one,
+        so a popup's and an unasked child window's is null for the window's whole life and the tree is rastered and
+        handed to XPutImage exactly as it always was. Declared before `surface_`, which may be on it and so goes
+        first. */
+    std::unique_ptr<GpuPresenter> gpu_;
+    sk_sp<SkSurface>              surface_;        ///< Skia's surface the tree is drawn into: on pixels_, or on the GPU
+    XImage                       *image_{nullptr}; ///< the XImage on pixels_, which XPutImage reads; null on the GPU
+    /** The back end the GPU was asked for with, to make it again with when it is lost; null until a product asks. */
+    const GpuBackend         *gpu_backend_{nullptr};
+    DrawingState              drawing_{};               ///< what the window draws with, and why where it fell back
+    bool                      pressed_{false};          ///< a button is down, so moves are drags
+    Time                      last_press_time_{0};      ///< the server time of the last press; 0 after a double click
+    float                     last_press_x_{0.0f};      ///< the last press's x, in window pixels
+    float                     last_press_y_{0.0f};      ///< the last press's y, in window pixels
+    bool                      focus_taken_{false};      ///< a view has the keyboard and this window holds X's focus
+    bool                      is_focus_waiting_{false}; ///< a view has the keyboard and the window is not viewable yet
+    ::Window                  previous_focus_{0};       ///< the window that held X's focus before this one took it
+    DragAtoms                 atoms_;                   ///< the XDND atoms; zero until AcceptDrops
+    ::Window                  drag_source_{0};          ///< the window the drag comes from; 0 for none
+    ::Window                  drag_target_{0};          ///< the window the source addressed: this one, or its top-level
+    std::vector<std::string>  drag_paths_;              ///< the paths being dragged, once fetched
+    gfx::PointF               drag_point_{};            ///< the drag's last position, in design pixels
+    bool                      have_paths_{false};       ///< drag_paths_ has been fetched
+    bool                      requested_{false};        ///< the selection has been asked for
+    bool                      drop_waiting_{false};     ///< a drop came before the paths and waits for them
+    std::vector<LinuxPopup *> popups_;                  ///< the popups opened over it, which go with it
     /** Told of every raw key edge (ChildWindow::SetRawKeyCallback); empty until an owner asks, until when the window
         asks the server for no key release and reads nothing of the raw keys. */
     RawKeyCallback raw_key_;
@@ -1270,6 +1566,10 @@ void LinuxConnection::Pump()
     {
         XEvent event;
         XNextEvent(display_, &event);
+        if (clock_ && clock_->Handle(event))
+        {
+            continue; // a blank of the window's monitor, or a report of a present the GPU made
+        }
         if (clipboard_ && clipboard_->Handle(event))
         {
             continue; // a paste asking the copy this connection holds, or word that another copy took it
@@ -1314,7 +1614,7 @@ void LinuxConnection::Pump()
 
 void LinuxConnection::Tick()
 {
-    if (tick_)
+    if (tick_ && !(clock_ && clock_->is_running()))
     {
         tick_();
     }
@@ -1329,7 +1629,29 @@ void LinuxConnection::Tick()
     Pump();
 }
 
+void LinuxConnection::RunDisplayFrame()
+{
+    if (!clock_ || !clock_->TakeWaking())
+    {
+        return;
+    }
+    if (tick_)
+    {
+        tick_();
+    }
+    Pump();
+    clock_->Advance();
+}
+
 void LinuxConnection::ChooseFile(const view::FileRequest &request, std::function<void(const std::string &)> picked)
+{
+    ChooseFiles(request, [picked = std::move(picked)](const std::vector<std::string> &paths) {
+        picked(paths.empty() ? std::string() : paths.front());
+    });
+}
+
+void LinuxConnection::ChooseFiles(const view::FileRequest                              &request,
+                                  std::function<void(const std::vector<std::string> &)> picked)
 {
     const bool zenity = OnPath("zenity");
     if (dialog_pid_ > 0 || (!zenity && !OnPath("kdialog")))
@@ -1337,24 +1659,39 @@ void LinuxConnection::ChooseFile(const view::FileRequest &request, std::function
         CallSoon([picked] { picked({}); });
         return;
     }
+    // A folder is chosen by neither a save nor a pattern; several files are an open's alone.
+    const bool               is_folder = request.choose_folder;
+    const bool               is_list   = request.multiple && !request.save && !is_folder;
     std::vector<std::string> args;
     std::string              start = request.folder.empty() ? std::string() : request.folder + "/";
-    if (request.save)
+    if (request.save && !is_folder)
     {
         start += request.file_name;
     }
     std::string patterns;
     for (const auto &p : request.patterns)
     {
-        patterns += (patterns.empty() ? "" : " ") + p;
+        if (!is_folder) // a folder has no extension to match
+        {
+            patterns += (patterns.empty() ? "" : " ") + p;
+        }
     }
     if (zenity)
     {
         args = {"zenity", "--file-selection", "--title=" + request.title};
-        if (request.save)
+        if (is_folder)
+        {
+            args.emplace_back("--directory");
+        }
+        else if (request.save)
         {
             args.emplace_back("--save");
             args.emplace_back("--confirm-overwrite");
+        }
+        if (is_list)
+        {
+            args.emplace_back("--multiple");
+            args.emplace_back("--separator=\n"); // one path to a line: zenity's own "|" may be in a name
         }
         if (!start.empty())
         {
@@ -1367,11 +1704,19 @@ void LinuxConnection::ChooseFile(const view::FileRequest &request, std::function
     }
     else
     {
-        args = {"kdialog", "--title", request.title, request.save ? "--getsavefilename" : "--getopenfilename",
+        args = {"kdialog", "--title", request.title,
+                is_folder      ? "--getexistingdirectory"
+                : request.save ? "--getsavefilename"
+                               : "--getopenfilename",
                 start.empty() ? std::string(".") : start};
         if (!patterns.empty())
         {
             args.push_back(patterns + "|Files");
+        }
+        if (is_list)
+        {
+            args.emplace_back("--multiple");
+            args.emplace_back("--separate-output"); // one path to a line
         }
     }
     int fds[2];
@@ -1403,10 +1748,11 @@ void LinuxConnection::ChooseFile(const view::FileRequest &request, std::function
         return;
     }
     fcntl(fds[0], F_SETFL, O_NONBLOCK);
-    dialog_pid_    = pid;
-    dialog_fd_     = fds[0];
-    dialog_output_ = {};
-    dialog_picked_ = std::move(picked);
+    dialog_pid_     = pid;
+    dialog_fd_      = fds[0];
+    dialog_output_  = {};
+    dialog_is_list_ = is_list;
+    dialog_picked_  = std::move(picked);
 }
 
 void LinuxConnection::PollDialog()
@@ -1444,8 +1790,30 @@ void LinuxConnection::PollDialog()
     {
         path.clear(); // cancelled, or no dialog after all
     }
+    std::vector<std::string> paths;
+    if (!dialog_is_list_)
+    {
+        if (!path.empty())
+        {
+            paths.push_back(path); // the one path, whole, as it always was
+        }
+    }
+    else
+    {
+        // One path to a line, in the order the dialog gave them.
+        for (std::size_t start = 0; start < path.size();)
+        {
+            std::size_t end = path.find('\n', start);
+            end             = end == std::string::npos ? path.size() : end;
+            if (end > start)
+            {
+                paths.push_back(path.substr(start, end - start));
+            }
+            start = end + 1;
+        }
+    }
     auto picked = std::move(dialog_picked_);
-    picked(path);
+    picked(paths);
 }
 
 std::unique_ptr<view::Popup> LinuxSurface::OpenPopup(view::View &content, gfx::PointI at,
@@ -1539,34 +1907,49 @@ class LinuxChildWindow final : public ChildWindow
         frame_ = std::move(frame);
     }
 
-    /** The platform's own timer, always, and the reason said: **there is no display clock to pace on here**, and the
-        toolkit does not pretend otherwise.
-
-        X hands a window's pixels over with XPutImage, which is a copy and not a presentation, so there is nothing to
-        put on a vertical blank and nothing that reports one. The two mechanisms that would report one are out of
-        reach for what they cost. GLX or EGL would need a GL context and a swap, which this path has not got and
-        which three shipped products' pixels do not go through. The X11 Present extension would need the view tree
-        rastered into a Pixmap and handed over with PresentPixmap against a target media stream count, which is a
-        different present path, a new library on every consumer's link line, and a rewrite of the dirty-rectangle
-        handling this file is largely about - for phase alone, since the Linux loop's rate is already right: the
-        app's poll loop keeps its deadline in a steady clock and advances it by the period, which measured 16.000 ms
-        with a standard deviation of 0.306 ms, where Windows' window timer measured 26.9 ms and 7.1 ms
-        (docs/window/frame-pacing.md). What display synchronisation would buy on Linux is phase, not rate, and the
-        honest answer until that is worth its cost is this one.
-        @param request  what the product asks for, which is read for nothing but its `pacing`
-        @return         the platform timer, with FramePacingFallback::kNoDisplayClock where the display's clock was
-                        asked for */
+    /** The frame callback on the blanks of the monitor the window is on, as the X server's Present extension reports
+        them, where a product asks for the display's clock and there is one: a frame every `refresh_divisor`th blank,
+        woken the request's lead before it (DisplayClockLinux.h, docs/window/frame-pacing.md). The rate divided is the
+        one the monitor's mode names (RandR). Where the server has no Present, or the mode names no timing - Xvfb, whose
+        Present answers from a timer of its own - the window stays on the loop's timer and says why.
+        @param request  what the product asks for
+        @return         what the window is paced on, and why where it fell back */
     FramePacingState SetFramePacing(const FrameRequest &request) override
     {
-        pacing_ = ChosenPacing(request, DisplayClockReading{}); // has_clock false: there is none to read
-        return pacing_;
+        return connection_->SetFramePacing(request, surface_->window());
     }
 
-    /** What the window is pacing on: the platform's timer, with the reason the display's clock was not to be had.
+    /** What the window is pacing on: the display's clock, or the timer and the reason, as SetFramePacing answered or as
+        the display under the window has since made it.
         @return  the pacing in force */
     FramePacingState FramePacingNow() const override
     {
-        return pacing_;
+        return connection_->FramePacingNow();
+    }
+
+    /** The refresh rate of the mode of the monitor the most of the window is on, as RandR names it, read afresh each
+        time; asks nothing of the display's clock.
+        @return  the rate, in hertz; 0 where nothing can say, as under Xvfb */
+    double DisplayModeHertz() const override
+    {
+        return x11::ModeHertzUnder(connection_->display(), surface_->window());
+    }
+
+    /** The window drawn as `request` asks: on the GPU through EGL where the request names the back end and it makes
+        one on this window, with the CPU raster and XPutImage otherwise (docs/window/gpu-drawing.md). The swap interval
+        is 0, so a swap never waits for the display: the pacing is SetFramePacing's either way.
+        @param request  what the product asks for; DrawingRequest{} for the CPU raster
+        @return         what the window is drawing with, and why where it fell back */
+    DrawingState SetDrawing(const DrawingRequest &request) override
+    {
+        return surface_->SetDrawing(request);
+    }
+
+    /** What the window is drawing with now, a lost GPU given up for the CPU raster included.
+        @return  the drawing in force */
+    DrawingState DrawingNow() const override
+    {
+        return surface_->DrawingNow();
     }
 
     /** Viewable: mapped, with every window above it mapped - a window manager unmaps a minimised top-level window,
@@ -1608,6 +1991,16 @@ class LinuxChildWindow final : public ChildWindow
             (ChildWindow::SetRawKeyCallback).
             @param raw_key  told of each raw key edge; empty for none */
         using LinuxSurface::TakeRawKeys;
+
+        /** LinuxSurface::DrawingNow, for the child window's ChildWindow::DrawingNow.
+            @return  the drawing in force */
+        using LinuxSurface::DrawingNow;
+
+        /** LinuxSurface::SetDrawing, for the child window's ChildWindow::SetDrawing: the child window's surface is the
+            one a product asks to draw on the GPU, never a popup's.
+            @param request  what the product asks for; DrawingRequest{} for the CPU raster
+            @return         what the window is drawing with, and why where it fell back */
+        using LinuxSurface::SetDrawing;
 
         /** The window drawn at a new scale and resized to its raster.
             @param scale  window pixels per design pixel */
@@ -1664,9 +2057,6 @@ class LinuxChildWindow final : public ChildWindow
     std::unique_ptr<LinuxConnection> connection_; ///< the connection, shared with the popups
     std::unique_ptr<ChildSurface>    surface_;    ///< the child's surface, dropped before the connection
     std::function<void()>            frame_;      ///< the frame callback; empty for none
-    /** What the window is pacing on: the platform's timer always, with the reason the display's clock was not to be
-        had where a product asked for it (SetFramePacing). */
-    FramePacingState pacing_{};
 };
 
 namespace
@@ -1676,22 +2066,7 @@ namespace
     @param target  a folder's path or a URL */
 void OpenWithDesktop(std::string target)
 {
-    const pid_t child = fork();
-    if (child == 0)
-    {
-        setsid();
-        if (fork() == 0)
-        {
-            char  opener[] = "xdg-open";
-            char *argv[]   = {opener, target.data(), nullptr};
-            execvp(argv[0], argv);
-        }
-        _exit(0);
-    }
-    if (child > 0)
-    {
-        waitpid(child, nullptr, 0);
-    }
+    SpawnDesktopOpener("xdg-open", std::move(target)); // LocalFileOpening.h, which OpenLocalFile shares
 }
 } // namespace
 
@@ -1707,6 +2082,11 @@ void OpenInBrowser(const std::string &url)
     {
         OpenWithDesktop(url);
     }
+}
+
+bool OpenLocalFile(const std::filesystem::path &path)
+{
+    return OpenLocalFileWithXdgOpen(path);
 }
 
 float DisplayScaleOf(void *)

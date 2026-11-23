@@ -192,7 +192,7 @@ TEST(ChosenPacingFallback, ARequestOutOfRangeIsRefusedBeforeAnythingIsRead)
 TEST(ChosenPacingFallback, EachThingAPlatformCannotGiveIsItsOwnReason)
 {
     EXPECT_EQ(ChosenPacing(Asking(1), DisplayClockReading{}).why, FramePacingFallback::kNoDisplayClock)
-        << "Linux: there is no vertical blank to be had with a copy for a present";
+        << "an X server without Present: nothing reports a vertical blank";
 
     EXPECT_EQ(ChosenPacing(Asking(1), GoodReading(0.0, 0.0)).why, FramePacingFallback::kRefreshRateUnknown);
     EXPECT_EQ(ChosenPacing(Asking(1), GoodReading(5.0, 0.0)).why, FramePacingFallback::kRefreshRateNotBelievable);
@@ -777,6 +777,36 @@ TEST(DisplayLinkSilence, ALinkThatHasStoppedIsToldFromOneThatIsTicking)
         << "more than a few ticks of the slowest refresh a display can have";
 }
 
+TEST(ModeTiming, ARefreshRateIsThePixelClockOverThePixelsOneRefreshScans)
+{
+    using reckless::window::RefreshHertzOfModeTiming;
+    // jonny-precision's panel as RandR names it, 1920 x 1080 in 2080 x 1142 at 142.52 MHz: 59.9993 Hz, not 60.
+    EXPECT_NEAR(RefreshHertzOfModeTiming(142.52e6, 2080, 1142, false, false), 59.99933, 1.0e-5);
+    // CEA 1080p60 at 148.5 MHz in 2200 x 1125 is 60 exactly, and its 1080i a field every refresh at the same rate.
+    EXPECT_DOUBLE_EQ(RefreshHertzOfModeTiming(148.5e6, 2200, 1125, false, false), 60.0);
+    EXPECT_DOUBLE_EQ(RefreshHertzOfModeTiming(74.25e6, 2200, 1125, true, false), 60.0) << "interlaced: half the lines";
+    EXPECT_DOUBLE_EQ(RefreshHertzOfModeTiming(25.175e6, 800, 525, false, true), 25.175e6 / (800.0 * 1050.0))
+        << "double-scanned: every line twice";
+    // Xvfb's one mode: a size, and no timing at all.
+    EXPECT_EQ(RefreshHertzOfModeTiming(0.0, 0, 0, false, false), 0.0);
+    EXPECT_EQ(RefreshHertzOfModeTiming(142.52e6, 0, 1142, false, false), 0.0);
+    EXPECT_EQ(RefreshHertzOfModeTiming(142.52e6, 2080, 0, false, false), 0.0);
+    EXPECT_EQ(RefreshHertzOfModeTiming(-1.0, 2080, 1142, false, false), 0.0);
+}
+
+TEST(BlankStamps, AStampOnTheWindowsClockIsTakenAndOneFromAnotherClockIsNot)
+{
+    using reckless::window::BlankOnTheClock;
+    using reckless::window::kBlankStampIsOnTheClockWithinSeconds;
+    EXPECT_DOUBLE_EQ(BlankOnTheClock(100.0, 100.0006), 100.0) << "a blank just gone, stamped on this machine";
+    EXPECT_DOUBLE_EQ(BlankOnTheClock(100.0009, 100.0), 100.0009) << "stamped at the blank's end, ahead of its report";
+    EXPECT_DOUBLE_EQ(BlankOnTheClock(100.0 - kBlankStampIsOnTheClockWithinSeconds, 100.0),
+                     100.0 - kBlankStampIsOnTheClockWithinSeconds);
+    EXPECT_DOUBLE_EQ(BlankOnTheClock(5.0e6, 100.0), 100.0) << "a server on another machine: its report's arrival";
+    EXPECT_DOUBLE_EQ(BlankOnTheClock(0.0, 100.0), 100.0) << "and a stamp of nothing at all";
+    EXPECT_GE(kBlankStampIsOnTheClockWithinSeconds, 1.0 / 20.0) << "wider than the slowest believable refresh";
+}
+
 TEST(FrameStandsBack, AFrameInFlightIsTakenForLostOnlyAfterTheBound)
 {
     using reckless::window::IsFrameInFlightLost;
@@ -914,6 +944,28 @@ TEST(CompositorReadings, OneReadingIsAnsweredWithOnlyWhereItIsTheModeReadMoreFin
     EXPECT_EQ(RateOfOneReading(0.0, 240.0), 240.0) << "a compositor that said nothing";
     EXPECT_EQ(RateOfOneReading(59.94, 0.0), 59.94) << "a mode that names no rate leaves the reading";
     EXPECT_EQ(RateOfOneReading(59.94, 1.0), 59.94) << "and so does the hardware's default";
+}
+
+TEST(CompositorReadings, AnExactModeIsTheRationalAndNeverTheWholeHertz)
+{
+    using reckless::window::ExactModeHertz;
+    EXPECT_NEAR(ExactModeHertz(60000, 1001, 59.0), 59.94005994, 1.0e-6) << "the television rate Windows cuts to 59";
+    EXPECT_NEAR(ExactModeHertz(60000, 1001, 60.0), 59.94005994, 1.0e-6) << "or rounds up to 60";
+    EXPECT_NEAR(ExactModeHertz(59940, 1000, 59.0), 59.94, 1.0e-9) << "as the Legion5i's display configuration says it";
+    EXPECT_NEAR(ExactModeHertz(144000, 1000, 144.0), 144.0, 1.0e-9) << "a whole-hertz mode is its own rational";
+    EXPECT_NEAR(ExactModeHertz(60000, 1001, 0.0), 59.94005994, 1.0e-6)
+        << "the rational stands where the mode names no rate";
+    EXPECT_NEAR(ExactModeHertz(60000, 1001, 1.0), 59.94005994, 1.0e-6) << "and where it names the hardware's default";
+    EXPECT_EQ(ExactModeHertz(60000, 0, 59.0), 0.0) << "no denominator is no rate";
+    EXPECT_EQ(ExactModeHertz(0, 0, 59.0), 0.0) << "an unfilled rational";
+    EXPECT_EQ(ExactModeHertz(120000, 1001, 59.0), 0.0) << "a rational for another mode than the one named is refused";
+    EXPECT_EQ(ExactModeHertz(5, 1, 0.0), 0.0) << "and one no display has";
+    // The measured fault: a compositor stuck on 59.000 Hz agrees with the mode's whole hertz to within the hertz that
+    // RateOfOneReading and the steadiness test allow, so only the exact rate can tell it from the panel's 59.94.
+    const double exact = ExactModeHertz(60000, 1001, 59.0);
+    EXPECT_LT(std::fabs(exact - 59.0), reckless::window::kModeIsNamedWithinHertz)
+        << "the stuck reading passes the cross-check";
+    EXPECT_GT(exact - 59.0, 0.9) << "yet is 0.94 Hz, 1.6 %, below the panel";
 }
 
 TEST(CompositorReadings, AWindowOnAnotherMonitorDisagreesForGood)

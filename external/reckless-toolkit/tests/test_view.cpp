@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "TextField.h"
 #include "View.h"
 
 namespace
@@ -566,6 +567,264 @@ TEST(View, TheWheelGoesUpFromTheViewUnderItUntilOneUsesIt)
     EXPECT_TRUE(root.offered.empty()) << "and no further";
     EXPECT_FALSE(router.Wheel({90.0f, 90.0f}, 0.0f, -100.0f, {})) << "over the root alone, which hands it on";
     EXPECT_EQ(root.offered, (std::vector<float>{-100.0f}));
+}
+
+/** A view that writes down every mouse event it hears with the button and the modifiers it came with. */
+class ButtonProbe final : public view::View
+{
+  public:
+    std::vector<std::string> log; ///< "down middle", "drag right", "up left", "wheel control" ...
+
+    void MouseDown(const view::MouseEvent &e) override
+    {
+        log.push_back("down " + Button(e));
+    }
+
+    void MouseDrag(const view::MouseEvent &e) override
+    {
+        log.push_back("drag " + Button(e));
+    }
+
+    void MouseUp(const view::MouseEvent &e) override
+    {
+        log.push_back("up " + Button(e));
+    }
+
+    bool MouseWheel(const view::MouseEvent &e) override
+    {
+        log.push_back(std::string("wheel ") + (e.modifiers.control ? "control " : "") +
+                      (e.modifiers.command ? "command " : "") + (e.modifiers.shift ? "shift " : "") +
+                      std::to_string(static_cast<int>(e.wheel_x)) + "," + std::to_string(static_cast<int>(e.wheel_y)));
+        return true;
+    }
+
+  private:
+    static std::string Button(const view::MouseEvent &e)
+    {
+        return e.middle ? "middle" : e.right ? "right" : "left";
+    }
+};
+
+TEST(View, AMiddlePressReachesOnlyAViewThatAskedForTheMiddleButtonAndIsNothingToTheRest)
+{
+    // The middle button was never delivered, so no view was written to ignore it: a knob that took it for a left press
+    // would turn on a click nobody meant. It reaches the first view up from the pointer that asked, and it is the
+    // middle button, from its press through its drags to its release; for a view that did not ask it is nothing - not
+    // a press, not a focus, and the router holds no press for the window to capture the pointer for.
+    ButtonProbe root;
+    ButtonProbe scroller;
+    ButtonProbe inner;
+    root.SetBounds({100, 100});
+    scroller.SetBounds({10, 10, 80, 80});
+    inner.SetBounds({10, 10, 20, 20});
+    root.AddChild(scroller);
+    scroller.AddChild(inner);
+    scroller.takes_middle_button = true;
+    view::MouseRouter router(root);
+
+    router.Down({25.0f, 25.0f}, 1, view::MouseButton::kMiddle, {}); // on inner, which did not ask: its parent did
+    EXPECT_TRUE(router.HasPress());
+    router.Drag({30.0f, 30.0f}, {});
+    router.Up({30.0f, 30.0f}, {});
+    EXPECT_FALSE(router.HasPress());
+    EXPECT_EQ(scroller.log, (std::vector<std::string>{"down middle", "drag middle", "up middle"}));
+    EXPECT_TRUE(inner.log.empty());
+
+    scroller.log.clear();
+    router.Down({95.0f, 95.0f}, 1, view::MouseButton::kMiddle, {}); // over the root alone, which did not ask
+    EXPECT_FALSE(router.HasPress()) << "nothing to capture the pointer for";
+    router.Drag({96.0f, 96.0f}, {});
+    router.Up({96.0f, 96.0f}, {});
+    EXPECT_TRUE(root.log.empty());
+    EXPECT_TRUE(scroller.log.empty());
+
+    // The left and the right are as they were, the bool overload being the enum's.
+    router.Down({25.0f, 25.0f}, 1, false, {});
+    router.Up({25.0f, 25.0f}, {});
+    router.Down({25.0f, 25.0f}, 1, true, {});
+    router.Up({25.0f, 25.0f}, {});
+    EXPECT_EQ(inner.log, (std::vector<std::string>{"down left", "up left", "down right", "up right"}));
+}
+
+/** Two views side by side under a root, each a ButtonProbe, and a router: the scene of the second-button tests. */
+struct TwoButtonScene
+{
+    ButtonProbe       root;
+    ButtonProbe       first;
+    ButtonProbe       second;
+    view::MouseRouter router{root};
+
+    TwoButtonScene()
+    {
+        root.SetBounds({200, 100});
+        first.SetBounds({10, 10, 80, 80});
+        second.SetBounds({110, 10, 80, 80});
+        root.AddChild(first);
+        root.AddChild(second);
+    }
+};
+
+TEST(View, ASecondButtonPressedOverAnotherViewEndsTheFirstViewsPressBeforeItBeginsTheNext)
+{
+    // Before, the router replaced its pressed view and button, so the first view never heard its drag end: it got no
+    // release, and whatever it began - a fader drag, an undo group - stayed open. The held press now ends as the
+    // release of its own button at the last place the pointer was told of, and the second press begins after it.
+    TwoButtonScene s;
+    s.router.Down({20.0f, 20.0f}, 1, false, {});
+    s.router.Drag({30.0f, 25.0f}, {});
+    s.router.Down({120.0f, 20.0f}, 1, true, {}); // the right button, over the other view
+    EXPECT_EQ(s.first.log, (std::vector<std::string>{"down left", "drag left", "up left"}))
+        << "ended at once, as a left release, and once only";
+    EXPECT_EQ(s.second.log, (std::vector<std::string>{"down right"}));
+    EXPECT_EQ(s.router.pressed(), &s.second);
+    // The platforms do not say which button was released: the next release of either ends the press then held, and
+    // the other button's release, in either order, finds none and is nothing.
+    s.router.Up({125.0f, 25.0f}, {});
+    s.router.Up({125.0f, 25.0f}, {});
+    EXPECT_EQ(s.first.log.size(), 3u) << "no further word after its release";
+    EXPECT_EQ(s.second.log, (std::vector<std::string>{"down right", "up right"}));
+    EXPECT_FALSE(s.router.HasPress());
+}
+
+TEST(View, ASecondButtonOnTheSameViewEndsTheFirstPressAndBeginsTheSecondInOrder)
+{
+    TwoButtonScene s;
+    s.router.Down({20.0f, 20.0f}, 1, false, {});
+    s.router.Down({25.0f, 25.0f}, 1, true, {});
+    s.router.Drag({30.0f, 30.0f}, {});
+    s.router.Up({30.0f, 30.0f}, {});
+    s.router.Up({30.0f, 30.0f}, {});
+    EXPECT_EQ(s.first.log, (std::vector<std::string>{"down left", "up left", "down right", "drag right", "up right"}))
+        << "every press is ended exactly once and never overlaps the next";
+}
+
+TEST(View, AMiddlePressNoViewAskedForLeavesTheHeldPressAloneAndOneThatWasAskedForEndsIt)
+{
+    TwoButtonScene s;
+    s.second.takes_middle_button = true;
+    s.router.Down({20.0f, 20.0f}, 1, false, {});
+    s.router.Down({120.0f, 20.0f}, 1, view::MouseButton::kMiddle, {}); // over the second, which asked: ends the first
+    EXPECT_EQ(s.first.log, (std::vector<std::string>{"down left", "up left"}));
+    EXPECT_EQ(s.second.log, (std::vector<std::string>{"down middle"}));
+    s.router.Up({120.0f, 20.0f}, {});
+
+    s.first.log.clear();
+    s.router.Down({20.0f, 20.0f}, 1, false, {});
+    s.router.Down({150.0f, 90.0f}, 1, view::MouseButton::kMiddle, {}); // over the root, which did not ask: nothing
+    EXPECT_TRUE(s.router.HasPress());
+    EXPECT_EQ(s.router.pressed(), &s.first);
+    s.router.Drag({30.0f, 30.0f}, {});
+    s.router.Up({30.0f, 30.0f}, {});
+    EXPECT_EQ(s.first.log, (std::vector<std::string>{"down left", "drag left", "up left"}));
+}
+
+TEST(View, ASecondPressCancelsTheFirstViewsDoubleClick)
+{
+    class DoubleClickProbe final : public view::View
+    {
+      public:
+        int double_clicks{0};
+
+        void MouseDoubleClick(const view::MouseEvent &) override
+        {
+            ++double_clicks;
+        }
+    };
+
+    ButtonProbe      root;
+    DoubleClickProbe first;
+    root.SetBounds({200, 100});
+    first.SetBounds({10, 10, 80, 80});
+    root.AddChild(first);
+    view::MouseRouter router(root);
+    router.Down({20.0f, 20.0f}, 2, false, {});
+    router.Down({25.0f, 25.0f}, 1, true, {}); // ends the second click's press before its release
+    router.Up({25.0f, 25.0f}, {});
+    EXPECT_EQ(first.double_clicks, 0) << "a press cut short by another is no double click";
+}
+
+TEST(View, TheWheelCarriesTheModifiersAndTheControlKeyIsToldFromCommand)
+{
+    // Control+wheel zooms and Shift+wheel scrolls sideways: the wheel's event says which keys were held, and the
+    // Control key is its own modifier beside Command (a Mac's Command is not its Control), the horizontal travel
+    // beside the vertical.
+    ButtonProbe root;
+    root.SetBounds({100, 100});
+    view::MouseRouter router(root);
+    view::Modifiers   control;
+    control.control = true;
+    view::Modifiers shift;
+    shift.shift = true;
+    EXPECT_TRUE(router.Wheel({10.0f, 10.0f}, 0.0f, 40.0f, control));
+    EXPECT_TRUE(router.Wheel({10.0f, 10.0f}, -30.0f, 0.0f, shift));
+    EXPECT_EQ(root.log, (std::vector<std::string>{"wheel control 0,40", "wheel shift -30,0"}));
+    const view::Modifiers old_style{true, false, true}; // {shift, command, alt}, as every caller wrote it
+    EXPECT_FALSE(old_style.control) << "the Control key last, false for a caller that never named it";
+}
+
+TEST(View, AHostWithNoFolderDialogAnswersNoneAndOneWithASingleDialogAnswersItsOnePath)
+{
+    // Host::ChooseFiles' default is the host's ChooseFile for a request that needs no more than one path, as every
+    // host in use is, and nothing for a folder, which no host that has only a file dialog can ask for.
+    class SingleDialog final : public view::Host
+    {
+      public:
+        std::vector<std::string> asked;
+        std::string              answer;
+
+        void Invalidate(RectI) override
+        {
+        }
+
+        void ChooseFile(const view::FileRequest &request, std::function<void(const std::string &)> picked) override
+        {
+            asked.push_back(request.title);
+            picked(answer);
+        }
+    } host;
+
+    host.answer = "/a/b.wav";
+    std::vector<std::vector<std::string>> heard;
+    const auto        hear = [&heard](const std::vector<std::string> &paths) { heard.push_back(paths); };
+    view::FileRequest request;
+    request.title = "Open";
+    host.ChooseFiles(request, hear);
+    request.multiple = true; // several are asked for: the host's one path is what it can give
+    request.title    = "Several";
+    host.ChooseFiles(request, hear);
+    view::FileRequest folder;
+    folder.title         = "Folder";
+    folder.choose_folder = true;
+    host.ChooseFiles(folder, hear);
+    host.answer.clear(); // a cancel
+    host.ChooseFiles(request, hear);
+    EXPECT_EQ(host.asked, (std::vector<std::string>{"Open", "Several", "Several"})) << "the folder asked nothing";
+    EXPECT_EQ(heard, (std::vector<std::vector<std::string>>{{"/a/b.wav"}, {"/a/b.wav"}, {}, {}}));
+
+    // A view in no host's tree is cancelled at once, whichever dialog it asks for.
+    view::View lone;
+    int        cancels = 0;
+    lone.ChooseFiles(request, [&cancels](const std::vector<std::string> &paths) { cancels += paths.empty() ? 1 : 0; });
+    lone.ChooseFile(request, [&cancels](const std::string &path) { cancels += path.empty() ? 1 : 0; });
+    EXPECT_EQ(cancels, 2);
+}
+
+TEST(View, TheFunctionKeysReachTheViewWithTheKeyboardByNameAndATextViewLeavesThemToTheBar)
+{
+    Scene s;
+    s.right.SetBounds({110, 10, 80, 80});
+    s.router.Focus(&s.right);
+    EXPECT_TRUE(s.router.Key({view::Key::kF5, 0, {}}));
+    EXPECT_EQ(s.right.log.back(), "key named") << "the view with the keyboard heard F5, which it takes";
+    view::TextField field(view::TextField::Style{});
+    field.SetBounds({10, 10, 160, 17});
+    s.left.AddChild(field);
+    field.GrabKeyboardFocus();
+    EXPECT_FALSE(s.router.Key({view::Key::kF1, 0, {}})) << "a text field never takes a function key";
+    EXPECT_FALSE(s.router.Key({view::Key::kF12, 0, {}}));
+    EXPECT_TRUE(s.router.Key({view::Key::kCharacter, U' ', {}})) << "a space is typing";
+    EXPECT_EQ(field.text(), " ");
+    s.left.RemoveChild(field);
 }
 
 TEST(View, ARightPressIsRightToItsReleaseWhateverComesBetween)
