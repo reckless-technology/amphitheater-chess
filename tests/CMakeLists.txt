@@ -65,7 +65,7 @@ if(AMPHITHEATER_GUI)
             app/RepaintTest.cpp
             app/PlayTest.cpp
             app/BundledEnginesTest.cpp
-            app/CatalogueTest.cpp
+            app/CatalogTest.cpp
             app/ControlsTest.cpp
             app/AnalysisTest.cpp
             app/EngineManagerTest.cpp

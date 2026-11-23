@@ -1,4 +1,4 @@
-Reckless Amphitheater is a chess GUI and engine host for Windows, macOS and Linux: play against UCI engines, analyse a
+Reckless Amphitheater is a chess GUI and engine host for Windows, macOS and Linux: play against UCI engines, analyze a
 position with several at once, and run matches and tournaments between them with clocks, opening books, pondering,
 adjudication and PGN. amphitheater-cli runs the same matches and tournaments from the command line. The installers carry
 five chess engines, ready to play the moment the host first opens: Pawnstar, Trebuchet, Pawnstar-Go, Pawnstar-RS and

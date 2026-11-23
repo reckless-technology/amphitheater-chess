@@ -218,7 +218,7 @@ cmake_line=$(tool_version cmake)
 if version_ok "$cmake_line" 3.25 at-least; then ok 'CMake' "$cmake_line"; else miss 'CMake' "3.25 or later (found: ${cmake_line:-none})"; fi
 
 # uv, which installs clang-format and gcovr. Its executables go to ~/.local/bin, spelled out from HOME so a scratch HOME
-# is honoured.
+# is honored.
 export UV_TOOL_BIN_DIR="$local_bin"
 [ -x "$local_bin/uv" ] && add_to_path "$local_bin"
 if have uv; then ok 'uv' "$(uv --version) ($(command -v uv))"

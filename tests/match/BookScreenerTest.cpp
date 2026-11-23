@@ -163,7 +163,7 @@ TEST(BookScreener, ImposesOneThreadAndNoBookOnTheEngine)
     EXPECT_GE(newgames, 3u) << "one book move needs three searches, and each needs its own cleared table";
 }
 
-TEST(BookScreener, RefusesSettingsThatCannotBeHonoured)
+TEST(BookScreener, RefusesSettingsThatCannotBeHonored)
 {
     const std::string    book     = WriteBook("screen_refuse", "e2e4\n");
     BookScreenerSettings settings = FakeSettings(book, book + ".out", "10");

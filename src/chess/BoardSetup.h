@@ -16,17 +16,17 @@
 namespace amphitheater::chess
 {
 
-/** What stands on a square being set up: a piece and its colour, or kNone for nothing. */
+/** What stands on a square being set up: a piece and its color, or kNone for nothing. */
 struct SetupPiece
 {
-    Color color = kWhite; ///< The piece's colour; nothing when the piece is kNone.
+    Color color = kWhite; ///< The piece's color; nothing when the piece is kNone.
     Piece piece = kNone;  ///< The piece, or kNone for an empty square.
 
     /**
      * Whether two squares hold the same.
      * @param a One.
      * @param b The other.
-     * @return Whether both are empty, or the same piece of the same colour.
+     * @return Whether both are empty, or the same piece of the same color.
      */
     friend bool operator==(const SetupPiece &a, const SetupPiece &b)
     {

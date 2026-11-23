@@ -1,4 +1,4 @@
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 
 #include "SettingsFolder.h"
 
@@ -15,7 +15,7 @@ namespace
 
 namespace json = reckless::core::json;
 
-/** The catalogue file's format number, written and checked. */
+/** The catalog file's format number, written and checked. */
 constexpr int kFormat = 1;
 
 /**
@@ -103,7 +103,7 @@ std::optional<EngineEntry> EntryFrom(const json::Value &object)
     entry.engine_name  = object.StringOr("engine_name", "");
     entry.book_path    = object.StringOr("book", "");
     entry.book_depth   = static_cast<int>(std::max<std::int64_t>(0, object.IntOr("book_depth", 0)));
-    entry.is_analysing = object.BoolOr("analyse", true);
+    entry.is_analyzing = object.BoolOr("analyze", true);
     if (const json::Value *depth = object.Find("depth"); depth != nullptr && depth->IsInt() && depth->AsInt() > 0)
     {
         entry.depth = static_cast<int>(depth->AsInt());
@@ -285,13 +285,13 @@ std::string EngineEntry::Summary() const
     return text;
 }
 
-std::filesystem::path EngineCatalogue::DefaultFile()
+std::filesystem::path EngineCatalog::DefaultFile()
 {
     const std::filesystem::path folder = SettingsFolder();
     return folder.empty() ? folder : folder / "engines.json";
 }
 
-json::Value EngineCatalogue::ToJson() const
+json::Value EngineCatalog::ToJson() const
 {
     json::Value document = json::Value::MakeObject();
     document.Set("format", kFormat);
@@ -322,7 +322,7 @@ json::Value EngineCatalogue::ToJson() const
         object.Set("book", entry.book_path);
         object.Set("book_depth", entry.book_depth);
         object.Set("depth", entry.depth ? json::Value(*entry.depth) : json::Value(nullptr));
-        object.Set("analyse", entry.is_analysing);
+        object.Set("analyze", entry.is_analyzing);
         object.Set("author", entry.author);
         object.Set("engine_name", entry.engine_name);
         if (entry.IsBundled())
@@ -373,7 +373,7 @@ json::Value EngineCatalogue::ToJson() const
     return document;
 }
 
-void EngineCatalogue::Remove(std::size_t index)
+void EngineCatalog::Remove(std::size_t index)
 {
     if (index >= engines.size())
     {
@@ -387,9 +387,9 @@ void EngineCatalogue::Remove(std::size_t index)
     }
 }
 
-std::optional<EngineCatalogue> EngineCatalogue::FromJson(const json::Value &document, std::string *error)
+std::optional<EngineCatalog> EngineCatalog::FromJson(const json::Value &document, std::string *error)
 {
-    const auto refuse = [error](std::string why) -> std::optional<EngineCatalogue> {
+    const auto refuse = [error](std::string why) -> std::optional<EngineCatalog> {
         if (error != nullptr)
         {
             *error = std::move(why);
@@ -404,27 +404,27 @@ std::optional<EngineCatalogue> EngineCatalogue::FromJson(const json::Value &docu
     {
         return refuse("it is not an engine list of format " + std::to_string(kFormat));
     }
-    EngineCatalogue catalogue;
+    EngineCatalog catalog;
     if (const json::Array *list = document["engines"].AsArray())
     {
         for (const json::Value &object : *list)
         {
             if (auto entry = EntryFrom(object))
             {
-                catalogue.engines.push_back(std::move(*entry));
+                catalog.engines.push_back(std::move(*entry));
             }
         }
     }
-    catalogue.removed_bundled = Strings(document["removed_bundled"]);
-    return catalogue;
+    catalog.removed_bundled = Strings(document["removed_bundled"]);
+    return catalog;
 }
 
-std::optional<EngineCatalogue> EngineCatalogue::Load(const std::filesystem::path &file, std::string *error)
+std::optional<EngineCatalog> EngineCatalog::Load(const std::filesystem::path &file, std::string *error)
 {
     std::error_code ignored;
     if (file.empty() || !std::filesystem::exists(file, ignored))
     {
-        return EngineCatalogue{};
+        return EngineCatalog{};
     }
     std::string                      why;
     const std::optional<json::Value> document = reckless::core::ReadJsonFile(file, &why);
@@ -436,15 +436,15 @@ std::optional<EngineCatalogue> EngineCatalogue::Load(const std::filesystem::path
         }
         return std::nullopt;
     }
-    auto catalogue = FromJson(*document, &why);
-    if (!catalogue && error != nullptr)
+    auto catalog = FromJson(*document, &why);
+    if (!catalog && error != nullptr)
     {
         *error = file.string() + ": " + why;
     }
-    return catalogue;
+    return catalog;
 }
 
-bool EngineCatalogue::Save(const std::filesystem::path &file) const
+bool EngineCatalog::Save(const std::filesystem::path &file) const
 {
     return reckless::core::WriteJsonFile(file, ToJson());
 }

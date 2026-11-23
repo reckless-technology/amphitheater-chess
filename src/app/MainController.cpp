@@ -125,14 +125,14 @@ MainController::MainController(MainView &view, ControllerFiles files, Controller
         };
     }
     std::string error;
-    if (auto loaded = EngineCatalogue::Load(files_.engines, &error))
+    if (auto loaded = EngineCatalog::Load(files_.engines, &error))
     {
-        catalogue_ = std::move(*loaded);
+        catalog_ = std::move(*loaded);
         // The engines the install carries, added to the list or moved to this install's paths and versions. A list
         // that could not be read is never seeded, so it is never written over.
         if (!files_.bundled_engines.empty() &&
-            SeedBundledEngines(catalogue_, ReadBundledEngines(files_.bundled_engines, DetectCpuLevels())) &&
-            !files_.engines.empty() && !catalogue_.Save(files_.engines))
+            SeedBundledEngines(catalog_, ReadBundledEngines(files_.bundled_engines, DetectCpuLevels())) &&
+            !files_.engines.empty() && !catalog_.Save(files_.engines))
         {
             error_ = "The engine list could not be saved";
         }
@@ -250,7 +250,7 @@ void MainController::Command(int command)
     case kClearLog:
         view_.log().Clear();
         break;
-    case kAnalyseGame:
+    case kAnalyzeGame:
         OpenGameAnalysis();
         break;
     case kTestSuite:
@@ -320,8 +320,8 @@ void MainController::Command(int command)
     case kTakeBack:
         TakeBack();
         break;
-    case kAnalyse:
-        SetAnalysing(analysis_ == nullptr);
+    case kAnalyze:
+        SetAnalyzing(analysis_ == nullptr);
         break;
     case kEngineManager:
         OpenEngineManager();
@@ -743,12 +743,12 @@ void MainController::TakeBack()
     Refresh();
 }
 
-void MainController::SetAnalysing(bool is_on)
+void MainController::SetAnalyzing(bool is_on)
 {
     if (!is_on)
     {
         analysis_.reset();
-        view_.SetAnalysing(false);
+        view_.SetAnalyzing(false);
         Refresh();
         return;
     }
@@ -757,28 +757,28 @@ void MainController::SetAnalysing(bool is_on)
         return;
     }
     std::vector<EngineEntry> engines;
-    for (const EngineEntry &entry : catalogue_.engines)
+    for (const EngineEntry &entry : catalog_.engines)
     {
-        if (entry.is_analysing)
+        if (entry.is_analyzing)
         {
             engines.push_back(entry);
         }
     }
     if (engines.empty())
     {
-        engines = catalogue_.engines;
+        engines = catalog_.engines;
     }
     if (engines.empty())
     {
-        error_ = "No engine to analyse with: add one under Engines > Manage engines";
-        view_.SetAnalysing(false);
+        error_ = "No engine to analyze with: add one under Engines > Manage engines";
+        view_.SetAnalyzing(false);
         Refresh();
         return;
     }
     error_.clear();
     analysis_ = std::make_unique<AnalysisSession>(engines, kAnalysisLines, reaper_);
     analysis_->SetPosition(game_, view_ply_);
-    view_.SetAnalysing(true);
+    view_.SetAnalyzing(true);
     Refresh();
 }
 
@@ -901,7 +901,7 @@ bool MainController::Paste(const std::string &text)
 
 void MainController::OpenCompetition(bool is_tournament)
 {
-    auto dialog      = std::make_unique<CompetitionDialog>(is_tournament, catalogue_.engines);
+    auto dialog      = std::make_unique<CompetitionDialog>(is_tournament, catalog_.engines);
     dialog->on_close = [this] { CloseDialog(); };
     dialog->on_start = [this, is_tournament](const cli::TournamentOptions &options) {
         match::TournamentSettings settings = options.settings;
@@ -945,7 +945,7 @@ void MainController::OpenMakeBook()
 
 void MainController::ChooseTestSuite()
 {
-    if (catalogue_.engines.empty())
+    if (catalog_.engines.empty())
     {
         return;
     }
@@ -978,7 +978,7 @@ bool MainController::OpenTestSuite(const std::string &path)
         return false;
     }
     error_.clear();
-    auto dialog = std::make_unique<TestSuiteDialog>(catalogue_.engines, std::filesystem::path(path).filename().string(),
+    auto dialog = std::make_unique<TestSuiteDialog>(catalog_.engines, std::filesystem::path(path).filename().string(),
                                                     std::move(positions), errors.size());
     dialog->on_close = [this] { CloseDialog(); };
     dialog->on_show  = [this](const chess::Position &position) {
@@ -992,11 +992,11 @@ bool MainController::OpenTestSuite(const std::string &path)
 
 void MainController::OpenGameAnalysis()
 {
-    if (catalogue_.engines.empty() || IsPlaying() || game_.PlyCount() == 0)
+    if (catalog_.engines.empty() || IsPlaying() || game_.PlyCount() == 0)
     {
         return;
     }
-    auto dialog      = std::make_unique<GameAnalysisDialog>(catalogue_.engines);
+    auto dialog      = std::make_unique<GameAnalysisDialog>(catalog_.engines);
     dialog->on_close = [this] { CloseDialog(); };
     dialog->on_start = [this](const GameAnalysisChoice &choice) {
         const GameAnalysisChoice chosen = choice; // the dialog goes with the close
@@ -1013,13 +1013,13 @@ void MainController::StartGameAnalysis(const GameAnalysisChoice &choice)
         return;
     }
     RetireGameAnalysis();
-    SetAnalysing(false); // one engine at a time over the board's positions
+    SetAnalyzing(false); // one engine at a time over the board's positions
     review_choice_ = choice;
     review_line_   = line_;
     review_done_.assign(line_.size() + 1, std::nullopt);
     review_counts_ = {};
     review_summary_.clear();
-    review_ = std::make_unique<match::GameAnalyser>(choice.settings, game_.StartPosition(), game_.UciMoves());
+    review_ = std::make_unique<match::GameAnalyzer>(choice.settings, game_.StartPosition(), game_.UciMoves());
     review_->Start();
     error_.clear();
     Refresh();
@@ -1058,7 +1058,7 @@ void MainController::PollGameAnalysis()
         const auto        plural  = [](int count, const char *one, const char *many) {
             return std::to_string(count) + " " + (count == 1 ? one : many);
         };
-        review_summary_ = failure.empty() ? "Game analysed by " + review_choice_.engine_name + ": " +
+        review_summary_ = failure.empty() ? "Game analyzed by " + review_choice_.engine_name + ": " +
                                                 plural(review_counts_[2], "blunder", "blunders") + ", " +
                                                 plural(review_counts_[1], "mistake", "mistakes") + ", " +
                                                 plural(review_counts_[0], "inaccuracy", "inaccuracies")
@@ -1069,7 +1069,7 @@ void MainController::PollGameAnalysis()
     }
     if (has_news)
     {
-        // The graph: the engine's score after each move of the line it analysed, where the line shown still runs.
+        // The graph: the engine's score after each move of the line it analyzed, where the line shown still runs.
         EvalSeries series{review_choice_.engine_name,
                           std::vector<std::optional<EvalPoint>>(static_cast<std::size_t>(game_.PlyCount()))};
         for (std::size_t ply = 1; ply < review_done_.size() && ply <= line_.size() && ply <= review_line_.size(); ++ply)
@@ -1193,7 +1193,7 @@ void MainController::OpenAbout()
         constexpr CpuLevels kEveryLevel{true, true, true};
         for (const BundledEngine &engine : ReadBundledEngines(files_.bundled_engines, kEveryLevel))
         {
-            info.engines.push_back({engine.name, engine.version, engine.licence});
+            info.engines.push_back({engine.name, engine.version, engine.license});
         }
     }
     auto dialog      = std::make_unique<AboutDialog>(std::move(info));
@@ -1469,11 +1469,11 @@ void MainController::PollCompetition()
 
 void MainController::OpenEngineManager()
 {
-    auto dialog      = std::make_unique<EngineManagerDialog>(catalogue_);
+    auto dialog      = std::make_unique<EngineManagerDialog>(catalog_);
     dialog->on_close = [this] { CloseDialog(); };
-    dialog->on_save  = [this](const EngineCatalogue &edited) {
-        catalogue_ = edited;
-        if (!files_.engines.empty() && !catalogue_.Save(files_.engines))
+    dialog->on_save  = [this](const EngineCatalog &edited) {
+        catalog_ = edited;
+        if (!files_.engines.empty() && !catalog_.Save(files_.engines))
         {
             error_ = "The engine list could not be written to " + files_.engines.string();
         }
@@ -1489,8 +1489,8 @@ void MainController::OpenEngineManager()
 
 void MainController::OpenNewGame()
 {
-    auto dialog      = std::make_unique<NewGameDialog>(catalogue_.engines, game_.PlyCount() > 0 || view_ply_ > 0 ||
-                                                                               !game_.StartsFromStandardPosition());
+    auto dialog      = std::make_unique<NewGameDialog>(catalog_.engines, game_.PlyCount() > 0 || view_ply_ > 0 ||
+                                                                             !game_.StartsFromStandardPosition());
     dialog->on_close = [this] { CloseDialog(); };
     dialog->on_start = [this](const PlaySettings &chosen, bool from_shown) {
         PlaySettings settings = chosen;
@@ -1703,7 +1703,7 @@ void MainController::RefreshSearches()
         {
             names += (names.empty() ? "" : ", ") + name;
         }
-        status.push_back("Analysing with " + names);
+        status.push_back("Analyzing with " + names);
         for (const SearchTracker *tracker : analysis_->Trackers())
         {
             blocks.push_back(tracker->Block(now));
@@ -1739,7 +1739,7 @@ void MainController::RefreshSearches()
                 graph_dirty = true;
             }
         }
-        // The series in the engines' order, whichever answered first, so each engine keeps its place and its colour; a
+        // The series in the engines' order, whichever answered first, so each engine keeps its place and its color; a
         // series from an earlier analysis whose engine is not in this one keeps its place after them.
         const std::vector<std::string> engines = analysis_->Names();
         const auto                     order   = [&engines](const EvalSeries &series) {
@@ -1808,7 +1808,7 @@ void MainController::RefreshSearches()
         {
             done += position ? 1 : 0;
         }
-        status.push_back("Analysing the game with " + review_choice_.engine_name + ": " + std::to_string(done) +
+        status.push_back("Analyzing the game with " + review_choice_.engine_name + ": " + std::to_string(done) +
                          " of " + std::to_string(review_done_.size()) + " positions");
     }
     else if (!review_summary_.empty())
@@ -1865,8 +1865,8 @@ MenuState MainController::Menus() const
     state.is_log_open       = view_.is_log_open();
     state.piece_set         = piece_set_;
     state.is_in_variation   = !IsPlaying() && ShownVariation() != chess::GameTree::kNone;
-    state.can_analyse_game  = !catalogue_.engines.empty() && !IsPlaying() && game_.PlyCount() > 0 && !review_;
-    state.is_analysing_game = review_ != nullptr;
+    state.can_analyze_game  = !catalog_.engines.empty() && !IsPlaying() && game_.PlyCount() > 0 && !review_;
+    state.is_analyzing_game = review_ != nullptr;
     state.has_book          = book_.has_value();
     state.is_built_in_book  = book_.has_value() && book_path_ == kBuiltInBook;
     state.updates_revision  = updates_ ? updates_->revision() : 0;
@@ -1877,7 +1877,7 @@ MenuState MainController::Menus() const
     state.can_step_back    = view_ply_ > 0;
     state.can_step_forward = view_ply_ < game_.PlyCount();
     state.is_game_running  = IsPlaying();
-    state.has_engines      = !catalogue_.engines.empty();
+    state.has_engines      = !catalog_.engines.empty();
     if (competition_)
     {
         const bool running          = !competition_->IsFinished();

@@ -1,7 +1,7 @@
 #pragma once
 /// @file PieceSet.h The twelve pieces as drawings, in one of the sets the binary carries - Colin M.L. Burnett's
 /// (assets/pieces/cburnett, the default) or Jonny's Staunton set (assets/pieces/staunton) - each piece the embedded
-/// file pieces/<set>/<colour><piece>.svg, read once by the toolkit's SVG reader and drawn at any size.
+/// file pieces/<set>/<color><piece>.svg, read once by the toolkit's SVG reader and drawn at any size.
 
 #include "chess/ChessTypes.h"
 
@@ -51,9 +51,9 @@ class PieceSet
     bool IsComplete() const;
 
     /**
-     * A piece drawn into a square, its drawing fitted and centred.
+     * A piece drawn into a square, its drawing fitted and centered.
      * @param canvas The canvas.
-     * @param color The piece's colour.
+     * @param color The piece's color.
      * @param piece The piece; kNone draws nothing.
      * @param area The square, or any box.
      */
@@ -62,7 +62,7 @@ class PieceSet
     /**
      * The embedded file's name for a piece.
      * @param set The set's id.
-     * @param color The colour.
+     * @param color The color.
      * @param piece The piece, not kNone.
      * @return "pieces/cburnett/wK.svg" and the like.
      */
@@ -71,7 +71,7 @@ class PieceSet
   private:
     /**
      * A piece's index in the table.
-     * @param color The colour.
+     * @param color The color.
      * @param piece The piece, not kNone.
      * @return 0 to 11.
      */

@@ -86,12 +86,12 @@ TEST(Menus, TheBarHoldsTheMockupsMenusAndEachItemFollowsTheWindowsState)
     EXPECT_TRUE(Find(bar.menus[2].submenu, kStopGame)->enabled);
     EXPECT_TRUE(Find(bar.menus[2].submenu, kLast)->enabled);
 
-    EXPECT_FALSE(Find(bar.menus[3].submenu, kAnalyse)->enabled) << "no engine configured";
+    EXPECT_FALSE(Find(bar.menus[3].submenu, kAnalyze)->enabled) << "no engine configured";
     state.has_engines  = true;
-    state.is_analysing = true;
+    state.is_analyzing = true;
     bar                = BuildMenuBar(state);
-    EXPECT_TRUE(Find(bar.menus[3].submenu, kAnalyse)->enabled);
-    EXPECT_TRUE(Find(bar.menus[3].submenu, kAnalyse)->checked);
+    EXPECT_TRUE(Find(bar.menus[3].submenu, kAnalyze)->enabled);
+    EXPECT_TRUE(Find(bar.menus[3].submenu, kAnalyze)->checked);
 
     state.is_match_running = true;
     state.watchable_games  = {{3, "Game 3: A - B"}, {4, "Game 4: B - A"}};

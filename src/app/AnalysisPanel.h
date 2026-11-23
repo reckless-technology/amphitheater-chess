@@ -15,7 +15,7 @@ struct AnalysisLine
 {
     std::string depth;    ///< "24/38": the depth and the selective depth.
     std::string score;    ///< "+0.42", "#5", from White's side.
-    int         sign = 0; ///< Whose the score favours: 1 White, -1 Black, 0 neither.
+    int         sign = 0; ///< Whose the score favors: 1 White, -1 Black, 0 neither.
     std::string pv;       ///< "13.Ne2 Ne8 14.f4 a5".
     /** A shallower depth's line under the newest, an engine giving one line at a time: shown dimmed. */
     bool is_earlier = false;

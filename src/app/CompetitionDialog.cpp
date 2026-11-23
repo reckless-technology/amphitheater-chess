@@ -71,7 +71,7 @@ CompetitionDialog::CompetitionDialog(bool is_tournament, const std::vector<Engin
     }
     AddLine("Time control", "60+0.6",
             "[moves/]time[+increment], seconds or m:ss; sessions parted by commas; inf for none");
-    AddLine("Games", "2", "Games each pair of engines plays per round, colours alternating");
+    AddLine("Games", "2", "Games each pair of engines plays per round, colors alternating");
     AddLine("Rounds", is_tournament_ ? "1" : "10", "Cycles of every engine meeting every other");
     AddLine("Concurrency", "1", "Games played at once");
     AddLine("Openings", "", "An EPD, PGN or Polyglot file of openings; empty for the starting position");
@@ -79,7 +79,7 @@ CompetitionDialog::CompetitionDialog(bool is_tournament, const std::vector<Engin
     AddLine("Max moves", "", "A draw after this many moves by each side; empty for no limit");
     AddLine("PGN file", "", "Every finished game appended to this file; empty for none");
     AddLine("Arguments", "", "More of amphitheater-cli's options, as its command line takes them");
-    for (const char *text : {"Repeat each opening, colours swapped", "Double round robin: every cycle twice",
+    for (const char *text : {"Repeat each opening, colors swapped", "Double round robin: every cycle twice",
                              "Resign adjudication: 3 moves at -6.00 or worse",
                              "Draw adjudication: from move 40, 8 moves "
                              "within 0.10"})

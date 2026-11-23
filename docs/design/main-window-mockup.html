@@ -124,7 +124,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
 </style>
 
 <div class="frame">
-  <p class="note"><strong>Mockup of the planned main window.</strong> Static, built from the real assets: Jonny's Staunton pieces, Monaspace Xenon for engine output, Noto Serif and the colours of the toolkit's new list views. The position is 12...b4 in the Sicilian, Najdorf, English Attack, with Pawnstar to move against Trebuchet. Flip turns the board.</p>
+  <p class="note"><strong>Mockup of the planned main window.</strong> Static, built from the real assets: Jonny's Staunton pieces, Monaspace Xenon for engine output, Noto Serif and the colors of the toolkit's new list views. The position is 12...b4 in the Sicilian, Najdorf, English Attack, with Pawnstar to move against Trebuchet. Flip turns the board.</p>
 
   <div class="window" role="img" aria-label="Mockup of the Reckless Amphitheater main window">
     <div class="titlebar"><div class="dots"><span></span><span></span><span></span></div><div class="name">Reckless Amphitheater - Pawnstar 2.3.1 vs Trebuchet 1.1.0</div><div style="width:45px"></div></div>
@@ -146,7 +146,7 @@ body { background: var(--window); color: var(--ink); font: 15px/1.45 var(--serif
           <button class="plate" type="button" id="fwd">&gt;</button>
           <button class="plate" type="button" id="last">&gt;|</button>
           <button class="plate" type="button" id="flip">Flip</button>
-          <button class="plate lit" type="button" id="analyse">Analyse</button>
+          <button class="plate lit" type="button" id="analyze">Analyze</button>
         </div>
       </div>
 
@@ -224,8 +224,8 @@ function placement() {
     let f = 0;
     for (const c of row) {
       if (/\d/.test(c)) { f += Number(c); continue; }
-      const colour = c === c.toUpperCase() ? "w" : "b";
-      squares["abcdefgh"[f] + (8 - r)] = colour + c.toUpperCase();
+      const color = c === c.toUpperCase() ? "w" : "b";
+      squares["abcdefgh"[f] + (8 - r)] = color + c.toUpperCase();
       f += 1;
     }
   });
@@ -253,12 +253,12 @@ function drawBoard() {
       board.appendChild(div);
     });
   });
-  const centre = (sq) => {
+  const center = (sq) => {
     const f = "abcdefgh".indexOf(sq[0]), r = Number(sq[1]);
     const col = flipped ? 7 - f : f, row = flipped ? r - 1 : 8 - r;
     return [col * 100 + 50, row * 100 + 50];
   };
-  const [x1, y1] = centre(ARROW[0]), [x2, y2] = centre(ARROW[1]);
+  const [x1, y1] = center(ARROW[0]), [x2, y2] = center(ARROW[1]);
   const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
   const ex = x2 - ux * 30, ey = y2 - uy * 30;
   board.insertAdjacentHTML("beforeend",

@@ -149,13 +149,13 @@ class Fetch(unittest.TestCase):
         self.assertEqual(be.stage(pins, "linux", self.root / "linux", self.cache, False)["engines"], [],
                          "a platform the engine has no build for carries none of it")
 
-    def test_a_companion_is_put_beside_every_build_held_to_its_hash_and_its_licence(self):
-        licence = "Permission is hereby granted to use this runtime.\n"
-        (self.root / "COPYING.txt").write_text(licence, encoding="utf-8")
+    def test_a_companion_is_put_beside_every_build_held_to_its_hash_and_its_license(self):
+        license = "Permission is hereby granted to use this runtime.\n"
+        (self.root / "COPYING.txt").write_text(license, encoding="utf-8")
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as z:
             z.writestr("kit/bin/runtime.dll", b"a runtime")
-            z.writestr("kit/COPYING.txt", licence)
+            z.writestr("kit/COPYING.txt", license)
         archive = self.root / "kit.zip"
         archive.write_bytes(buffer.getvalue())
         companion = {"file": "runtime.dll", "asset": "kit.zip", "member": "kit/bin/runtime.dll",

@@ -79,9 +79,9 @@ TEST(Game, InsufficientMaterial)
         {"8/8/4k3/8/8/4K3/8/8 w - - 0 1", true},     // King against king.
         {"8/8/4k3/8/8/4KN2/8/8 w - - 0 1", true},    // A knight.
         {"8/8/4k3/8/8/4KB2/8/8 w - - 0 1", true},    // A bishop.
-        {"8/8/2b1k3/8/8/4KB2/8/8 w - - 0 1", true},  // Bishops on squares of one colour (c6 and f3 are light).
-        {"8/8/3bk3/8/8/4KB2/8/8 w - - 0 1", false},  // Bishops on squares of both colours.
-        {"8/8/4k3/8/8/2B1KB2/8/8 w - - 0 1", false}, // Two bishops of one side, both colours.
+        {"8/8/2b1k3/8/8/4KB2/8/8 w - - 0 1", true},  // Bishops on squares of one color (c6 and f3 are light).
+        {"8/8/3bk3/8/8/4KB2/8/8 w - - 0 1", false},  // Bishops on squares of both colors.
+        {"8/8/4k3/8/8/2B1KB2/8/8 w - - 0 1", false}, // Two bishops of one side, both colors.
         {"8/8/4k3/8/8/4KNN1/8/8 w - - 0 1", false},  // Two knights.
         {"8/8/4kn2/8/8/4KB2/8/8 w - - 0 1", false},  // A knight and a bishop.
         {"8/8/4k3/8/8/4K3/4P3/8 w - - 0 1", false},  // A pawn.

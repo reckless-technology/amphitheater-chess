@@ -59,7 +59,7 @@ class Move
         kCastling,                  ///< Castling, as the king's move.
     };
 
-    /** An uninitialised move, so arrays of moves cost nothing to make; Move::None() is the null move. */
+    /** An uninitialized move, so arrays of moves cost nothing to make; Move::None() is the null move. */
     constexpr Move()
     {
     }

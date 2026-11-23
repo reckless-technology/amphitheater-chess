@@ -1,8 +1,8 @@
 #pragma once
 /// @file EvalGraph.h The evaluation by move: each engine's score along the game as a series of its own, every one from
 /// White's point of view (+ White is better), on one scale with the zero line - in a game between engines White's
-/// engine's scores at its moves and Black's at its, side by side in two colours - with a legend naming each series in
-/// its colour, the position shown marked, and a press choosing a move.
+/// engine's scores at its moves and Black's at its, side by side in two colors - with a legend naming each series in
+/// its color, the position shown marked, and a press choosing a move.
 
 #include "Evaluations.h"
 
@@ -26,11 +26,11 @@ class EvalGraph final : public reckless::view::View
     std::function<void(int ply)> on_select; ///< A press on the graph: the position nearest it, as a ply.
 
     /**
-     * A series' colour, readable on the dark panel: the accent amber, then a cool blue, a violet and the green.
+     * A series' color, readable on the dark panel: the accent amber, then a cool blue, a violet and the green.
      * @param index The series' place, from 0.
-     * @return The colour.
+     * @return The color.
      */
-    static reckless::gfx::Color SeriesColour(std::size_t index);
+    static reckless::gfx::Color SeriesColor(std::size_t index);
 
     /**
      * The series and the position shown.

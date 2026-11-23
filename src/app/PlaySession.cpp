@@ -150,12 +150,12 @@ void PlaySession::Run()
                                                 ? settings_.white_resumed.value_or(settings_.time_control)
                                                 : settings_.black_resumed.value_or(settings_.time_control);
             auto engine = std::make_unique<match::EnginePlayer>(side->engine.config, ControlOf(own, side->engine));
-            const chess::Color colour = side == &settings_.white ? chess::kWhite : chess::kBlack;
-            const SideSpec    &other  = side == &settings_.white ? settings_.black : settings_.white;
-            std::string        name   = EngineLabel(side->engine.DisplayName(), other.Name(), colour);
-            engine->SetLogger([this, name, colour](uci::LineDirection direction, std::string_view line) {
+            const chess::Color color = side == &settings_.white ? chess::kWhite : chess::kBlack;
+            const SideSpec    &other = side == &settings_.white ? settings_.black : settings_.white;
+            std::string        name  = EngineLabel(side->engine.DisplayName(), other.Name(), color);
+            engine->SetLogger([this, name, color](uci::LineDirection direction, std::string_view line) {
                 const std::lock_guard<std::mutex> lock(mutex_);
-                log_.push_back({name, colour, direction, std::string(line), Clock::now()});
+                log_.push_back({name, color, direction, std::string(line), Clock::now()});
             });
             players.push_back(std::move(engine));
         }

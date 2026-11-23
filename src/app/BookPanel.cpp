@@ -18,7 +18,7 @@ namespace
 constexpr int kMoveWidth   = 84; ///< The move's column.
 constexpr int kWeightWidth = 76; ///< The weight's column, at the right.
 
-/** @return The list's look: the moves list's rows, the header on the same colour. */
+/** @return The list's look: the moves list's rows, the header on the same color. */
 reckless::view::ListView::Style BookStyle()
 {
     auto style              = reckless::panel::ListViewStyle(theme::Lists(), fonts::Body().WithHeight(18.0f));

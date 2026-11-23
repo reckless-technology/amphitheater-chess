@@ -1,5 +1,5 @@
 #pragma once
-/// @file EngineCatalogue.h The engines a person has configured: each one's program, its UCI options, its own opening
+/// @file EngineCatalog.h The engines a person has configured: each one's program, its UCI options, its own opening
 /// book, a depth limit and pondering, with the options it declared at its last handshake - saved as JSON in the user's
 /// settings folder, reckless-technology/amphitheater/engines.json.
 
@@ -26,7 +26,7 @@ struct EngineEntry
     std::string                    book_path;      ///< Its own Polyglot book; empty for none.
     int                            book_depth = 0; ///< Book moves only before this ply; 0 for no limit.
     std::optional<int>             depth;          ///< A depth limit for its searches in games; none for none.
-    bool                           is_analysing = true; ///< Whether it is among the engines Analyse runs.
+    bool                           is_analyzing = true; ///< Whether it is among the engines Analyze runs.
     std::string bundled_id;      ///< The bundled engine it is ("pawnstar"; BundledEngines.h); empty for a person's own.
     std::string bundled_version; ///< The version of the bundled engine it was last seeded from.
 
@@ -93,7 +93,7 @@ std::string JoinArguments(const std::vector<std::string> &words);
 std::vector<uci::EngineOption> DeclaredOptionsFromJson(const reckless::core::json::Value &array);
 
 /** The configured engines, and the file they are kept in. */
-class EngineCatalogue
+class EngineCatalog
 {
   public:
     /** @return reckless-technology/amphitheater/engines.json in the user's settings folder; empty where there is none.
@@ -101,30 +101,30 @@ class EngineCatalogue
     static std::filesystem::path DefaultFile();
 
     /**
-     * The catalogue as JSON.
+     * The catalog as JSON.
      * @return The document.
      */
     reckless::core::json::Value ToJson() const;
 
     /**
-     * A catalogue from JSON; an engine with no executable is skipped, a field of the wrong kind left at its default.
+     * A catalog from JSON; an engine with no executable is skipped, a field of the wrong kind left at its default.
      * @param document The document.
-     * @param error Why it is not a catalogue, when it is not one (may be null).
-     * @return The catalogue, or nothing.
+     * @param error Why it is not a catalog, when it is not one (may be null).
+     * @return The catalog, or nothing.
      */
-    static std::optional<EngineCatalogue> FromJson(const reckless::core::json::Value &document,
-                                                   std::string                       *error = nullptr);
+    static std::optional<EngineCatalog> FromJson(const reckless::core::json::Value &document,
+                                                 std::string                       *error = nullptr);
 
     /**
-     * Read a file; a missing file is an empty catalogue.
+     * Read a file; a missing file is an empty catalog.
      * @param file The file.
      * @param error Why the file could not be read, when it could not (may be null).
-     * @return The catalogue, or nothing when the file is there but unreadable.
+     * @return The catalog, or nothing when the file is there but unreadable.
      */
-    static std::optional<EngineCatalogue> Load(const std::filesystem::path &file, std::string *error = nullptr);
+    static std::optional<EngineCatalog> Load(const std::filesystem::path &file, std::string *error = nullptr);
 
     /**
-     * Write the catalogue to a file, whole, its folder made first.
+     * Write the catalog to a file, whole, its folder made first.
      * @param file The file.
      * @return Whether it was written.
      */

@@ -5,7 +5,7 @@
 
 #include "AnalysisSession.h"
 #include "CompetitionSession.h"
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 #include "GameAnalysisDialog.h"
 #include "MainView.h"
 #include "Menus.h"
@@ -73,7 +73,7 @@ struct ControllerServices
 /** Where the controller keeps what it keeps. */
 struct ControllerFiles
 {
-    std::filesystem::path engines = EngineCatalogue::DefaultFile(); ///< The engine list; empty to keep none.
+    std::filesystem::path engines = EngineCatalog::DefaultFile(); ///< The engine list; empty to keep none.
     /** The engines the install carries (BundledEngines.h), seeded into the list as the controller starts; empty for
         none, as for a build tree's host. */
     std::filesystem::path bundled_engines;
@@ -98,7 +98,7 @@ class MainController
   public:
     using Clock = std::chrono::steady_clock; ///< The clock the window's times are on.
 
-    static constexpr int kAnalysisLines = 3; ///< The lines each analysing engine is asked for (MultiPV).
+    static constexpr int kAnalysisLines = 3; ///< The lines each analyzing engine is asked for (MultiPV).
 
     /**
      * @param view The view it drives; outlives the controller.
@@ -114,7 +114,7 @@ class MainController
     MainController &operator=(const MainController &) = delete;
 
     /**
-     * Show a game to read and analyse, at its last position; a game on the board is stopped first.
+     * Show a game to read and analyze, at its last position; a game on the board is stopped first.
      * @param game The game.
      * @param info What the card says of it.
      */
@@ -276,9 +276,9 @@ class MainController
     }
 
     /** @return The configured engines. */
-    EngineCatalogue &catalogue()
+    EngineCatalog &catalog()
     {
-        return catalogue_;
+        return catalog_;
     }
 
     /** @return The analysis under way, or null. */
@@ -288,11 +288,11 @@ class MainController
     }
 
     /**
-     * Analyse, or stop analysing: the engines marked for analysis in the list - every configured engine where none is
+     * Analyze, or stop analyzing: the engines marked for analysis in the list - every configured engine where none is
      * marked - thinking about the position shown.
-     * @param is_on Whether to analyse.
+     * @param is_on Whether to analyze.
      */
-    void SetAnalysing(bool is_on);
+    void SetAnalyzing(bool is_on);
 
     /** @return The dialog open over the window, or null. */
     DialogFrame *dialog()
@@ -317,14 +317,14 @@ class MainController
     }
 
     /**
-     * Analyse the line shown: an engine over every position of it, each position's score written on the move that led
+     * Analyze the line shown: an engine over every position of it, each position's score written on the move that led
      * to it, each move that cost its mover marked, the engine's line added where a move was a mistake or a blunder.
      * @param choice The engine, its search and what to write.
      */
     void StartGameAnalysis(const GameAnalysisChoice &choice);
 
     /** @return Whether the game analysis is under way. */
-    bool IsAnalysingGame() const
+    bool IsAnalyzingGame() const
     {
         return review_ != nullptr;
     }
@@ -364,7 +364,7 @@ class MainController
     void FitSeries();
 
     /**
-     * @return The series the graph draws: the analysing engines' while Analyse runs, else the game's engines' (or,
+     * @return The series the graph draws: the analyzing engines' while Analyze runs, else the game's engines' (or,
      *         with none, what an analysis left).
      */
     const std::vector<EvalSeries> &GraphSeries() const;
@@ -414,7 +414,7 @@ class MainController
     /** Edit > Set up position: the position shown on a board to edit, shown in its place when it is set up. */
     void OpenPositionEditor();
 
-    /** Game > Analyse the game: its dialog. */
+    /** Game > Analyze the game: its dialog. */
     void OpenGameAnalysis();
 
     /** Engines > Test suite: an EPD file chosen, then the suite's dialog over it. */
@@ -474,7 +474,7 @@ class MainController
      */
     void ApplyGameAnalysis(const match::PositionAnalysis &analysis);
 
-    /** The game analysis set aside to finish its search in the background: the game it analyses changed. */
+    /** The game analysis set aside to finish its search in the background: the game it analyzes changed. */
     void RetireGameAnalysis();
 
     /** The engine log's layout as the view has it, and the pieces' set, kept in the layout file, where there is one. */
@@ -525,17 +525,17 @@ class MainController
     std::string                   file_name_;  ///< The file the game shown was opened from or saved to; empty for none.
     EngineReaper                  reaper_; ///< Engines being quit off the window's thread; outlives the sessions below.
     ControllerFiles               files_;  ///< Where it keeps things.
-    EngineCatalogue               catalogue_;         ///< The configured engines.
+    EngineCatalog                 catalog_;           ///< The configured engines.
     std::map<std::string, PieceSet>      piece_sets_; ///< The sets loaded, by id: the board draws with one.
     std::string                          piece_set_{kDefaultPieceSet};    ///< The set the board is drawn with.
     std::optional<chess::PolyglotBook>   book_;                           ///< The opening book open, if any.
     std::string                          book_path_;                      ///< Its file, kept in the layout file.
     std::optional<chess::Position>       book_position_;                  ///< The position its moves were read for.
     std::vector<BookMove>                book_moves_;                     ///< Its moves there, the heaviest first.
-    std::unique_ptr<match::GameAnalyser> review_;                         ///< The game analysis under way.
-    std::vector<std::unique_ptr<match::GameAnalyser>>   retired_reviews_; ///< Analyses finishing in the background.
+    std::unique_ptr<match::GameAnalyzer> review_;                         ///< The game analysis under way.
+    std::vector<std::unique_ptr<match::GameAnalyzer>>   retired_reviews_; ///< Analyzes finishing in the background.
     GameAnalysisChoice                                  review_choice_;   ///< Its engine and what it writes.
-    std::vector<chess::GameTree::NodeId>                review_line_;     ///< The line it analyses.
+    std::vector<chess::GameTree::NodeId>                review_line_;     ///< The line it analyzes.
     std::vector<std::optional<match::PositionAnalysis>> review_done_;     ///< Each position's analysis, as it comes.
     std::array<int, 3>                   review_counts_{}; ///< The inaccuracies, mistakes and blunders it found.
     std::string                          review_summary_;  ///< What the last analysis found, for the status bar.
@@ -545,7 +545,7 @@ class MainController
     chess::Outcome main_outcome_; ///< How the main line ended, by its record or its play where the rules do not say.
     GameInfo       info_;         ///< What the card says of it.
     std::vector<EvalSeries> game_series_;        ///< The game's engines' scores, from White's side, as known.
-    std::vector<EvalSeries> analysis_series_;    ///< Each analysing engine's scores for the positions it analysed.
+    std::vector<EvalSeries> analysis_series_;    ///< Each analyzing engine's scores for the positions it analyzed.
     std::vector<EvalSeries> opening_series_;     ///< The scores a game on the board was started with, from a take-back.
     int                     view_ply_   = 0;     ///< The position shown.
     bool                    is_flipped_ = false; ///< Black at the bottom.
@@ -554,7 +554,7 @@ class MainController
     PlaySnapshot                              snapshot_;            ///< Its snapshot as last taken in.
     std::vector<std::unique_ptr<PlaySession>> retiring_;            ///< Stopped games finishing their threads.
     std::map<int, SearchTracker>              trackers_;            ///< The playing engines' searches, by side.
-    std::unique_ptr<AnalysisSession>          analysis_;            ///< The engines analysing the position shown.
+    std::unique_ptr<AnalysisSession>          analysis_;            ///< The engines analyzing the position shown.
     std::unique_ptr<CompetitionSession>       competition_;         ///< The match or the tournament.
     bool                         is_following_competition_ = false; ///< The board follows the competition's games.
     int                          watched_ = 0; ///< The game a person asked to follow; 0 for the lowest in progress.

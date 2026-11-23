@@ -8,7 +8,7 @@
 ///   amphitheater-cli match      -engine cmd=A [name=..] -engine cmd=B -each tc=40/60+0.6 -games 10 -concurrency 2
 ///   amphitheater-cli tournament -engine cmd=A -engine cmd=B -engine cmd=C -each st=0.1 -rounds 2 -double
 ///   amphitheater-cli perft      <fen|startpos> <depth> [-divide]
-///   amphitheater-cli analyse    -engine cmd=A -fen <fen|startpos> [-moves e2e4 ...] -time 5 [-depth N] [-multipv N]
+///   amphitheater-cli analyze    -engine cmd=A -fen <fen|startpos> [-moves e2e4 ...] -time 5 [-depth N] [-multipv N]
 ///   amphitheater-cli screenbook -engine cmd=A -book <book> [-out <book>] [-depth 12] [-margin 100] [-marks <file>]
 ///
 /// UsageText has the whole syntax.
@@ -50,8 +50,8 @@ struct TournamentOptions
  */
 Result<TournamentOptions> ParseTournamentArguments(const std::vector<std::string> &arguments, bool is_match);
 
-/** What "analyse" was asked for. */
-struct AnalyseOptions
+/** What "analyze" was asked for. */
+struct AnalyzeOptions
 {
     uci::EngineConfig        engine;      ///< The engine.
     std::string              fen;         ///< The position; empty for the starting position.
@@ -62,11 +62,11 @@ struct AnalyseOptions
 };
 
 /**
- * Read the arguments of "analyse".
+ * Read the arguments of "analyze".
  * @param arguments The arguments after the subcommand.
  * @return The options, or what is wrong with them.
  */
-Result<AnalyseOptions> ParseAnalyseArguments(const std::vector<std::string> &arguments);
+Result<AnalyzeOptions> ParseAnalyzeArguments(const std::vector<std::string> &arguments);
 
 /** What "epd" was asked for: a test suite run against an engine. */
 struct EpdOptions

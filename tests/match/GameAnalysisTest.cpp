@@ -33,23 +33,23 @@ GameAnalysisSettings Fake(std::vector<std::string> arguments)
 }
 
 /**
- * Every position's analysis, the analyser left to finish.
- * @param analyser The analyser, started.
+ * Every position's analysis, the analyzer left to finish.
+ * @param analyzer The analyzer, started.
  * @return What it did, in order.
  */
-std::vector<PositionAnalysis> Drain(GameAnalyser &analyser)
+std::vector<PositionAnalysis> Drain(GameAnalyzer &analyzer)
 {
     std::vector<PositionAnalysis> done;
     const auto                    deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
     while (std::chrono::steady_clock::now() < deadline)
     {
-        while (auto next = analyser.Next())
+        while (auto next = analyzer.Next())
         {
             done.push_back(std::move(*next));
         }
-        if (analyser.IsFinished())
+        if (analyzer.IsFinished())
         {
-            while (auto next = analyser.Next())
+            while (auto next = analyzer.Next())
             {
                 done.push_back(std::move(*next));
             }
@@ -97,13 +97,13 @@ PositionAnalysis Mate(chess::Color side_to_move, int moves)
 
 TEST(GameAnalysis, EveryPositionIsSearchedInOrderItsScoreFromWhitesSide)
 {
-    GameAnalyser analyser(Fake({"--score", "35"}), chess::Position::Start(), {"e2e4", "e7e5", "g1f3"});
-    EXPECT_EQ(analyser.PositionCount(), 4);
-    analyser.Start();
-    const std::vector<PositionAnalysis> done = Drain(analyser);
+    GameAnalyzer analyzer(Fake({"--score", "35"}), chess::Position::Start(), {"e2e4", "e7e5", "g1f3"});
+    EXPECT_EQ(analyzer.PositionCount(), 4);
+    analyzer.Start();
+    const std::vector<PositionAnalysis> done = Drain(analyzer);
     ASSERT_EQ(done.size(), 4u);
-    EXPECT_TRUE(analyser.Failure().empty()) << analyser.Failure();
-    EXPECT_FALSE(analyser.EngineName().empty());
+    EXPECT_TRUE(analyzer.Failure().empty()) << analyzer.Failure();
+    EXPECT_FALSE(analyzer.EngineName().empty());
     for (int ply = 0; ply < 4; ++ply)
     {
         const PositionAnalysis &position = done[static_cast<std::size_t>(ply)];
@@ -121,9 +121,9 @@ TEST(GameAnalysis, EveryPositionIsSearchedInOrderItsScoreFromWhitesSide)
 TEST(GameAnalysis, AGamesLastPositionIsScoredByTheRulesWhenItEndsTheGame)
 {
     // The fool's mate: White is mated after 2...Qh4#.
-    GameAnalyser analyser(Fake({}), chess::Position::Start(), {"f2f3", "e7e5", "g2g4", "d8h4"});
-    analyser.Start();
-    const std::vector<PositionAnalysis> done = Drain(analyser);
+    GameAnalyzer analyzer(Fake({}), chess::Position::Start(), {"f2f3", "e7e5", "g2g4", "d8h4"});
+    analyzer.Start();
+    const std::vector<PositionAnalysis> done = Drain(analyzer);
     ASSERT_EQ(done.size(), 5u);
     ASSERT_TRUE(done.back().score);
     EXPECT_EQ(done.back().score->kind, uci::Score::Kind::kMate);
@@ -137,19 +137,19 @@ TEST(GameAnalysis, AStopEndsItBetweenPositionsAndAnEngineThatWillNotStartIsRepor
     GameAnalysisSettings slow = Fake({"--think", "200"});
     slow.move_time            = std::chrono::milliseconds(200);
     {
-        GameAnalyser analyser(slow, chess::Position::Start(), {"e2e4", "e7e5", "g1f3", "b8c6", "f1b5"});
-        analyser.Start();
-        analyser.Stop();
-        const std::vector<PositionAnalysis> done = Drain(analyser);
-        EXPECT_TRUE(analyser.IsFinished());
+        GameAnalyzer analyzer(slow, chess::Position::Start(), {"e2e4", "e7e5", "g1f3", "b8c6", "f1b5"});
+        analyzer.Start();
+        analyzer.Stop();
+        const std::vector<PositionAnalysis> done = Drain(analyzer);
+        EXPECT_TRUE(analyzer.IsFinished());
         EXPECT_LT(done.size(), 6u) << "stopped before the end";
     }
     GameAnalysisSettings missing = Fake({});
     missing.engine.executable    = "no-such-engine-anywhere";
-    GameAnalyser analyser(missing, chess::Position::Start(), {"e2e4"});
-    analyser.Start();
-    EXPECT_TRUE(Drain(analyser).empty());
-    EXPECT_NE(analyser.Failure().find("could not be started"), std::string::npos) << analyser.Failure();
+    GameAnalyzer analyzer(missing, chess::Position::Start(), {"e2e4"});
+    analyzer.Start();
+    EXPECT_TRUE(Drain(analyzer).empty());
+    EXPECT_NE(analyzer.Failure().find("could not be started"), std::string::npos) << analyzer.Failure();
 }
 
 TEST(GameAnalysis, AMoveIsJudgedByTheWinningChancesItCostItsMover)

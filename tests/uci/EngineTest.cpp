@@ -217,7 +217,7 @@ TEST(Engine, ToleratesGarbageAndMalformedOptionLines)
     EXPECT_EQ(result.info.depth, 2);
 }
 
-TEST(Engine, SearchSummarisesInfoAndTimesTheAnswer)
+TEST(Engine, SearchSummarizesInfoAndTimesTheAnswer)
 {
     Engine engine(FakeEngine({"--think", "150", "--score", "42"}));
     ASSERT_TRUE(engine.Start());

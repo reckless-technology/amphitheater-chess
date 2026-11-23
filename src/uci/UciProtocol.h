@@ -71,7 +71,7 @@ Result<EngineOption> ParseOptionLine(std::string_view line);
 
 /**
  * A score in an "info" line. As UCI defines it, an engine's score is from the point of view of the side to move in
- * the position it searches: positive when that side is better, whichever colour it is. Everything the host shows or
+ * the position it searches: positive when that side is better, whichever color it is. Everything the host shows or
  * records turns it to White's point of view first (WhitesView).
  */
 struct Score

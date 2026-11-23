@@ -270,7 +270,7 @@ GameRecord GameRunner::Play(const std::function<void(const GameProgress &)> &on_
         const auto deadline = Clock::now() + (available ? *available + settings_.time_margin : settings_.stall_timeout);
         const MoveReply reply = player.RequestMove({game, white_clock, black_clock, deadline});
 
-        // A side that answers with no move once the game has been cancelled - a person's wait at the GUI given up
+        // A side that answers with no move once the game has been canceled - a person's wait at the GUI given up
         // when the game is stopped - has the game abandoned, not lost on time or by disconnection.
         if (cancel != nullptr && cancel->load() && reply.status != MoveReply::Status::kMove)
         {

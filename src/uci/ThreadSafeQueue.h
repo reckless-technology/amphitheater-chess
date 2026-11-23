@@ -112,7 +112,7 @@ template <typename T> class ThreadSafeQueue
 
   private:
     mutable std::mutex      mutex_;             ///< Guards everything below.
-    std::condition_variable ready_;             ///< Signalled on a push and on the close.
+    std::condition_variable ready_;             ///< Signaled on a push and on the close.
     std::deque<T>           items_;             ///< The queued elements.
     bool                    is_closed_ = false; ///< Whether the queue refuses further elements.
 };

@@ -262,7 +262,7 @@ TEST(Play, WithNoGamePlayedAMoveOnTheBoardTakesTheGameOnFromThePositionShown)
 TEST(Play, TheNewGameDialogOffersThePersonAndEveryEngineAndReadsTheTimeControl)
 {
     Rig rig;
-    rig.controller.catalogue().engines = {Fake({}, "Alpha"), Fake({}, "Beta")};
+    rig.controller.catalog().engines = {Fake({}, "Alpha"), Fake({}, "Beta")};
     rig.controller.Command(kNewGame);
     auto *dialog = dynamic_cast<NewGameDialog *>(rig.controller.dialog());
     ASSERT_NE(dialog, nullptr);

@@ -197,7 +197,7 @@ TEST(Cli, RefusesBadMatchArguments)
         {{"-engine", kFake, "-engine", kFake, "-st", "1", "-margin"}, "needs a value"},
         {{"-engine", kFake, "-engine", kFake, "-st", "1", "-bogus"}, "unknown option"},
         {{"-engine", kFake, "-engine", kFake, "-st", "1", "stray"}, "unexpected"},
-        {{"-engine", kFake, "colour=red", "-engine", kFake, "-st", "1"}, "unknown engine key"},
+        {{"-engine", kFake, "color=red", "-engine", kFake, "-st", "1"}, "unknown engine key"},
         {{"-engine", "name=x", "-engine", kFake, "-st", "1"}, "cmd="},
         {{"-engine", kFake, "proto=xboard", "-engine", kFake, "-st", "1"}, "only UCI"},
         {{"-engine", kFake, "tc=x", "-engine", kFake, "-st", "1"}, "not a time control"},
@@ -244,9 +244,9 @@ TEST(Cli, ParsesOpeningsFromPgnByTheFileName)
     std::filesystem::remove(pgn);
 }
 
-TEST(Cli, Analyse)
+TEST(Cli, Analyze)
 {
-    auto run = RunWith({"analyse", "-engine", kFake, "arg=--name", "arg=Analyst", "-fen", "startpos", "-moves", "e2e4",
+    auto run = RunWith({"analyze", "-engine", kFake, "arg=--name", "arg=Analyst", "-fen", "startpos", "-moves", "e2e4",
                         "-time", "0.3", "-multipv", "2"});
     EXPECT_EQ(run.code, 0) << run.err;
     EXPECT_NE(run.out.find("Engine: Analyst by The Tests"), std::string::npos) << run.out;
@@ -259,37 +259,37 @@ TEST(Cli, Analyse)
     EXPECT_NE(run.out.find("Position: 4k3/8/8/8/8/8/8/R3K3 w - - 0 1"), std::string::npos) << run.out;
 }
 
-TEST(Cli, AnalysesScoresAreFromWhitesSide)
+TEST(Cli, AnalyzesScoresAreFromWhitesSide)
 {
     // The engine says +0.40 for the side to move: with Black to move (after 1.e4) that is White's -0.40, and a mate
     // in 2 for Black is #-2. The -debug lines stay the engine's own words.
-    auto run = RunWith({"analyse", "-engine", kFake, "arg=--score", "arg=40", "-moves", "e2e4", "-depth", "1"});
+    auto run = RunWith({"analyze", "-engine", kFake, "arg=--score", "arg=40", "-moves", "e2e4", "-depth", "1"});
     EXPECT_EQ(run.code, 0) << run.err;
     EXPECT_NE(run.out.find(" score -0.40 "), std::string::npos) << run.out;
-    run = RunWith({"analyse", "-engine", kFake, "arg=--score", "arg=40", "-depth", "1"});
+    run = RunWith({"analyze", "-engine", kFake, "arg=--score", "arg=40", "-depth", "1"});
     EXPECT_NE(run.out.find(" score +0.40 "), std::string::npos) << run.out;
-    run = RunWith({"analyse", "-engine", kFake, "arg=--mate", "arg=2", "-moves", "e2e4", "-depth", "1"});
+    run = RunWith({"analyze", "-engine", kFake, "arg=--mate", "arg=2", "-moves", "e2e4", "-depth", "1"});
     EXPECT_NE(run.out.find(" score #-2 "), std::string::npos) << run.out;
 }
 
-TEST(Cli, AnalyseReportsWhatGoesWrong)
+TEST(Cli, AnalyzeReportsWhatGoesWrong)
 {
-    EXPECT_EQ(RunWith({"analyse", "-fen", "startpos"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", kFake, "-fen", "bad"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", kFake, "-moves", "e2e5"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", kFake, "-time"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", kFake, "-time", "x"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", kFake, "-depth", "0"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", kFake, "-depth"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", "novalue"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", "name=x"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", kFake, "-what"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "stray"}).code, 2);
-    EXPECT_EQ(RunWith({"analyse", "-engine", "cmd=no-such-engine-here"}).code, 1);
-    const auto crashed = RunWith({"analyse", "-engine", kFake, "arg=--crash-at", "arg=1", "-time", "0.2"});
+    EXPECT_EQ(RunWith({"analyze", "-fen", "startpos"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", kFake, "-fen", "bad"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", kFake, "-moves", "e2e5"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", kFake, "-time"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", kFake, "-time", "x"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", kFake, "-depth", "0"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", kFake, "-depth"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", "novalue"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", "name=x"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", kFake, "-what"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "stray"}).code, 2);
+    EXPECT_EQ(RunWith({"analyze", "-engine", "cmd=no-such-engine-here"}).code, 1);
+    const auto crashed = RunWith({"analyze", "-engine", kFake, "arg=--crash-at", "arg=1", "-time", "0.2"});
     EXPECT_EQ(crashed.code, 1);
     EXPECT_NE(crashed.err.find("exited"), std::string::npos);
-    const auto hung = RunWith({"analyse", "-engine", kFake, "arg=--hang-at", "arg=1", "-time", "0.1"});
+    const auto hung = RunWith({"analyze", "-engine", kFake, "arg=--hang-at", "arg=1", "-time", "0.1"});
     EXPECT_EQ(hung.code, 1);
     EXPECT_NE(hung.err.find("did not answer"), std::string::npos);
 }

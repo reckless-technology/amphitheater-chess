@@ -170,7 +170,7 @@ TestSuiteDialog::TestSuiteDialog(const std::vector<EngineEntry> &engines, const 
             on_close();
         }
     };
-    Summarise();
+    Summarize();
 }
 
 void TestSuiteDialog::LayOutContent(reckless::gfx::RectI area)
@@ -241,7 +241,7 @@ bool TestSuiteDialog::Run()
     runner_ = std::make_unique<match::TestSuiteRunner>(settings, model_.positions());
     runner_->Start();
     run_->SetText("Stop");
-    Summarise();
+    Summarize();
     return true;
 }
 
@@ -266,7 +266,7 @@ void TestSuiteDialog::Frame()
         const std::string failure = runner_->Failure();
         runner_.reset();
         run_->SetText("Run");
-        Summarise();
+        Summarize();
         if (!failure.empty())
         {
             summary_.SetText(summary_.text() + "  The run stopped: " + failure);
@@ -277,12 +277,12 @@ void TestSuiteDialog::Frame()
     }
     if (has_news)
     {
-        Summarise();
+        Summarize();
         list_.Repaint();
     }
 }
 
-void TestSuiteDialog::Summarise()
+void TestSuiteDialog::Summarize()
 {
     const int total  = static_cast<int>(model_.positions().size());
     const int run    = model_.RunCount();

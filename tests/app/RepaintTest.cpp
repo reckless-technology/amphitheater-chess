@@ -179,12 +179,12 @@ class Swatch final : public View
 {
   public:
     /**
-     * @param colour Its colour.
+     * @param color Its color.
      * @param does_ask Whether to ask for the paint.
      */
-    void Set(Color colour, bool does_ask)
+    void Set(Color color, bool does_ask)
     {
-        colour_ = colour;
+        color_ = color;
         if (does_ask)
         {
             Repaint();
@@ -193,12 +193,12 @@ class Swatch final : public View
 
     void Paint(reckless::gfx::Canvas &c) override
     {
-        c.SetColor(colour_);
+        c.SetColor(color_);
         c.FillRect(LocalBounds().ToFloat());
     }
 
   private:
-    Color colour_{Color::FromRgb(10, 20, 30)}; ///< What it draws.
+    Color color_{Color::FromRgb(10, 20, 30)}; ///< What it draws.
 };
 
 /** The fake engine as a configured engine. */
@@ -371,9 +371,9 @@ TEST(Repaint, TheBoardAsksOnlyWhenAnArrowDiffers)
     EXPECT_TRUE(watch.AskedForAllThatChanged());
 
     const std::vector<BoardArrow> others = {
-        {chess::Square("d2"), chess::Square("e4"), arrow.colour},
-        {chess::Square("e2"), chess::Square("e3"), arrow.colour},
-        {chess::Square("e2"), chess::Square("e4"), arrow.colour.WithAlpha(0.5f)},
+        {chess::Square("d2"), chess::Square("e4"), arrow.color},
+        {chess::Square("e2"), chess::Square("e3"), arrow.color},
+        {chess::Square("e2"), chess::Square("e4"), arrow.color.WithAlpha(0.5f)},
     };
     for (std::size_t index = 0; index < others.size(); ++index)
     {
@@ -450,12 +450,12 @@ TEST(Repaint, AStepThroughAGameAFlipAndThePiecesAreAllShown)
 TEST(Repaint, AnEnginesOutputIsShownAndTheBoardIsLeftAloneOnceItsArrowIsThere)
 {
     Rig rig;
-    rig.controller.catalogue().engines = {Fake({"--score", "35"}, "Fake")};
+    rig.controller.catalog().engines = {Fake({"--score", "35"}, "Fake")};
     chess::Game game;
     game.PlaySan("e4");
     game.PlaySan("e5");
     rig.controller.ShowGame(game, {});
-    rig.controller.Command(kAnalyse);
+    rig.controller.Command(kAnalyze);
     const auto &blocks = rig.view.analysis().blocks();
     ASSERT_TRUE(rig.FramesUntil([&] { return !blocks.empty() && !blocks.front().lines.empty(); }));
     ASSERT_TRUE(rig.FramesUntil([&] { return !rig.view.board().arrows().empty(); }));
@@ -473,7 +473,7 @@ TEST(Repaint, AnEnginesOutputIsShownAndTheBoardIsLeftAloneOnceItsArrowIsThere)
     EXPECT_TRUE(rig.watch->AskedForAllThatChanged());
 
     rig.watch->Forget();
-    rig.controller.Command(kAnalyse);
+    rig.controller.Command(kAnalyze);
     ASSERT_TRUE(rig.FramesUntil([&] { return blocks.empty(); }));
     EXPECT_TRUE(rig.watch->Touched(Rig::AreaOf(rig.view.analysis()))) << "the engines gone";
 }
@@ -552,11 +552,11 @@ TEST(Repaint, AGameBetweenEnginesIsShownMoveByMove)
 TEST(Repaint, EveryDialogOpensTakesThePointerAndTheKeysAndCloses)
 {
     for (const int command : {kNewGame, kEngineManager, kNewMatch, kNewTournament, kAbout, kMakeBook, kSetUpPosition,
-                              kShowStandings, kAnalyseGame})
+                              kShowStandings, kAnalyzeGame})
     {
         Rig rig;
-        rig.controller.catalogue().engines = {Fake({}, "Alpha"), Fake({"--seed", "5"}, "Beta")};
-        chess::Game game; // a game to analyse
+        rig.controller.catalog().engines = {Fake({}, "Alpha"), Fake({"--seed", "5"}, "Beta")};
+        chess::Game game; // a game to analyze
         game.PlaySan("e4");
         game.PlaySan("e5");
         rig.controller.ShowGame(game, {});
@@ -609,8 +609,8 @@ TEST(Repaint, EveryDialogOpensTakesThePointerAndTheKeysAndCloses)
 TEST(Repaint, ADialogsRunningWorkIsShown)
 {
     Rig rig;
-    rig.controller.catalogue().engines = {Fake({"--think", "20"}, "Fake")};
-    const auto folder                  = reckless::test::ScratchPath("amphitheater-repaint-suite");
+    rig.controller.catalog().engines = {Fake({"--think", "20"}, "Fake")};
+    const auto folder                = reckless::test::ScratchPath("amphitheater-repaint-suite");
     std::filesystem::create_directories(folder);
     const auto suite = folder / "suite.epd";
     std::ofstream(suite, std::ios::trunc) << "3q3k/8/8/8/8/8/8/3Q3K w - - bm Qxd8+; id \"trade\";\n"

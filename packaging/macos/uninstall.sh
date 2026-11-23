@@ -5,7 +5,7 @@
 #   - Amphitheater.app (the bundled engines inside it) and this uninstaller in /Applications/Reckless Technology, and
 #     the folder when nothing else is left in it;
 #   - amphitheater-cli in /usr/local/bin;
-#   - the licence and the notices in /Library/Documentation/Reckless Amphitheater;
+#   - the license and the notices in /Library/Documentation/Reckless Amphitheater;
 #   - and the installer's three receipts (pkgutil --forget), so the system no longer counts the parts as installed.
 # A bundle goes only when its identifier is the host's own (com.recklesstechnology.amphitheater), so nothing else that
 # happens to share a name is touched. The settings are the person's: the app removes them as the person, if asked.

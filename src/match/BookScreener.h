@@ -120,7 +120,7 @@ struct BookScreenerProgress
  *
  * @param settings What to screen and with what.
  * @param progress Called as positions are judged, or empty. Called from this thread.
- * @param cancel Polled between positions; return true to stop. A cancelled run writes nothing.
+ * @param cancel Polled between positions; return true to stop. A canceled run writes nothing.
  * @return What it did, or why it could not.
  */
 Result<BookScreenerSummary> ScreenBook(const BookScreenerSettings                      &settings,

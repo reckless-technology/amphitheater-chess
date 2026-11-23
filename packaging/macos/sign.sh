@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # A staged macOS release (packaging/stage.py macos) signed with the Developer ID Application identity in the keychain
-# the toolkit's tools/sign-mac.sh opened, from the inside out, as notarisation requires of every Mach-O a package holds:
+# the toolkit's tools/sign-mac.sh opened, from the inside out, as notarization requires of every Mach-O a package holds:
 #
 #   1. each bundled engine in Amphitheater.app/Contents/Resources/engines - signed by its own release already, with
 #      the same identity - signed again in place with the hardened runtime and a secure timestamp, its identifier and

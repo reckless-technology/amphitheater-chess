@@ -1,4 +1,4 @@
-// Tournaments: the circle method's schedule and its colour balance, openings from EPD and PGN, the statistics (Elo,
+// Tournaments: the circle method's schedule and its color balance, openings from EPD and PGN, the statistics (Elo,
 // standings with Sonneborn-Berger, the crosstable), and whole round robins between fake engines run in parallel.
 
 #include "match/Tournament.h"
@@ -20,7 +20,7 @@ namespace
 
 using namespace std::chrono_literals;
 
-TEST(Schedule, CirclePairingsMeetEveryOpponentOnceAndBalanceColours)
+TEST(Schedule, CirclePairingsMeetEveryOpponentOnceAndBalanceColors)
 {
     for (int engines = 2; engines <= 9; ++engines)
     {
@@ -51,7 +51,7 @@ TEST(Schedule, CirclePairingsMeetEveryOpponentOnceAndBalanceColours)
     EXPECT_TRUE(CirclePairings(1).empty());
 }
 
-TEST(Schedule, EncountersAlternateColoursAndDoubleReversesThem)
+TEST(Schedule, EncountersAlternateColorsAndDoubleReversesThem)
 {
     ScheduleSettings settings;
     settings.engines             = 2;
@@ -76,12 +76,12 @@ TEST(Schedule, EncountersAlternateColoursAndDoubleReversesThem)
     settings.is_double = true;
     games              = MakeSchedule(settings);
     ASSERT_EQ(games.size(), 6u);
-    std::map<std::pair<int, int>, int> colours;
+    std::map<std::pair<int, int>, int> colors;
     for (const auto &game : games)
     {
-        ++colours[{game.white, game.black}];
+        ++colors[{game.white, game.black}];
     }
-    for (const auto &[pairing, count] : colours)
+    for (const auto &[pairing, count] : colors)
     {
         EXPECT_EQ(count, 1) << pairing.first << " white against " << pairing.second;
     }
@@ -99,7 +99,7 @@ TEST(Schedule, OpeningsAdvanceByGameOrByPairWithRepeat)
     EXPECT_EQ(games[0].opening, 0);
     EXPECT_EQ(games[1].opening, 0);
     EXPECT_EQ(games[2].opening, 1);
-    EXPECT_EQ(games[1].white, games[0].black) << "the repeat swaps colours";
+    EXPECT_EQ(games[1].white, games[0].black) << "the repeat swaps colors";
 }
 
 TEST(Statistics, EloFromScores)

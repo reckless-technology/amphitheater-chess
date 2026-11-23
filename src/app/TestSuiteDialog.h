@@ -5,7 +5,7 @@
 /// is shown on the board.
 
 #include "Controls.h"
-#include "EngineCatalogue.h"
+#include "EngineCatalog.h"
 #include "match/TestSuite.h"
 
 #include "ListView.h"
@@ -141,7 +141,7 @@ class TestSuiteDialog final : public DialogFrame
 
   private:
     /** The score line set from the outcomes so far. */
-    void Summarise();
+    void Summarize();
 
     std::vector<EngineEntry>                engines_;       ///< The engines offered.
     std::size_t                             skipped_;       ///< The suite's lines that could not be read.

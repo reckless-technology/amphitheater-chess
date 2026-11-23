@@ -124,9 +124,9 @@ TEST(BookWindow, TheHeaviestMovesAreDrawnFaintlyOnTheBoardTheHeaviestClearest)
     ASSERT_EQ(arrows.size(), 3u) << "c4, at 2 %, is left off";
     EXPECT_EQ(arrows[0].from, chess::Square("e2"));
     EXPECT_EQ(arrows[0].to, chess::Square("e4"));
-    EXPECT_GT(arrows[0].colour.AlphaFraction(), arrows[1].colour.AlphaFraction());
-    EXPECT_GT(arrows[1].colour.AlphaFraction(), arrows[2].colour.AlphaFraction());
-    EXPECT_LT(arrows[0].colour.AlphaFraction(), 0.7f) << "faint, under an engine's arrow";
+    EXPECT_GT(arrows[0].color.AlphaFraction(), arrows[1].color.AlphaFraction());
+    EXPECT_GT(arrows[1].color.AlphaFraction(), arrows[2].color.AlphaFraction());
+    EXPECT_LT(arrows[0].color.AlphaFraction(), 0.7f) << "faint, under an engine's arrow";
 }
 
 TEST(BookWindow, AMovePressedInTheListIsPlayedAndTheListFollowsThePosition)

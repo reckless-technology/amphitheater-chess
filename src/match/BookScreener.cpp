@@ -197,7 +197,7 @@ Result<BookScreenerSummary> ScreenBook(const BookScreenerSettings               
         {
             if (cancel && cancel())
             {
-                return Error{"cancelled"};
+                return Error{"canceled"};
             }
             const auto parsed = chess::ParseUciMove(position, move.coordinate);
             if (!parsed)

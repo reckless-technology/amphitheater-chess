@@ -15,12 +15,12 @@ packaging/engines.json by its tag, each platform's asset and the asset's SHA-256
     python3 tools/bundled_engines.py stage --platform P --out ENGINES_DIR [--cache DIR] [--no-handshake]
                                            [--leave-out-unfit]
         The engines laid out for an installer, ENGINES_DIR/<id>/<file> (executable), and ENGINES_DIR/bundled.json, the
-        manifest the host reads to seed a person's engine list: each engine's name, version, licence, the defaults it
+        manifest the host reads to seed a person's engine list: each engine's name, version, license, the defaults it
         is seeded with, the options its handshake declared and its builds, the first whose requirement the CPU meets
         the one run. The handshake (uci, isready, quit) runs every build this machine can run, so a staged engine
         that does not answer stops the stage; --no-handshake leaves it out, for a platform other than this machine's.
         A library an engine's release needs and does not carry - a companion, pinned in the engine's entry with its
-        archive, its own hash and its licence - is put beside every build of it (Trebuchet's libwinpthread-1.dll on
+        archive, its own hash and its license - is put beside every build of it (Trebuchet's libwinpthread-1.dll on
         Windows, until its release links it statically); an engine that still imports what a fresh machine lacks
         stops the stage, or with --leave-out-unfit is left out of it with a warning.
 
@@ -216,16 +216,16 @@ def fetch(pins, platform_name, cache):
 
 def place_companion(engine, companion, archive, folders):
     """A library an engine's release needs and does not carry - a companion, pinned in its engine's entry by the
-    archive it comes from, the member's own SHA-256 and its licence - put beside every build of the engine, the member
-    held to its hash and the licence in the archive to the committed copy the notices reproduce."""
+    archive it comes from, the member's own SHA-256 and its license - put beside every build of the engine, the member
+    held to its hash and the license in the archive to the committed copy the notices reproduce."""
     with zipfile.ZipFile(archive) as z:
         data = z.read(companion["member"])
-        licence = z.read(companion["licence_member"]).decode("utf-8").replace("\r\n", "\n")
+        license = z.read(companion["licence_member"]).decode("utf-8").replace("\r\n", "\n")
     if hashlib.sha256(data).hexdigest() != companion["member_sha256"]:
         raise PinError(f"{engine['id']}'s {companion['file']} in {companion['asset']} is not the pinned file")
     committed = (ROOT / companion["licence"]).read_text(encoding="utf-8").replace("\r\n", "\n")
-    if licence != committed:
-        raise PinError(f"{companion['asset']}'s licence for {companion['file']} is not {companion['licence']}: read it")
+    if license != committed:
+        raise PinError(f"{companion['asset']}'s license for {companion['file']} is not {companion['licence']}: read it")
     for folder in folders:
         (folder / companion["file"]).write_bytes(data)
 

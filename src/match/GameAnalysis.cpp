@@ -76,12 +76,12 @@ int NagOf(MoveQuality quality)
     return 0;
 }
 
-GameAnalyser::GameAnalyser(GameAnalysisSettings settings, chess::Position start, std::vector<std::string> moves)
+GameAnalyzer::GameAnalyzer(GameAnalysisSettings settings, chess::Position start, std::vector<std::string> moves)
     : settings_(std::move(settings)), start_(start), moves_(std::move(moves))
 {
 }
 
-GameAnalyser::~GameAnalyser()
+GameAnalyzer::~GameAnalyzer()
 {
     Stop();
     if (thread_.joinable())
@@ -90,7 +90,7 @@ GameAnalyser::~GameAnalyser()
     }
 }
 
-void GameAnalyser::Start()
+void GameAnalyzer::Start()
 {
     if (!thread_.joinable())
     {
@@ -98,35 +98,35 @@ void GameAnalyser::Start()
     }
 }
 
-void GameAnalyser::Stop()
+void GameAnalyzer::Stop()
 {
     is_stopping_ = true;
 }
 
-std::optional<PositionAnalysis> GameAnalyser::Next()
+std::optional<PositionAnalysis> GameAnalyzer::Next()
 {
     return results_.TryPop();
 }
 
-std::string GameAnalyser::Failure() const
+std::string GameAnalyzer::Failure() const
 {
     std::lock_guard lock(mutex_);
     return failure_;
 }
 
-std::string GameAnalyser::EngineName() const
+std::string GameAnalyzer::EngineName() const
 {
     std::lock_guard lock(mutex_);
     return engine_name_;
 }
 
-void GameAnalyser::Fail(std::string failure)
+void GameAnalyzer::Fail(std::string failure)
 {
     std::lock_guard lock(mutex_);
     failure_ = std::move(failure);
 }
 
-void GameAnalyser::Run()
+void GameAnalyzer::Run()
 {
     uci::Engine engine(settings_.engine);
     if (const auto started = engine.Start(); !started)

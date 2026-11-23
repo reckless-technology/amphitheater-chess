@@ -8,11 +8,11 @@
 # added (assets/books), by the name books/built-in.bin.
 reckless_monospace_font_files(amphitheater_monospace)
 set(amphitheater_pieces "")
-foreach(colour w b)
+foreach(color w b)
     foreach(kind K Q R B N P)
         foreach(set cburnett staunton)
             list(APPEND amphitheater_pieces
-                 "pieces/${set}/${colour}${kind}.svg=${PROJECT_SOURCE_DIR}/assets/pieces/${set}/${colour}${kind}.svg")
+                 "pieces/${set}/${color}${kind}.svg=${PROJECT_SOURCE_DIR}/assets/pieces/${set}/${color}${kind}.svg")
         endforeach()
     endforeach()
 endforeach()
@@ -33,7 +33,7 @@ add_library(amphitheater_gui STATIC
     CompetitionDialog.cpp
     CompetitionSession.cpp
     Controls.cpp
-    EngineCatalogue.cpp
+    EngineCatalog.cpp
     EngineLog.cpp
     EngineManagerDialog.cpp
     EvalGraph.cpp

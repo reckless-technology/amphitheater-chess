@@ -149,7 +149,7 @@ bool MovesModel::PaintRow(reckless::gfx::Canvas &c, std::size_t row, reckless::g
 namespace
 {
 
-/** @return The list's look: the panel's rows, the header on the same colour, the moves in the body font. */
+/** @return The list's look: the panel's rows, the header on the same color, the moves in the body font. */
 reckless::view::ListView::Style MovesStyle()
 {
     auto style              = reckless::panel::ListViewStyle(theme::Lists(), fonts::Body().WithHeight(18.0f));

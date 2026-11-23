@@ -3,7 +3,7 @@
   Measure the line coverage of the host's own code (src/) on Windows, and fail under 90 %.
 
 .DESCRIPTION
-  Builds the coverage-windows preset (clang-cl, the host's code unoptimised and instrumented for LLVM's source-based
+  Builds the coverage-windows preset (clang-cl, the host's code unoptimized and instrumented for LLVM's source-based
   coverage), runs its test preset - every suite, each test process (the fake engine and the command line the suites
   start among them) writing its own profile through LLVM_PROFILE_FILE's %p-%m - merges the profiles with
   llvm-profdata, and reads them with llvm-cov over the suites, the fake engine and the command-line tool: the report on

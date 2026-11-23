@@ -6,22 +6,22 @@ namespace amphitheater::app
 {
 
 GameAnalysisDialog::GameAnalysisDialog(const std::vector<EngineEntry> &engines)
-    : DialogFrame("Analyse the game", 560, 400), engines_(engines), engine_label_("Engine"),
+    : DialogFrame("Analyze the game", 560, 400), engines_(engines), engine_label_("Engine"),
       seconds_label_("Seconds a move"), seconds_(FieldStyle()), depth_label_("Or a depth"), depth_(FieldStyle()),
       mark_("Mark inaccuracies, mistakes and blunders (?!, ?, ?\?)"), // "?\?": a question mark twice, never a trigraph
       lines_("Add the engine's line where a move was a mistake or a blunder"), note_({}, true)
 {
     std::vector<std::string> names;
-    int                      first_analyser = 0;
+    int                      first_analyzer = 0;
     for (std::size_t index = 0; index < engines_.size(); ++index)
     {
         names.push_back(engines_[index].DisplayName());
-        if (first_analyser == 0 && engines_[index].is_analysing && index > 0 && !engines_[0].is_analysing)
+        if (first_analyzer == 0 && engines_[index].is_analyzing && index > 0 && !engines_[0].is_analyzing)
         {
-            first_analyser = static_cast<int>(index);
+            first_analyzer = static_cast<int>(index);
         }
     }
-    engine_.SetChoices(names, first_analyser);
+    engine_.SetChoices(names, first_analyzer);
     seconds_.SetText("1");
     mark_.SetChecked(true);
     lines_.SetChecked(true);
@@ -32,7 +32,7 @@ GameAnalysisDialog::GameAnalysisDialog(const std::vector<EngineEntry> &engines)
     {
         AddChild(*view);
     }
-    AddButton("Analyse", [this] { Start(); });
+    AddButton("Analyze", [this] { Start(); });
     AddButton("Cancel", [this] {
         if (on_close)
         {

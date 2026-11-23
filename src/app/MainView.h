@@ -136,8 +136,8 @@ class MainView final : public reckless::view::View
     /** @param blocks The engines' analysis. */
     void SetAnalysis(std::vector<EngineBlock> blocks);
 
-    /** @param is_analysing Whether the Analyse plate is lit. */
-    void SetAnalysing(bool is_analysing);
+    /** @param is_analyzing Whether the Analyze plate is lit. */
+    void SetAnalyzing(bool is_analyzing);
 
     /**
      * The evaluation graph.
@@ -278,7 +278,7 @@ class MainView final : public reckless::view::View
 
     /**
      * A navigation plate, by its command.
-     * @param command kFirst, kBack, kForward, kLast, kFlip or kAnalyse.
+     * @param command kFirst, kBack, kForward, kLast, kFlip or kAnalyze.
      * @return The plate, or null.
      */
     reckless::view::Button *Plate(int command);
@@ -289,7 +289,7 @@ class MainView final : public reckless::view::View
     void Resized() override;
 
     /**
-     * The window's colour.
+     * The window's color.
      * @param c The canvas.
      */
     void Paint(reckless::gfx::Canvas &c) override;

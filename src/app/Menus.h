@@ -21,7 +21,7 @@ struct MenuState
     bool        can_step_back         = false; ///< A position before the one shown.
     bool        can_step_forward      = false; ///< A position after the one shown.
     bool        is_game_running       = false; ///< A game being played on the board.
-    bool        is_analysing          = false; ///< The engines analysing.
+    bool        is_analyzing          = false; ///< The engines analyzing.
     bool        has_engines           = false; ///< An engine configured.
     bool        is_match_running      = false; ///< A match being played.
     bool        is_tournament_running = false; ///< A tournament being played.
@@ -29,8 +29,8 @@ struct MenuState
     bool        is_dialog_open        = false; ///< A dialog over the window, which every menu waits for.
     bool        is_log_open           = true;  ///< The engine log shown: View > Engine log ticked.
     bool        is_in_variation   = false; ///< The line shown leaves the main line: a variation to promote or delete.
-    bool        can_analyse_game  = false; ///< A game with moves, an engine to analyse it and no game being played.
-    bool        is_analysing_game = false; ///< The game analysis under way.
+    bool        can_analyze_game  = false; ///< A game with moves, an engine to analyze it and no game being played.
+    bool        is_analyzing_game = false; ///< The game analysis under way.
     bool        has_book          = false; ///< An opening book open: File > Close book.
     bool        is_built_in_book  = false; ///< The book open is the built-in one: File > Built-in book ticked.
     std::string piece_set; ///< The pieces' set the board is drawn with: its id, ticked under View > Pieces.

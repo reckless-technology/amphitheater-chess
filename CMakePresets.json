@@ -13,7 +13,7 @@
         },
         {
             "name": "debug",
-            "displayName": "Debug: the libraries, the command line and the suites, unoptimised",
+            "displayName": "Debug: the libraries, the command line and the suites, unoptimized",
             "inherits": "base",
             "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"}
         },
@@ -39,14 +39,14 @@
         },
         {
             "name": "asan",
-            "displayName": "Sanitizers: address and undefined behaviour, unoptimised (gcc or clang)",
+            "displayName": "Sanitizers: address and undefined behavior, unoptimized (gcc or clang)",
             "inherits": "base",
             "condition": {"type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows"},
             "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "AMPHITHEATER_ASAN": "ON"}
         },
         {
             "name": "coverage-windows",
-            "displayName": "Coverage, Windows: the host's own code unoptimised under clang-cl, LLVM source-based",
+            "displayName": "Coverage, Windows: the host's own code unoptimized under clang-cl, LLVM source-based",
             "inherits": "base",
             "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
             "cacheVariables": {
@@ -58,7 +58,7 @@
         },
         {
             "name": "asan-windows",
-            "displayName": "AddressSanitizer, Windows: MSVC's, optimised with debug information",
+            "displayName": "AddressSanitizer, Windows: MSVC's, optimized with debug information",
             "inherits": "base",
             "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
             "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo", "AMPHITHEATER_ASAN": "ON"}

@@ -156,7 +156,7 @@ class PositionEditorDialog final : public DialogFrame
     PositionEditorDialog(const PieceSet &pieces, const chess::Position &position, bool is_flipped);
 
     std::function<void(const chess::Position &position)> on_set_up; ///< Set up pressed, the position legal.
-    std::function<void()>                                on_close;  ///< Cancelled.
+    std::function<void()>                                on_close;  ///< Canceled.
 
     /** @return The setup as it stands. */
     const chess::BoardSetup &setup() const

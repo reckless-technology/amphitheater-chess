@@ -185,10 +185,10 @@ TEST(Evaluations, APgnWrittenFromAGameReadsBackAsTheSameSeries)
     EXPECT_EQ(read[1].points[3]->mate, std::optional<int>(6)) << "Black mated in 6: White mates";
 
     // [%eval] comments are one analysis of the whole game.
-    chess::PgnGame analysed   = games.front();
-    analysed.moves[0].comment = "[%eval 0.25]";
-    analysed.moves[1].comment = "[%eval 0.31]";
-    const auto evaluation     = SeriesOfPgn(analysed);
+    chess::PgnGame analyzed   = games.front();
+    analyzed.moves[0].comment = "[%eval 0.25]";
+    analyzed.moves[1].comment = "[%eval 0.31]";
+    const auto evaluation     = SeriesOfPgn(analyzed);
     ASSERT_EQ(evaluation.size(), 1u);
     EXPECT_EQ(evaluation[0].name, "Evaluation");
     EXPECT_DOUBLE_EQ(evaluation[0].points[1]->pawns, 0.31);
