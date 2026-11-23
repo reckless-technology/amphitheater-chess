@@ -1,7 +1,8 @@
 # Backlog: an SPRT and paired-game (pentanomial) output in `amphitheater-cli`
 
 **Status: backlog, not started.** Jonny, 2026-11-22: "add it to the backlog for amphitheater in its repo as a note but
-do not start work on it." Start only on his word.
+do not start work on it." Start only on his word. Tracked as issue
+[#72](https://github.com/reckless-technology/amphitheater-chess/issues/72); close it with the pull request that builds this.
 
 ## Why it is here
 
