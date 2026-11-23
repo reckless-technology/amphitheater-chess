@@ -131,7 +131,7 @@ GUI will save with the toolkit's JSON.
   they are included as `"app/BoardView.h"` from outside the directory.
 - `tests/`: one GoogleTest binary per library, the fake engine (`tests/fake_engine/FakeEngine.cpp`, its behaviours
   scripted by arguments), `tests/data/` (pawnstar's perft EPD, assorted PGN), the integration suite (a real engine via
-  `AMPHITHEATER_TEST_ENGINE`, skipped otherwise).
+  `AMPHITHEATER_TEST_ENGINE`, skipped otherwise; CI's Linux job sets it to a pinned Pawnstar release and fails if either test is skipped).
 
 ## Commands
 
