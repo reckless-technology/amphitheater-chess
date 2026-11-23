@@ -100,22 +100,26 @@ jobs:
       # The window's suites (label window) on a display of their own, one at a time.
       - name: Test the window on a display (xvfb-run)
         run: xvfb-run -a -s "-screen 0 1600x1200x24" ctest --test-dir build/ci-linux --output-on-failure -L '^window$'
-      # The integration suite against a real engine: Pawnstar's release binary, pinned by version and held to its
-      # SHA-256 (the release embeds its net and book, so the one file is the whole engine). The suite skips itself when
+      # The integration suite against a real engine: Pawnstar's release binary, pinned in packaging/engines.json (the one
+      # copy of the pin: its tag, repository, Linux asset and SHA-256, read here with jq) and held to its SHA-256 (the
+      # release embeds its net and book, so the one file is the whole engine). The suite skips itself when
       # AMPHITHEATER_TEST_ENGINE is unset, and a skip is reported green, so this step also fails unless both tests
       # are named as passed and none as skipped.
-      - name: Test against a real engine (Pawnstar 2.3.1)
+      - name: Test against a real engine (Pawnstar, pinned in packaging/engines.json)
         env:
-          PAWNSTAR_VERSION: "2.3.1"
-          PAWNSTAR_SHA256: 2a1b3718d7f926e121cd3ed0e0332183c9414608d2b934d2b82708298cdb1526
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # The pawnstar entry's repository, tag, Linux asset and SHA-256, one per line.
+          mapfile -t pin < <(jq -r '.engines[] | select(.id == "pawnstar") | .repository, .tag, .builds.linux[0].asset, .builds.linux[0].sha256' packaging/engines.json)
+          repository="${pin[0]:-}"; tag="${pin[1]:-}"; asset="${pin[2]:-}"; sha256="${pin[3]:-}"
+          [[ -n "$repository" && -n "$tag" && -n "$asset" && "$sha256" =~ ^[0-9a-f]{64}$ ]] \
+            || { echo "::error::packaging/engines.json has no complete Linux Pawnstar pin"; exit 1; }
+          echo "Pawnstar pin: $repository $tag $asset $sha256"
           engine_dir="$RUNNER_TEMP/real-engine"
           mkdir -p "$engine_dir"
-          asset="pawnstar-$PAWNSTAR_VERSION-linux-x86_64"
-          gh release download "v$PAWNSTAR_VERSION" --repo reckless-technology/pawnstar --pattern "$asset" --dir "$engine_dir"
-          echo "$PAWNSTAR_SHA256  $engine_dir/$asset" | sha256sum --check -
+          gh release download "$tag" --repo "$repository" --pattern "$asset" --dir "$engine_dir"
+          echo "$sha256  $engine_dir/$asset" | sha256sum --check -
           mv "$engine_dir/$asset" "$engine_dir/pawnstar"
           chmod +x "$engine_dir/pawnstar"
           export AMPHITHEATER_TEST_ENGINE="$engine_dir/pawnstar"
