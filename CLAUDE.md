@@ -6,14 +6,6 @@ Reckless Amphitheater is a chess GUI and UCI engine host for Windows, macOS and 
 toolkit-free core and a command-line runner; the README is the long-form reference (the libraries, the threading
 model, the command line, the tests).
 
-## Parent: claude-skills
-
-This repository inherits its working practice from the private `reckless-technology/claude-skills` repository (cloned at
-`~/work/claude-skills`; its `workspace/CLAUDE.md` is the cross-repo guide and its skills are linked into
-`~/.claude/skills`). Load the `reckless-working-practice` skill before committing, formatting, testing or installing
-anything here. This file holds only what is specific to this repository; where it differs from the parent, it wins
-here. Skills that apply here: `reckless-working-practice`, `reckless-app`, `reckless-releases`, `reckless-chess-engines`.
-
 **Licence:** free and open source under the GNU General Public License, version 3 or later (`LICENSE`, the FSF's own
 text; every release carries it as `LICENSE.txt`). The five engines it installs are separate programs under their own GPL
 licenses, named in the About card. The window links the toolkit, free software under the GPL too; its third-party parts
@@ -31,6 +23,14 @@ seeded into a person's engine list at every start by `src/app/BundledEngines.h`,
 engine may ship that needs more than the system: the stage refuses a Windows engine importing a DLL Windows lacks (a
 compiler's runtime) unless a pinned companion lies beside it (none is needed: every pinned release links its runtime
 statically), and starts every engine with only the system on its PATH.
+
+## Parent: claude-skills
+
+This repository inherits its working practice from the private `reckless-technology/claude-skills` repository (cloned at
+`~/work/claude-skills`; its `workspace/CLAUDE.md` is the cross-repo guide and its skills are linked into
+`~/.claude/skills`). Load the `reckless-working-practice` skill before committing, formatting, testing or installing
+anything here. This file holds only what is specific to this repository; where it differs from the parent, it wins
+here. Skills that apply here: `reckless-working-practice`, `reckless-app`, `reckless-releases`, `reckless-chess-engines`.
 
 **The GUI is built on reckless-toolkit**, a git subtree at `external/reckless-toolkit` (public and GPLv3 since
 2026-10-24; its files are committed here, so a clone has them, CI fetches nothing of its own and a fork's pull
